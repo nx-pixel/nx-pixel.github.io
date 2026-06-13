@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Pixel Fighter — Крутой фон и шкалы | nx-pixel.github.io</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0a0c15 0%, #10131f 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', 'VT323', monospace;
+            overflow: hidden;
+        }
+
+        .game-container {
+            background: #141a2c;
+            border-radius: 2rem;
+            padding: 1rem;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.6);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 1rem;
+            box-shadow: 0 0 0 4px #2e3b4e, 0 10px 25px rgba(0,0,0,0.5);
+            cursor: none;
+        }
+
+        .ui-panel {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0b0f1aee;
+            backdrop-filter: blur(6px);
+            padding: 0.5rem 1.8rem;
+            border-radius: 3rem;
+            color: #ffd966;
+            font-weight: bold;
+            font-size: 1.2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .health-text {
+            display: flex;
+            gap: 2rem;
+            background: #00000080;
+            padding: 0.3rem 1.5rem;
+            border-radius: 2rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.85rem;
+        }
+
+        .controls span {
+            background: #2a2f3f;
+            padding: 0.2rem 0.8rem;
+            border-radius: 2rem;
+        }
+
+        button {
+            background: #ff6633;
+            border: none;
+            font-family: monospace;
+            font-weight: bold;
+            padding: 0.3rem 1.2rem;
+            border-radius: 2rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.07s linear;
+            box-shadow: 0 3px 0 #942e0a;
+            color: white;
+        }
+        button:active {
+            transform: translateY(2px);
+            box-shadow: none;
+        }
+
+        .instruction {
+            font-size: 0.7rem;
+            color: #9aa4c9;
+            text-align: center;
+            margin-top: 0.6rem;
+        }
+
+        .debug-info {
+            font-size: 0.65rem;
+            color: #88aaff;
+            text-align: center;
+            margin-top: 0.4rem;
+            font-family: monospace;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+            gap: 20px;
+            color: #ffaa44;
+            font-family: monospace;
+            font-size: 1.2rem;
+        }
+
+        .progress-bar {
+            width: 300px;
+            height: 20px;
+            background: #2a2f3f;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #44cc77, #ffaa44);
+            width: 0%;
+            transition: width 0.2s;
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <canvas id="gameCanvas" width="1200" height="600"></canvas>
+    <div class="ui-panel">
+        <div>🥊 PIXEL FIGHTER 🥊</div>
+        <div class="health-text">
+            <span>👊 PLAYER <span id="playerHealth">100</span>%</span>
+            <span>VS</span>
+            <span>🤖 ENEMY <span id="aiHealth">100</span>%</span>
+        </div>
+        <div class="controls">
+            <span>🖱️ МЫШЬ</span> Вправо/Влево = движение
+            <span>🖱️ ЛКМ</span> Удар рукой
+            <span>🖱️ ПКМ</span> Удар ногой
+        </div>
+        <button id="resetBtn">⚡ РЕВАНШ</button>
+    </div>
+    <div class="instruction">
+        🎯 Ведите мышь вправо/влево — боец идёт за курсором. 🔊 Звуки ударов и побед!
+    </div>
+    <div class="debug-info" id="debugInfo"></div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div>🎬 ЗАГРУЗКА АНИМАЦИЙ</div>
+    <div>📁 Репозиторий: nx-pixel.github.io</div>
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div id="loadStatus">Подключение к GitHub Pages...</div>
+</div>
+
+<script>
+    (function() {
+        // ========== НАСТРАИВАЕМЫЕ ПАРАМЕТРЫ ==========
+        const SPRITE_SIZE = { width: 236, height: 238 };
+        
+        // ЗОНА УДАРОВ (дистанция между центрами спрайтов)
+        const PUNCH_DISTANCE = 110;   // Дистанция для удара рукой
+        const KICK_DISTANCE = 130;    // Дистанция для удара ногой
+        
+        // КОЛЛИЗИЯ
+        const MIN_CENTER_DISTANCE = 60;   // Минимальное расстояние между центрами
+        const COLLISION_PUSH_FORCE = 0.3; // Сила отталкивания
+        
+        // Скорости движения
+        const PLAYER_SPEED = 5.5;
+        const AI_SPEED = 4;
+        
+        // Границы арены
+        const MIN_X = 30;
+        const MAX_X = 1170;
+        
+        // Позиция пола
+        const GROUND_Y = 500;
+        const FIGHTER_Y = GROUND_Y - SPRITE_SIZE.height + 15;
+        
+        // Базовый URL репозитория
+        const BASE_URL = 'https://nx-pixel.github.io/';
+        
+        // Папки с анимациями
+        const ANIM_FOLDERS = {
+            standing: 'standing/',
+            walking: 'walking/',
+            beating: 'beating/',
+            beating_leg: 'beating_leg/'
+        };
+        
+        // ========== ЗВУКИ (Web Audio API) ==========
+        let audioCtx = null;
+        let soundsEnabled = false;
+        
+        function initAudio() {
+            if (audioCtx) return;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                soundsEnabled = true;
+            } catch(e) { console.warn("Web Audio не поддерживается"); }
+        }
+        
+        function playSound(type) {
+            if (!audioCtx || !soundsEnabled) return;
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            
+            const now = audioCtx.currentTime;
+            const gain = audioCtx.createGain();
+            gain.connect(audioCtx.destination);
+            gain.gain.value = 0.3;
+            
+            if (type === 'punch') {
+                const osc = audioCtx.createOscillator();
+                osc.connect(gain);
+                osc.type = 'sine';
+                osc.frequency.value = 200;
+                osc.start();
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+                osc.stop(now + 0.3);
+                const noiseGain = audioCtx.createGain();
+                noiseGain.connect(audioCtx.destination);
+                noiseGain.gain.value = 0.15;
+                const bufferSize = 2048;
+                const noiseNode = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+                noiseNode.onaudioprocess = function(e) {
+                    const output = e.outputBuffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        output[i] = (Math.random() - 0.5) * 0.3;
+                    }
+                };
+                noiseNode.connect(noiseGain);
+                setTimeout(() => {
+                    noiseNode.disconnect();
+                    noiseGain.disconnect();
+                }, 150);
+            } 
+            else if (type === 'kick') {
+                const osc = audioCtx.createOscillator();
+                osc.connect(gain);
+                osc.type = 'triangle';
+                osc.frequency.value = 150;
+                osc.start();
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+                osc.stop(now + 0.35);
+                const osc2 = audioCtx.createOscillator();
+                osc2.type = 'square';
+                osc2.frequency.value = 280;
+                osc2.connect(gain);
+                osc2.start();
+                osc2.stop(now + 0.2);
+            }
+            else if (type === 'hit') {
+                const osc = audioCtx.createOscillator();
+                osc.connect(gain);
+                osc.type = 'sawtooth';
+                osc.frequency.value = 120;
+                osc.start();
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+                osc.stop(now + 0.4);
+            }
+            else if (type === 'victory') {
+                const gainLong = audioCtx.createGain();
+                gainLong.connect(audioCtx.destination);
+                gainLong.gain.value = 0.4;
+                const oscV = audioCtx.createOscillator();
+                oscV.connect(gainLong);
+                oscV.type = 'sine';
+                oscV.frequency.value = 440;
+                oscV.start();
+                oscV.frequency.exponentialRampToValueAtTime(880, now + 0.5);
+                gainLong.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+                oscV.stop(now + 1.2);
+            }
+            else if (type === 'defeat') {
+                const gainD = audioCtx.createGain();
+                gainD.connect(audioCtx.destination);
+                gainD.gain.value = 0.35;
+                const oscD = audioCtx.createOscillator();
+                oscD.connect(gainD);
+                oscD.type = 'sawtooth';
+                oscD.frequency.value = 300;
+                oscD.start();
+                oscD.frequency.exponentialRampToValueAtTime(100, now + 0.8);
+                gainD.gain.exponentialRampToValueAtTime(0.0001, now + 1);
+                oscD.stop(now + 1);
+            }
+        }
+        
+        function enableAudioOnFirstClick() {
+            initAudio();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            document.removeEventListener('click', enableAudioOnFirstClick);
+            document.removeEventListener('keydown', enableAudioOnFirstClick);
+        }
+        document.addEventListener('click', enableAudioOnFirstClick);
+        document.addEventListener('keydown', enableAudioOnFirstClick);
+        
+        // ========== СТРУКТУРЫ ДАННЫХ ==========
+        let animations = {
+            standing: { frames: [], currentFrame: 0, delay: 7, counter: 0, loop: true },
+            walking:  { frames: [], currentFrame: 0, delay: 5, counter: 0, loop: true },
+            beating:  { frames: [], currentFrame: 0, delay: 4, counter: 0, loop: false },
+            beating_leg: { frames: [], currentFrame: 0, delay: 4, counter: 0, loop: false }
+        };
+        
+        let playerAnimState = 'standing';
+        let aiAnimState = 'standing';
+        let isPlayerAttacking = false;
+        let isAIAttacking = false;
+        
+        let playerFacingRight = true;
+        let aiFacingRight = false;
+        
+        let gameOver = false;
+        let winner = null;
+        
+        // Игрок
+        let player = {
+            x: 250,
+            y: FIGHTER_Y,
+            health: 100,
+            maxHealth: 100,
+            width: SPRITE_SIZE.width,
+            height: SPRITE_SIZE.height,
+            hitReaction: 0,
+            attackCooldown: 0,
+            attackType: null
+        };
+        
+        // ИИ
+        let ai = {
+            x: MAX_X - 280,
+            y: FIGHTER_Y,
+            health: 100,
+            maxHealth: 100,
+            width: SPRITE_SIZE.width,
+            height: SPRITE_SIZE.height,
+            hitReaction: 0,
+            attackCooldown: 0,
+            attackType: null,
+            state: 'approach',
+            stateTimer: 0
+        };
+        
+        // Эффекты
+        let hitEffects = [];
+        let screenShake = 0;
+        
+        // Управление
+        let mouseX = 400;
+        let mouseY = 300;
+        
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const debugInfo = document.getElementById('debugInfo');
+        
+        let victorySoundPlayed = false;
+        let defeatSoundPlayed = false;
+        
+        // Анимация фона
+        let bgOffset = 0;
+        let bgParticles = [];
+        for (let i = 0; i < 50; i++) {
+            bgParticles.push({
+                x: Math.random() * 1200,
+                y: Math.random() * 600,
+                size: Math.random() * 2 + 1,
+                speed: Math.random() * 0.5 + 0.2
+            });
+        }
+        
+        // ========== ЗАГРУЗКА АНИМАЦИЙ ==========
+        function loadImage(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error(`404: ${url}`));
+                img.src = url;
+            });
+        }
+        
+        async function loadFramesFromFolder(folderName, maxFrames = 30) {
+            const frames = [];
+            for (let i = 1; i <= maxFrames; i++) {
+                const url = `${BASE_URL}${ANIM_FOLDERS[folderName]}${i}.png`;
+                try {
+                    const img = await loadImage(url);
+                    frames.push(img);
+                } catch (e) {
+                    break;
+                }
+            }
+            return frames;
+        }
+        
+        async function loadAllAnimations() {
+            const folders = ['standing', 'walking', 'beating', 'beating_leg'];
+            let loaded = 0;
+            
+            for (const folder of folders) {
+                const frames = await loadFramesFromFolder(folder, 30);
+                animations[folder].frames = frames;
+                loaded++;
+                const progress = (loaded / folders.length) * 100;
+                document.getElementById('progressFill').style.width = `${progress}%`;
+                document.getElementById('loadStatus').innerHTML = 
+                    `✅ ${folder}: ${frames.length} кадров (${loaded}/4)`;
+            }
+            
+            if (animations.standing.frames.length === 0) {
+                document.getElementById('loadStatus').innerHTML = '❌ ОШИБКА: Не найдены папки с анимациями!';
+                return false;
+            }
+            return true;
+        }
+        
+        // ========== ПОЛУЧЕНИЕ ЦЕНТРА ==========
+        function getPlayerCenter() {
+            return player.x + player.width / 2;
+        }
+        
+        function getAiCenter() {
+            return ai.x + ai.width / 2;
+        }
+        
+        function getDistance() {
+            return Math.abs(getPlayerCenter() - getAiCenter());
+        }
+        
+        // ========== КОЛЛИЗИЯ ==========
+        function handleCollision() {
+            if (gameOver) return;
+            
+            const playerCenter = getPlayerCenter();
+            const aiCenter = getAiCenter();
+            const distance = Math.abs(playerCenter - aiCenter);
+            
+            if (distance < MIN_CENTER_DISTANCE) {
+                const overlap = MIN_CENTER_DISTANCE - distance;
+                const push = overlap * COLLISION_PUSH_FORCE;
+                
+                if (playerCenter < aiCenter) {
+                    player.x = Math.max(MIN_X, player.x - push);
+                    ai.x = Math.min(MAX_X - ai.width, ai.x + push);
+                } else {
+                    player.x = Math.min(MAX_X - player.width, player.x + push);
+                    ai.x = Math.max(MIN_X, ai.x - push);
+                }
+            }
+            
+            player.x = Math.min(MAX_X - player.width, Math.max(MIN_X, player.x));
+            ai.x = Math.min(MAX_X - ai.width, Math.max(MIN_X, ai.x));
+        }
+        
+        // ========== ДВИЖЕНИЕ ИГРОКА ==========
+        function updatePlayerMovement() {
+            if (gameOver) return;
+            if (player.hitReaction > 0) return;
+            
+            const canvasCenter = canvas.width / 2;
+            let moveDirection = 0;
+            
+            if (mouseX > canvasCenter + 30) {
+                moveDirection = 1;
+            } else if (mouseX < canvasCenter - 30) {
+                moveDirection = -1;
+            }
+            
+            if (moveDirection !== 0) {
+                let newX = player.x + moveDirection * PLAYER_SPEED;
+                newX = Math.min(MAX_X - player.width, Math.max(MIN_X, newX));
+                player.x = newX;
+            }
+            
+            const aiCenter = getAiCenter();
+            const playerCenter = getPlayerCenter();
+            playerFacingRight = (aiCenter > playerCenter);
+            
+            if (moveDirection !== 0 && !isPlayerAttacking && player.hitReaction === 0) {
+                if (playerAnimState !== 'walking') {
+                    playerAnimState = 'walking';
+                    animations.walking.currentFrame = 0;
+                }
+            } else if (!isPlayerAttacking && player.hitReaction === 0 && playerAnimState !== 'standing') {
+                playerAnimState = 'standing';
+                animations.standing.currentFrame = 0;
+            }
+        }
+        
+        // ========== АТАКИ ИГРОКА ==========
+        function executePlayerAttack(kick = false) {
+            if (gameOver) return false;
+            if (player.attackCooldown > 0) return false;
+            if (player.hitReaction > 0) return false;
+            if (isPlayerAttacking) return false;
+            
+            const animType = kick ? 'beating_leg' : 'beating';
+            if (animations[animType].frames.length === 0) return false;
+            
+            const distance = getDistance();
+            const requiredDistance = kick ? KICK_DISTANCE : PUNCH_DISTANCE;
+            
+            const aiCenter = getAiCenter();
+            const playerCenter = getPlayerCenter();
+            const isFacingTarget = (playerFacingRight && aiCenter > playerCenter) || 
+                                  (!playerFacingRight && aiCenter < playerCenter);
+            
+            isPlayerAttacking = true;
+            playerAnimState = animType;
+            animations[animType].currentFrame = 0;
+            animations[animType].counter = 0;
+            player.attackCooldown = 18;
+            player.attackType = kick ? 'kick' : 'punch';
+            
+            playSound(kick ? 'kick' : 'punch');
+            
+            if (distance <= requiredDistance && isFacingTarget && ai.hitReaction === 0 && ai.health > 0) {
+                let damage = kick ? 16 : 14;
+                ai.health = Math.max(0, ai.health - damage);
+                ai.hitReaction = 8;
+                screenShake = 5;
+                playSound('hit');
+                hitEffects.push({
+                    x: ai.x + ai.width/2,
+                    y: ai.y - 20,
+                    text: kick ? `🦶 НОГА -${damage}` : `✊ РУКА -${damage}`,
+                    life: 1
+                });
+                
+                if (ai.health <= 0) {
+                    gameOver = true;
+                    winner = 'player';
+                    if (!victorySoundPlayed) {
+                        playSound('victory');
+                        victorySoundPlayed = true;
+                    }
+                    hitEffects.push({ x: ai.x + ai.width/2, y: ai.y - 50, text: '🏆 ПОБЕДА! 🏆', life: 2 });
+                }
+                return true;
+            } else {
+                hitEffects.push({ 
+                    x: player.x + player.width/2 + (playerFacingRight ? 50 : -50), 
+                    y: player.y + player.height/2 - 20, 
+                    text: '❌ МИМО', 
+                    life: 0.7 
+                });
+            }
+            return true;
+        }
+        
+        // ========== ИИ ==========
+        function updateAI() {
+            if (gameOver) return;
+            if (ai.health <= 0) return;
+            
+            if (ai.attackCooldown > 0) ai.attackCooldown--;
+            
+            const distance = getDistance();
+            const playerCenter = getPlayerCenter();
+            const aiCenter = getAiCenter();
+            const direction = playerCenter > aiCenter ? 1 : -1;
+            
+            aiFacingRight = (playerCenter > aiCenter);
+            
+            if (ai.hitReaction > 0) {
+                ai.state = 'retreat';
+                ai.stateTimer = 15;
+            }
+            
+            if (ai.stateTimer > 0) {
+                ai.stateTimer--;
+            } else {
+                if (distance > 200) {
+                    ai.state = 'approach';
+                } else if (distance < 100) {
+                    ai.state = 'attack';
+                } else {
+                    ai.state = 'approach';
+                }
+            }
+            
+            switch(ai.state) {
+                case 'approach':
+                    let newX = ai.x + direction * AI_SPEED;
+                    newX = Math.min(MAX_X - ai.width, Math.max(MIN_X, newX));
+                    ai.x = newX;
+                    break;
+                case 'retreat':
+                    let retreatX = ai.x - direction * AI_SPEED * 1.2;
+                    retreatX = Math.min(MAX_X - ai.width, Math.max(MIN_X, retreatX));
+                    ai.x = retreatX;
+                    break;
+                case 'attack':
+                    if (ai.attackCooldown === 0 && !isAIAttacking && ai.hitReaction === 0 && distance <= PUNCH_DISTANCE + 20) {
+                        const useKick = Math.random() < 0.35;
+                        executeAIAttack(useKick);
+                        ai.stateTimer = 15;
+                    }
+                    break;
+            }
+            
+            const isMoving = Math.abs(ai.x - (ai.x + direction * AI_SPEED)) > 1 && ai.state === 'approach';
+            if (!isAIAttacking && ai.hitReaction === 0) {
+                if (isMoving && aiAnimState !== 'walking') {
+                    aiAnimState = 'walking';
+                    animations.walking.currentFrame = 0;
+                } else if (!isMoving && aiAnimState !== 'standing') {
+                    aiAnimState = 'standing';
+                    animations.standing.currentFrame = 0;
+                }
+            }
+        }
+        
+        function executeAIAttack(kick = false) {
+            if (gameOver) return;
+            if (ai.attackCooldown > 0) return;
+            if (ai.hitReaction > 0) return;
+            if (isAIAttacking) return;
+            if (player.health <= 0) return;
+            
+            const animType = kick ? 'beating_leg' : 'beating';
+            if (animations[animType].frames.length === 0) return;
+            
+            const distance = getDistance();
+            const requiredDistance = kick ? KICK_DISTANCE : PUNCH_DISTANCE;
+            
+            const playerCenter = getPlayerCenter();
+            const aiCenter = getAiCenter();
+            const isFacingTarget = (aiFacingRight && playerCenter > aiCenter) || 
+                                  (!aiFacingRight && playerCenter < aiCenter);
+            
+            isAIAttacking = true;
+            aiAnimState = animType;
+            animations[animType].currentFrame = 0;
+            animations[animType].counter = 0;
+            ai.attackCooldown = 22;
+            ai.attackType = kick ? 'kick' : 'punch';
+            
+            playSound(kick ? 'kick' : 'punch');
+            
+            if (distance <= requiredDistance && isFacingTarget && player.hitReaction === 0 && player.health > 0) {
+                let damage = kick ? 14 : 12;
+                player.health = Math.max(0, player.health - damage);
+                player.hitReaction = 8;
+                screenShake = 5;
+                playSound('hit');
+                hitEffects.push({
+                    x: player.x + player.width/2,
+                    y: player.y - 20,
+                    text: kick ? `🤖 НОГА AI -${damage}` : `🤖 РУКА AI -${damage}`,
+                    life: 1
+                });
+                
+                if (player.health <= 0) {
+                    gameOver = true;
+                    winner = 'ai';
+                    if (!defeatSoundPlayed) {
+                        playSound('defeat');
+                        defeatSoundPlayed = true;
+                    }
+                    hitEffects.push({ x: player.x + player.width/2, y: player.y - 50, text: '💀 ВЫ ПРОИГРАЛИ! 💀', life: 2 });
+                }
+            }
+        }
+        
+        // ========== АНИМАЦИИ ==========
+        function updateAnimation(animState, isAttacking, isPlayer) {
+            const anim = animations[animState];
+            if (!anim || anim.frames.length === 0) return;
+            
+            anim.counter++;
+            if (anim.counter >= anim.delay) {
+                anim.counter = 0;
+                anim.currentFrame++;
+                
+                if (anim.currentFrame >= anim.frames.length) {
+                    if (anim.loop) {
+                        anim.currentFrame = 0;
+                    } else {
+                        anim.currentFrame = anim.frames.length - 1;
+                        if (isPlayer && isPlayerAttacking) {
+                            isPlayerAttacking = false;
+                            playerAnimState = 'standing';
+                            animations.standing.currentFrame = 0;
+                        }
+                        if (!isPlayer && isAIAttacking) {
+                            isAIAttacking = false;
+                            aiAnimState = 'standing';
+                            animations.standing.currentFrame = 0;
+                        }
+                    }
+                }
+            }
+        }
+        
+        function updateTimers() {
+            if (player.attackCooldown > 0) player.attackCooldown--;
+            if (player.hitReaction > 0) player.hitReaction--;
+            if (ai.attackCooldown > 0) ai.attackCooldown--;
+            if (ai.hitReaction > 0) ai.hitReaction--;
+            if (screenShake > 0) screenShake--;
+            
+            for(let i=0; i<hitEffects.length; i++) {
+                hitEffects[i].life -= 0.025;
+                if(hitEffects[i].life <= 0) hitEffects.splice(i,1);
+            }
+            
+            document.getElementById('playerHealth').innerText = Math.max(0, player.health);
+            document.getElementById('aiHealth').innerText = Math.max(0, ai.health);
+            
+            const distance = getDistance();
+            debugInfo.innerHTML = `📏 Дистанция: ${Math.round(distance)}px | Удар рукой: до ${PUNCH_DISTANCE}px | Удар ногой: до ${KICK_DISTANCE}px`;
+        }
+        
+        // ========== КРУТОЙ ЗАДНИЙ ФОН ==========
+        function drawBackground() {
+            bgOffset += 0.3;
+            
+            // Градиентное небо
+            const grad = ctx.createLinearGradient(0, 0, 0, GROUND_Y - 100);
+            grad.addColorStop(0, '#0a0f2a');
+            grad.addColorStop(0.5, '#1a1f3a');
+            grad.addColorStop(1, '#2a2540');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, GROUND_Y - 50);
+            
+            // Звёзды/частицы
+            for (let p of bgParticles) {
+                ctx.fillStyle = `rgba(255, 220, 150, ${Math.sin(Date.now() * 0.001 + p.x) * 0.3 + 0.5})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Луна
+            ctx.fillStyle = '#ffe4b5';
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#ffaa66';
+            ctx.beginPath();
+            ctx.arc(1000, 70, 40, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ddccaa';
+            ctx.beginPath();
+            ctx.arc(1015, 55, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(985, 80, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(1005, 90, 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Облака
+            ctx.fillStyle = 'rgba(80, 70, 100, 0.4)';
+            ctx.shadowBlur = 0;
+            for (let i = 0; i < 5; i++) {
+                let cloudX = (bgOffset * 0.2 + i * 250) % (canvas.width + 300) - 150;
+                ctx.beginPath();
+                ctx.ellipse(cloudX, 120, 50, 30, 0, 0, Math.PI * 2);
+                ctx.ellipse(cloudX + 40, 110, 45, 28, 0, 0, Math.PI * 2);
+                ctx.ellipse(cloudX - 30, 115, 40, 25, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Дальние горы
+            ctx.fillStyle = '#2a2545';
+            ctx.beginPath();
+            ctx.moveTo(0, GROUND_Y - 120);
+            ctx.lineTo(150, GROUND_Y - 180);
+            ctx.lineTo(300, GROUND_Y - 140);
+            ctx.lineTo(500, GROUND_Y - 200);
+            ctx.lineTo(700, GROUND_Y - 160);
+            ctx.lineTo(900, GROUND_Y - 220);
+            ctx.lineTo(1100, GROUND_Y - 170);
+            ctx.lineTo(1200, GROUND_Y - 130);
+            ctx.lineTo(1200, GROUND_Y - 100);
+            ctx.lineTo(0, GROUND_Y - 100);
+            ctx.fill();
+            
+            ctx.fillStyle = '#3a3055';
+            ctx.beginPath();
+            ctx.moveTo(0, GROUND_Y - 80);
+            ctx.lineTo(200, GROUND_Y - 130);
+            ctx.lineTo(400, GROUND_Y - 100);
+            ctx.lineTo(600, GROUND_Y - 150);
+            ctx.lineTo(800, GROUND_Y - 110);
+            ctx.lineTo(1000, GROUND_Y - 160);
+            ctx.lineTo(1200, GROUND_Y - 90);
+            ctx.lineTo(1200, GROUND_Y - 50);
+            ctx.lineTo(0, GROUND_Y - 50);
+            ctx.fill();
+            
+            // Парящие искры (эффект боя)
+            if (!gameOver) {
+                for (let i = 0; i < 10; i++) {
+                    ctx.fillStyle = `rgba(255, 100, 50, ${Math.sin(Date.now() * 0.008 + i) * 0.3 + 0.3})`;
+                    ctx.beginPath();
+                    ctx.arc(600 + Math.sin(Date.now() * 0.005 + i) * 100, 150 + i * 30, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // Пол ринга с текстурой
+            ctx.fillStyle = '#4a3a2a';
+            ctx.fillRect(0, GROUND_Y - 15, canvas.width, 25);
+            ctx.fillStyle = '#6a5a3a';
+            for (let i = 0; i < 20; i++) {
+                ctx.fillRect(i * 60 + (bgOffset * 2) % 60, GROUND_Y - 8, 35, 8);
+            }
+            
+            // Логотип на ринге
+            ctx.font = "bold 24 monospace";
+            ctx.fillStyle = "#ffaa4433";
+            ctx.fillText("PIXEL FIGHTER", canvas.width/2 - 100, GROUND_Y - 25);
+        }
+        
+        // ========== ОТРИСОВКА ==========
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            let shakeX = screenShake > 0 ? (Math.random() - 0.5) * 6 : 0;
+            let shakeY = screenShake > 0 ? (Math.random() - 0.5) * 4 : 0;
+            ctx.save();
+            ctx.translate(shakeX, shakeY);
+            
+            drawBackground();
+            
+            // Канаты ринга
+            ctx.beginPath();
+            ctx.strokeStyle = "#b87c4f";
+            ctx.lineWidth = 4;
+            for(let r=0;r<3;r++) {
+                ctx.beginPath();
+                ctx.moveTo(15, GROUND_Y-55 + r*24);
+                ctx.lineTo(canvas.width-15, GROUND_Y-55 + r*24);
+                ctx.stroke();
+            }
+            
+            // ===== ИГРОК =====
+            const playerAnim = animations[playerAnimState];
+            let playerFrame = null;
+            if (playerAnim && playerAnim.frames.length > 0) {
+                let frameIdx = playerAnim.currentFrame;
+                if (frameIdx >= playerAnim.frames.length) frameIdx = playerAnim.frames.length - 1;
+                playerFrame = playerAnim.frames[frameIdx];
+            }
+            
+            if (playerFrame) {
+                ctx.save();
+                if (!playerFacingRight) {
+                    ctx.translate(player.x + player.width, player.y);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(playerFrame, 0, 0, player.width, player.height);
+                } else {
+                    ctx.drawImage(playerFrame, player.x, player.y, player.width, player.height);
+                }
+                ctx.restore();
+            }
+            
+            if (player.hitReaction > 0) {
+                ctx.strokeStyle = "#ff4444";
+                ctx.lineWidth = 3;
+                ctx.strokeRect(player.x-5, player.y-5, player.width+10, player.height+10);
+            }
+            
+            // ===== ПРОТИВНИК =====
+            const aiAnim = animations[aiAnimState];
+            let aiFrame = null;
+            if (aiAnim && aiAnim.frames.length > 0) {
+                let frameIdx = aiAnim.currentFrame;
+                if (gameOver && winner === 'player') {
+                    frameIdx = 0;
+                }
+                if (frameIdx >= aiAnim.frames.length) frameIdx = aiAnim.frames.length - 1;
+                aiFrame = aiAnim.frames[frameIdx];
+            }
+            
+            if (aiFrame) {
+                ctx.save();
+                if (!aiFacingRight) {
+                    ctx.translate(ai.x + ai.width, ai.y);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(aiFrame, 0, 0, ai.width, ai.height);
+                } else {
+                    ctx.drawImage(aiFrame, ai.x, ai.y, ai.width, ai.height);
+                }
+                ctx.restore();
+            }
+            
+            if (ai.hitReaction > 0 && !(gameOver && winner === 'player')) {
+                ctx.strokeStyle = "#ff8844";
+                ctx.lineWidth = 3;
+                ctx.strokeRect(ai.x-5, ai.y-5, ai.width+10, ai.height+10);
+            }
+            
+            // ПОЛОСКИ ЗДОРОВЬЯ — над головами, привязаны к каждому бойцу
+            const playerHealthX = player.x + player.width/2 - 55;
+            const aiHealthX = ai.x + ai.width/2 - 55;
+            const healthY = player.y - 45;
+            
+            ctx.fillStyle = "#3a2e28";
+            ctx.fillRect(playerHealthX, healthY, 110, 12);
+            ctx.fillStyle = "#44cc77";
+            ctx.fillRect(playerHealthX, healthY, 110 * (player.health/player.maxHealth), 12);
+            
+            ctx.fillStyle = "#3a2e28";
+            ctx.fillRect(aiHealthX, healthY, 110, 12);
+            ctx.fillStyle = "#dd5544";
+            ctx.fillRect(aiHealthX, healthY, 110 * (ai.health/ai.maxHealth), 12);
+            
+            ctx.font = "bold 12 monospace";
+            ctx.fillStyle = "#ffcc77";
+            ctx.fillText("PLAYER", playerHealthX + 35, healthY - 5);
+            ctx.fillStyle = "#ffaa66";
+            ctx.fillText("ENEMY", aiHealthX + 38, healthY - 5);
+            
+            // Эффекты
+            for(let ef of hitEffects) {
+                ctx.font = `bold ${26 - (1-ef.life)*10}px "Courier New"`;
+                ctx.shadowBlur = 6;
+                ctx.fillStyle = `rgba(255, 80, 40, ${ef.life+0.3})`;
+                ctx.fillText(ef.text, ef.x - 45, ef.y - 15 * (1-ef.life));
+            }
+            
+            // Зона удара
+            const distance = getDistance();
+            if (distance <= PUNCH_DISTANCE + 20 && !gameOver) {
+                ctx.beginPath();
+                ctx.arc(getPlayerCenter(), player.y + player.height/2 - 40, 20, 0, Math.PI*2);
+                ctx.strokeStyle = distance <= PUNCH_DISTANCE ? "#44ff88" : "#ffaa44";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            
+            // Курсор
+            ctx.beginPath();
+            ctx.arc(mouseX, mouseY, 12, 0, Math.PI*2);
+            ctx.strokeStyle = "#ffdd99";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(mouseX-18, mouseY);
+            ctx.lineTo(mouseX-7, mouseY);
+            ctx.moveTo(mouseX+18, mouseY);
+            ctx.lineTo(mouseX+7, mouseY);
+            ctx.moveTo(mouseX, mouseY-18);
+            ctx.lineTo(mouseX, mouseY-7);
+            ctx.moveTo(mouseX, mouseY+18);
+            ctx.lineTo(mouseX, mouseY+7);
+            ctx.stroke();
+            
+            ctx.restore();
+            
+            if(player.health <= 0) {
+                ctx.font = "bold 48 monospace";
+                ctx.fillStyle = "#ff5555";
+                ctx.fillText("💀 GAME OVER 💀", canvas.width/2-180, 80);
+            } else if(ai.health <= 0) {
+                ctx.font = "bold 48 monospace";
+                ctx.fillStyle = "#ffff88";
+                ctx.fillText("🏆 VICTORY! 🏆", canvas.width/2-160, 80);
+            }
+        }
+        
+        // ========== УПРАВЛЕНИЕ ==========
+        function setupControls() {
+            window.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                mouseX = (e.clientX - rect.left) * scaleX;
+                mouseY = (e.clientY - rect.top) * scaleY;
+                mouseX = Math.min(Math.max(mouseX, 0), canvas.width);
+                mouseY = Math.min(Math.max(mouseY, 0), canvas.height);
+            });
+            
+            canvas.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                if (gameOver) return;
+                if (player.health <= 0 || ai.health <= 0) return;
+                if (e.button === 0) executePlayerAttack(false);
+                if (e.button === 2) executePlayerAttack(true);
+            });
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        }
+        
+        function resetGame() {
+            player.health = player.maxHealth;
+            ai.health = ai.maxHealth;
+            player.x = 250;
+            ai.x = MAX_X - 280;
+            player.hitReaction = 0;
+            ai.hitReaction = 0;
+            player.attackCooldown = 0;
+            ai.attackCooldown = 0;
+            isPlayerAttacking = false;
+            isAIAttacking = false;
+            playerAnimState = 'standing';
+            aiAnimState = 'standing';
+            hitEffects = [];
+            screenShake = 5;
+            ai.state = 'approach';
+            gameOver = false;
+            winner = null;
+            victorySoundPlayed = false;
+            defeatSoundPlayed = false;
+        }
+        
+        // ========== ЗАПУСК ==========
+        async function init() {
+            setupControls();
+            document.getElementById('resetBtn').addEventListener('click', resetGame);
+            
+            const success = await loadAllAnimations();
+            if (success) {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                
+                function gameLoop() {
+                    updatePlayerMovement();
+                    updateAI();
+                    handleCollision();
+                    
+                    updateAnimation(playerAnimState, isPlayerAttacking, true);
+                    updateAnimation(aiAnimState, isAIAttacking, false);
+                    updateTimers();
+                    draw();
+                    
+                    requestAnimationFrame(gameLoop);
+                }
+                gameLoop();
+            }
+        }
+        
+        init();
+    })();
+</script>
+</body>
+</html>
