@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Иллюминат: Полная версия со справкой</title>
+    <title>Иллюминат: Бесконечный режим (без остановки)</title>
     <style>
         * { box-sizing: border-box; user-select: none; }
         body {
@@ -492,7 +492,7 @@
         { name: "👑 Цербер", category: CATEGORIES.CORPORATION.id, icon: "💼" },
         { name: "👑 Кобальт", category: CATEGORIES.CORPORATION.id, icon: "💼" },
         { name: "👑 Ведическая Королева", category: CATEGORIES.CULT.id, icon: "🌿" },
-        { name: "👑 Горыныч", category: CATEGORIES.CULT.id, icon: "🌿" },
+        { name: "👑 Змей Горыныч", category: CATEGORIES.CULT.id, icon: "🌿" },
         { name: "👑 Прометей", category: CATEGORIES.SCIENCE.id, icon: "🔬" },
         { name: "👑 Нейромант", category: CATEGORIES.SCIENCE.id, icon: "🔬" },
         { name: "👑 Глаз", category: CATEGORIES.MEDIA.id, icon: "🎭" },
@@ -579,7 +579,7 @@
         return "❓";
     }
     
-    // ========== ИГРОВОЙ ДВИЖОК (сокращён для экономии места, но полностью рабочий) ==========
+    // ========== ИГРОВОЙ ДВИЖОК ==========
     class IlluminatiGame {
         constructor(gameMode, playerIlluminati, aiIlluminati) {
             this.gameMode = gameMode;
@@ -639,9 +639,19 @@
         recalcPower() {
             this.player.power = calculateTotalPower(this.player.groups);
             this.ai.power = calculateTotalPower(this.ai.groups);
+            
+            // ========== ИСПРАВЛЕНИЕ: ПОБЕДА ТОЛЬКО В КЛАССИЧЕСКОМ РЕЖИМЕ ==========
             if (!this.gameOver && this.gameMode === 'classic') {
-                if (this.player.power >= 33) { this.gameOver = true; this.winner = "player"; playSound('win'); }
-                else if (this.ai.power >= 33) { this.gameOver = true; this.winner = "ai"; playSound('lose'); }
+                if (this.player.power >= 33) { 
+                    this.gameOver = true; 
+                    this.winner = "player"; 
+                    playSound('win');
+                }
+                else if (this.ai.power >= 33) { 
+                    this.gameOver = true; 
+                    this.winner = "ai"; 
+                    playSound('lose');
+                }
             }
         }
         
