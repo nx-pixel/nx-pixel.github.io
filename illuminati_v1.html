@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Иллюминат: Бесконечный режим (без остановки)</title>
+    <title>Иллюминат: выбор режима после иллюминатов</title>
     <style>
         * { box-sizing: border-box; user-select: none; }
         body {
@@ -218,22 +218,6 @@
             cursor: pointer;
             z-index: 100;
         }
-        .mode-selector {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin-bottom: 15px;
-        }
-        .mode-btn {
-            background: #1e2a2e;
-            border: 2px solid #c9a23d;
-            padding: 6px 25px;
-            border-radius: 40px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.1s;
-        }
-        .mode-btn.active { background: #c9a23d; color: #1a1a1a; border-color: #ffdd99; }
         .tooltip {
             position: fixed;
             bottom: 100px;
@@ -249,7 +233,7 @@
             backdrop-filter: blur(5px);
             border: 1px solid #c9a23d;
         }
-        .modal, .help-modal {
+        .modal, .help-modal, .mode-modal {
             position: fixed;
             top: 0;
             left: 0;
@@ -262,16 +246,21 @@
             justify-content: center;
             align-items: center;
         }
-        .modal-content, .help-content {
+        .modal-content, .help-content, .mode-content {
             background: #1e2a2e;
             border: 2px solid #c9a23d;
             border-radius: 2rem;
             padding: 1.5rem;
-            max-width: 600px;
+            max-width: 500px;
             width: 90%;
+            color: #ffe6b3;
+            text-align: center;
+        }
+        .help-content {
+            max-width: 600px;
             max-height: 85vh;
             overflow-y: auto;
-            color: #ffe6b3;
+            text-align: left;
         }
         .help-content h3, .help-content h4 {
             color: #ffdd99;
@@ -296,6 +285,26 @@
             gap: 10px;
             justify-content: center;
             margin: 15px 0;
+        }
+        .mode-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .mode-btn-large {
+            background: #2e241f;
+            border: 2px solid #c9a23d;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.1s;
+            font-size: 1.2rem;
+        }
+        .mode-btn-large:hover {
+            background: #aa7c3c;
+            transform: scale(1.02);
         }
         .preset-list {
             display: flex;
@@ -355,10 +364,6 @@
 <body>
 <div class="game-container" id="gameContainer" style="display: none;">
     <div class="help-btn" id="helpBtn">❓</div>
-    <div class="mode-selector" id="modeSelector">
-        <div class="mode-btn" data-mode="classic">🏆 КЛАССИЧЕСКИЙ (до 33)</div>
-        <div class="mode-btn" data-mode="endless">♾️ БЕСКОНЕЧНЫЙ (без лимита)</div>
-    </div>
     
     <div class="status-bar">
         <div class="player-stats">🧠 ВЫ <br> <span class="power" id="playerPower">0</span><span class="power-decimal" id="playerPowerDec"></span></div>
@@ -640,7 +645,6 @@
             this.player.power = calculateTotalPower(this.player.groups);
             this.ai.power = calculateTotalPower(this.ai.groups);
             
-            // ========== ИСПРАВЛЕНИЕ: ПОБЕДА ТОЛЬКО В КЛАССИЧЕСКОМ РЕЖИМЕ ==========
             if (!this.gameOver && this.gameMode === 'classic') {
                 if (this.player.power >= 33) { 
                     this.gameOver = true; 
@@ -836,10 +840,12 @@
     
     // ========== ВЫБОР ИЛЛЮМИНАТА ==========
     let currentGame = null;
-    let currentMode = 'classic';
+    let currentMode = null;
     let pendingEventCard = null;
     let pendingEventCardIdx = null;
     let tooltipDiv = null;
+    let selectedPlayerIll = null;
+    let selectedAiIll = null;
     
     function showHelp() {
         const modal = document.createElement('div');
@@ -1008,16 +1014,35 @@
         });
     }
     
-    async function startGame() {
-        const modeBtns = document.querySelectorAll('.mode-btn');
-        modeBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                modeBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentMode = btn.dataset.mode;
+    function showModeSelection() {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'mode-modal';
+            modal.innerHTML = `
+                <div class="mode-content">
+                    <h3>🎮 ВЫБЕРИТЕ РЕЖИМ ИГРЫ</h3>
+                    <div class="mode-buttons">
+                        <div class="mode-btn-large" data-mode="classic">🏆 КЛАССИЧЕСКИЙ<br><span style="font-size:0.8rem;">до 33 очков</span></div>
+                        <div class="mode-btn-large" data-mode="endless">♾️ БЕСКОНЕЧНЫЙ<br><span style="font-size:0.8rem;">без лимита</span></div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.querySelectorAll('.mode-btn-large').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const mode = btn.dataset.mode;
+                    modal.remove();
+                    resolve(mode);
+                });
             });
         });
+    }
+    
+    async function startGame() {
+        // Шаг 1: выбираем иллюмината для игрока
         const playerIll = await selectIlluminati('ИГРОКА');
+        
+        // Шаг 2: выбираем иллюмината для ИИ (не совпадает с игроком)
         let aiIll = null;
         while (!aiIll || aiIll.name === playerIll.name) {
             aiIll = await selectIlluminati('ИИ');
@@ -1026,13 +1051,18 @@
                 aiIll = null;
             }
         }
-        document.querySelector('.mode-selector').style.display = 'flex';
+        
+        // Шаг 3: выбираем режим игры
+        const gameMode = await showModeSelection();
+        
+        // Шаг 4: запускаем игру
         document.getElementById('gameContainer').style.display = 'block';
         document.getElementById('soundToggle').style.display = 'block';
-        currentGame = new IlluminatiGame(currentMode, playerIll, aiIll);
+        
+        currentGame = new IlluminatiGame(gameMode, playerIll, aiIll);
         renderGame(currentGame, null);
         currentGame.addLog(`======== НОВАЯ ИГРА ========`);
-        currentGame.addLog(`🎮 Режим: ${currentMode === 'classic' ? 'КЛАССИЧЕСКИЙ (до 33 очков)' : 'БЕСКОНЕЧНЫЙ'}`);
+        currentGame.addLog(`🎮 Режим: ${gameMode === 'classic' ? 'КЛАССИЧЕСКИЙ (до 33 очков)' : 'БЕСКОНЕЧНЫЙ'}`);
         currentGame.addLog(`👑 Ваш Иллюминат: ${playerIll.name} (${getCategoryIcon(playerIll.category)})`);
         currentGame.addLog(`👑 Иллюминат ИИ: ${aiIll.name} (${getCategoryIcon(aiIll.category)})`);
         if (currentGame.currentTurn === "ai") performAITurn();
@@ -1252,7 +1282,6 @@
         if (pendingEventCard) clearTargetSelection();
         document.getElementById('gameContainer').style.display = 'none';
         document.getElementById('soundToggle').style.display = 'none';
-        document.querySelector('.mode-selector').style.display = 'none';
         startGame();
     }
     
