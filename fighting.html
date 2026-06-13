@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Боксёрский файтинг — PNG анимации</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0a0c15 0%, #10131f 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', 'VT323', monospace;
+            overflow: hidden;
+        }
+
+        .game-container {
+            background: #141a2c;
+            border-radius: 2rem;
+            padding: 1rem;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.6);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 1rem;
+            box-shadow: 0 0 0 4px #2e3b4e, 0 10px 25px rgba(0,0,0,0.5);
+            cursor: crosshair;
+        }
+
+        .ui-panel {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0b0f1aee;
+            backdrop-filter: blur(6px);
+            padding: 0.5rem 1.8rem;
+            border-radius: 3rem;
+            color: #ffd966;
+            font-weight: bold;
+            font-size: 1.2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .health-bar {
+            display: flex;
+            gap: 2rem;
+            background: #00000080;
+            padding: 0.3rem 1.5rem;
+            border-radius: 2rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.85rem;
+        }
+
+        .controls span {
+            background: #2a2f3f;
+            padding: 0.2rem 0.8rem;
+            border-radius: 2rem;
+        }
+
+        button {
+            background: #ff6633;
+            border: none;
+            font-family: monospace;
+            font-weight: bold;
+            padding: 0.3rem 1.2rem;
+            border-radius: 2rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.07s linear;
+            box-shadow: 0 3px 0 #942e0a;
+            color: white;
+        }
+        button:active {
+            transform: translateY(2px);
+            box-shadow: none;
+        }
+
+        .instruction {
+            font-size: 0.7rem;
+            color: #9aa4c9;
+            text-align: center;
+            margin-top: 0.6rem;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+            gap: 20px;
+            color: #ffaa44;
+            font-family: monospace;
+            font-size: 1.2rem;
+        }
+
+        .progress-bar {
+            width: 300px;
+            height: 20px;
+            background: #2a2f3f;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #44cc77, #ffaa44);
+            width: 0%;
+            transition: width 0.2s;
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <canvas id="gameCanvas" width="1100" height="580"></canvas>
+    <div class="ui-panel">
+        <div>🥊 PNG FIGHTER 🥊</div>
+        <div class="health-bar">
+            <span>👊 PLAYER</span>
+            <span id="playerHealth">100</span>
+            <span>VS</span>
+            <span id="aiHealth">100</span>
+            <span>🤖 ENEMY</span>
+        </div>
+        <div class="controls">
+            <span>A/D</span> Движение
+            <span>🖱️ ЛКМ</span> Удар рукой
+            <span>🖱️ ПКМ</span> Удар ногой
+        </div>
+        <button id="resetBtn">⚡ РЕВАНШ</button>
+    </div>
+    <div class="instruction">
+        🎯 Направление удара = курсор мыши. Противник отзеркален из тех же анимаций!
+    </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div>🎬 ЗАГРУЗКА АНИМАЦИЙ...</div>
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div id="loadStatus">Загрузка из папок: standing, walking, beating, beating_leg</div>
+</div>
+
+<script>
+    (function() {
+        // ========== КОНФИГУРАЦИЯ ==========
+        const SPRITE_SIZE = { width: 236, height: 238 };
+        const GROUND_Y = 470;
+        const MIN_X = 50;
+        const MAX_X = 1050;
+        
+        // Папки с анимациями (относительно корня репозитория)
+        const ANIM_FOLDERS = {
+            standing: 'standing/',
+            walking: 'walking/',
+            beating: 'beating/',
+            beating_leg: 'beating_leg/'
+        };
+        
+        // Структура анимаций
+        let animations = {
+            standing: { frames: [], currentFrame: 0, delay: 6, counter: 0, loop: true },
+            walking:  { frames: [], currentFrame: 0, delay: 5, counter: 0, loop: true },
+            beating:  { frames: [], currentFrame: 0, delay: 4, counter: 0, loop: false },
+            beating_leg: { frames: [], currentFrame: 0, delay: 4, counter: 0, loop: false }
+        };
+        
+        let currentAnim = 'standing';
+        let isAttacking = false;
+        let facingRight = true;
+        
+        // Игрок и AI
+        let player = {
+            x: 200,
+            y: GROUND_Y - SPRITE_SIZE.height + 15,
+            health: 100,
+            maxHealth: 100,
+            width: SPRITE_SIZE.width,
+            height: SPRITE_SIZE.height,
+            hitReaction: 0
+        };
+        
+        let ai = {
+            x: MAX_X - 250,
+            y: GROUND_Y - SPRITE_SIZE.height + 15,
+            health: 100,
+            maxHealth: 100,
+            width: SPRITE_SIZE.width,
+            height: SPRITE_SIZE.height,
+            hitReaction: 0,
+            aiCooldown: 0
+        };
+        
+        // Эффекты
+        let hitEffects = [];
+        let screenShake = 0;
+        let leftPressed = false, rightPressed = false;
+        let playerAttackCooldown = 0;
+        let mouseX = 400, mouseY = 300;
+        
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // ========== АВТОМАТИЧЕСКАЯ ЗАГРУЗКА ИЗ ПАПОК ==========
+        async function loadFramesFromFolder(folderName, maxFrames = 30) {
+            const frames = [];
+            // Пробуем загрузить 1.png, 2.png, 3.png ... пока не найдём пустоту
+            for (let i = 1; i <= maxFrames; i++) {
+                const url = `${ANIM_FOLDERS[folderName]}${i}.png`;
+                try {
+                    const img = await loadImage(url);
+                    frames.push(img);
+                } catch (e) {
+                    // Файл не найден - прекращаем загрузку этой папки
+                    break;
+                }
+            }
+            return frames;
+        }
+        
+        function loadImage(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error(`Не удалось загрузить ${url}`));
+                img.src = url;
+            });
+        }
+        
+        async function loadAllAnimations() {
+            const folders = ['standing', 'walking', 'beating', 'beating_leg'];
+            let loaded = 0;
+            
+            for (const folder of folders) {
+                const frames = await loadFramesFromFolder(folder, 30);
+                animations[folder].frames = frames;
+                loaded++;
+                const progress = (loaded / folders.length) * 100;
+                document.getElementById('progressFill').style.width = `${progress}%`;
+                document.getElementById('loadStatus').innerHTML = 
+                    `✅ ${folder}: ${frames.length} кадров (${loaded}/4 папок)`;
+                
+                if (frames.length === 0) {
+                    console.warn(`Внимание: папка ${folder} пуста или файлы не найдены!`);
+                }
+            }
+            
+            // Проверяем, что все анимации загружены
+            if (animations.standing.frames.length === 0) {
+                console.error('Не удалось загрузить анимации! Убедитесь, что папки standing, walking, beating, beating_leg существуют и содержат 1.png, 2.png...');
+                document.getElementById('loadStatus').innerHTML = '❌ ОШИБКА: Папки с анимациями не найдены! Убедитесь, что в репозитории есть папки: standing, walking, beating, beating_leg с PNG-файлами.';
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // ========== ИГРОВАЯ ЛОГИКА ==========
+        function updateAnimation() {
+            const anim = animations[currentAnim];
+            if (!anim || anim.frames.length === 0) return;
+            
+            anim.counter++;
+            if (anim.counter >= anim.delay) {
+                anim.counter = 0;
+                anim.currentFrame++;
+                
+                if (anim.currentFrame >= anim.frames.length) {
+                    if (anim.loop) {
+                        anim.currentFrame = 0;
+                    } else {
+                        anim.currentFrame = anim.frames.length - 1;
+                        if (isAttacking) {
+                            isAttacking = false;
+                            currentAnim = 'standing';
+                            animations.standing.currentFrame = 0;
+                        }
+                    }
+                }
+            }
+        }
+        
+        function playerPunch(kick = false) {
+            if (playerAttackCooldown > 0) return false;
+            if (isAttacking) return false;
+            
+            const animType = kick ? 'beating_leg' : 'beating';
+            if (animations[animType].frames.length === 0) return false;
+            
+            isAttacking = true;
+            currentAnim = animType;
+            animations[animType].currentFrame = 0;
+            animations[animType].counter = 0;
+            playerAttackCooldown = 20;
+            
+            // Проверка попадания
+            const playerCenterX = player.x + SPRITE_SIZE.width/2;
+            const playerCenterY = player.y + SPRITE_SIZE.height/2;
+            const aiCenterX = ai.x + SPRITE_SIZE.width/2;
+            const aiCenterY = ai.y + SPRITE_SIZE.height/2;
+            const dist = Math.hypot(aiCenterX - playerCenterX, aiCenterY - playerCenterY);
+            
+            let dirX = mouseX - playerCenterX;
+            let dirY = mouseY - playerCenterY;
+            const len = Math.hypot(dirX, dirY);
+            if (len > 0.01) { dirX /= len; dirY /= len; }
+            
+            const toTargetX = (aiCenterX - playerCenterX) / dist;
+            const toTargetY = (aiCenterY - playerCenterY) / dist;
+            const dot = dirX * toTargetX + dirY * toTargetY;
+            
+            if (dist < 100 && dot > 0.4) {
+                let damage = kick ? 18 : 15;
+                ai.health = Math.max(0, ai.health - damage);
+                ai.hitReaction = 5;
+                screenShake = 5;
+                hitEffects.push({
+                    x: aiCenterX,
+                    y: ai.y - 20,
+                    text: kick ? `🦶 Удар ногой -${damage}` : `✊ Удар рукой -${damage}`,
+                    life: 1
+                });
+                if (ai.health <= 0) {
+                    hitEffects.push({ x: aiCenterX, y: ai.y - 50, text: '💀 НОКАУТ! 💀', life: 1.5 });
+                }
+            } else {
+                hitEffects.push({ x: playerCenterX + dirX * 50, y: playerCenterY, text: '❌ Промах', life: 0.7 });
+            }
+            
+            return true;
+        }
+        
+        function updateAI() {
+            if (ai.health <= 0) return;
+            if (ai.aiCooldown > 0) { ai.aiCooldown--; return; }
+            
+            const distToPlayer = Math.abs((player.x + SPRITE_SIZE.width/2) - (ai.x + SPRITE_SIZE.width/2));
+            
+            // AI двигается
+            if (distToPlayer > 150 && player.health > 0) {
+                if (player.x > ai.x && ai.x + SPRITE_SIZE.width < MAX_X) ai.x += 2.5;
+                if (player.x < ai.x && ai.x > MIN_X) ai.x -= 2.5;
+            }
+            
+            // AI атакует
+            if (Math.random() < 0.02 && distToPlayer < 120 && !ai.hitReaction && player.health > 0) {
+                const playerCenter = { x: player.x + SPRITE_SIZE.width/2, y: player.y + SPRITE_SIZE.height/2 };
+                const aiCenter = { x: ai.x + SPRITE_SIZE.width/2, y: ai.y + SPRITE_SIZE.height/2 };
+                const dist = Math.hypot(playerCenter.x - aiCenter.x, playerCenter.y - aiCenter.y);
+                
+                if (dist < 100) {
+                    let damage = 12;
+                    player.health = Math.max(0, player.health - damage);
+                    player.hitReaction = 5;
+                    screenShake = 4;
+                    hitEffects.push({ x: playerCenter.x, y: player.y - 20, text: `🤕 Удар AI -${damage}`, life: 0.9 });
+                    ai.aiCooldown = 25;
+                }
+            }
+        }
+        
+        function updateMovement() {
+            if (isAttacking || player.hitReaction > 0) return;
+            
+            let moving = false;
+            if (leftPressed && player.x > MIN_X) {
+                player.x -= 4;
+                moving = true;
+            }
+            if (rightPressed && player.x + SPRITE_SIZE.width < MAX_X) {
+                player.x += 4;
+                moving = true;
+            }
+            
+            if (moving && currentAnim !== 'walking' && !isAttacking) {
+                currentAnim = 'walking';
+                animations.walking.currentFrame = 0;
+            } else if (!moving && currentAnim !== 'standing' && !isAttacking && !player.hitReaction) {
+                currentAnim = 'standing';
+                animations.standing.currentFrame = 0;
+            }
+            
+            facingRight = (mouseX > player.x + SPRITE_SIZE.width/2);
+        }
+        
+        function updateTimers() {
+            if (playerAttackCooldown > 0) playerAttackCooldown--;
+            if (player.hitReaction > 0) player.hitReaction--;
+            if (ai.hitReaction > 0) ai.hitReaction--;
+            if (screenShake > 0) screenShake--;
+            
+            for(let i=0; i<hitEffects.length; i++) {
+                hitEffects[i].life -= 0.02;
+                if(hitEffects[i].life <= 0) hitEffects.splice(i,1);
+            }
+            
+            document.getElementById('playerHealth').innerText = Math.max(0, player.health);
+            document.getElementById('aiHealth').innerText = Math.max(0, ai.health);
+        }
+        
+        // ========== ОТРИСОВКА ==========
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            let shakeX = screenShake > 0 ? (Math.random() - 0.5) * 6 : 0;
+            let shakeY = screenShake > 0 ? (Math.random() - 0.5) * 4 : 0;
+            ctx.save();
+            ctx.translate(shakeX, shakeY);
+            
+            // Фон
+            ctx.fillStyle = "#1f2330";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#403d2b";
+            ctx.fillRect(0, GROUND_Y-8, canvas.width, 22);
+            for(let i=0;i<12;i++) {
+                ctx.fillStyle = "#efc181";
+                ctx.fillRect(i*95+20, GROUND_Y-2, 55, 6);
+            }
+            
+            // Канаты
+            ctx.beginPath();
+            ctx.strokeStyle = "#b87c4f";
+            ctx.lineWidth = 4;
+            for(let r=0;r<3;r++) {
+                ctx.beginPath();
+                ctx.moveTo(20, GROUND_Y-60 + r*22);
+                ctx.lineTo(canvas.width-20, GROUND_Y-60 + r*22);
+                ctx.stroke();
+            }
+            
+            // ===== ИГРОК =====
+            const playerAnim = animations[currentAnim];
+            let playerFrame = null;
+            if (playerAnim && playerAnim.frames.length > 0) {
+                let frameIdx = playerAnim.currentFrame;
+                if (frameIdx >= playerAnim.frames.length) frameIdx = playerAnim.frames.length - 1;
+                playerFrame = playerAnim.frames[frameIdx];
+            }
+            
+            if (playerFrame) {
+                ctx.save();
+                if (!facingRight) {
+                    ctx.translate(player.x + SPRITE_SIZE.width, player.y);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(playerFrame, 0, 0, SPRITE_SIZE.width, SPRITE_SIZE.height);
+                } else {
+                    ctx.drawImage(playerFrame, player.x, player.y, SPRITE_SIZE.width, SPRITE_SIZE.height);
+                }
+                ctx.restore();
+            }
+            
+            if (player.hitReaction > 0) {
+                ctx.strokeStyle = "#ff0000";
+                ctx.lineWidth = 3;
+                ctx.strokeRect(player.x-5, player.y-5, SPRITE_SIZE.width+10, SPRITE_SIZE.height+10);
+            }
+            
+            // ===== ПРОТИВНИК (отзеркален) =====
+            const aiAnim = animations.standing;
+            let aiFrame = null;
+            if (aiAnim && aiAnim.frames.length > 0) {
+                aiFrame = aiAnim.frames[0];
+            }
+            
+            if (aiFrame) {
+                ctx.save();
+                ctx.translate(ai.x + SPRITE_SIZE.width, ai.y);
+                ctx.scale(-1, 1);
+                ctx.drawImage(aiFrame, 0, 0, SPRITE_SIZE.width, SPRITE_SIZE.height);
+                ctx.restore();
+            }
+            
+            if (ai.hitReaction > 0) {
+                ctx.strokeStyle = "#ff6600";
+                ctx.lineWidth = 3;
+                ctx.strokeRect(ai.x-5, ai.y-5, SPRITE_SIZE.width+10, SPRITE_SIZE.height+10);
+            }
+            
+            // Полоски здоровья
+            ctx.fillStyle = "#3a2e28";
+            ctx.fillRect(player.x-5, player.y-25, SPRITE_SIZE.width+10, 12);
+            ctx.fillStyle = "#44cc77";
+            ctx.fillRect(player.x-5, player.y-25, (SPRITE_SIZE.width+10) * (player.health/player.maxHealth), 12);
+            
+            ctx.fillStyle = "#3a2e28";
+            ctx.fillRect(ai.x-5, ai.y-25, SPRITE_SIZE.width+10, 12);
+            ctx.fillStyle = "#dd5544";
+            ctx.fillRect(ai.x-5, ai.y-25, (SPRITE_SIZE.width+10) * (ai.health/ai.maxHealth), 12);
+            
+            // Эффекты
+            for(let ef of hitEffects) {
+                ctx.font = `bold ${24 - (1-ef.life)*8}px "Courier New"`;
+                ctx.shadowBlur = 6;
+                ctx.fillStyle = `rgba(255, 80, 40, ${ef.life+0.3})`;
+                ctx.fillText(ef.text, ef.x - 40, ef.y - 15 * (1-ef.life));
+            }
+            
+            // Прицел
+            ctx.beginPath();
+            ctx.arc(mouseX, mouseY, 15, 0, Math.PI*2);
+            ctx.strokeStyle = "#ffdd99";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(mouseX-20, mouseY);
+            ctx.lineTo(mouseX-8, mouseY);
+            ctx.moveTo(mouseX+20, mouseY);
+            ctx.lineTo(mouseX+8, mouseY);
+            ctx.moveTo(mouseX, mouseY-20);
+            ctx.lineTo(mouseX, mouseY-8);
+            ctx.moveTo(mouseX, mouseY+20);
+            ctx.lineTo(mouseX, mouseY+8);
+            ctx.stroke();
+            
+            ctx.restore();
+            
+            if(player.health <= 0) {
+                ctx.font = "bold 52 monospace";
+                ctx.fillStyle = "#ff5555";
+                ctx.fillText("💀 GAME OVER 💀", canvas.width/2-170, 100);
+            } else if(ai.health <= 0) {
+                ctx.font = "bold 52 monospace";
+                ctx.fillStyle = "#ffff88";
+                ctx.fillText("🏆 WINNER! 🏆", canvas.width/2-150, 100);
+            }
+        }
+        
+        // ========== УПРАВЛЕНИЕ ==========
+        function setupControls() {
+            window.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                mouseX = (e.clientX - rect.left) * scaleX;
+                mouseY = (e.clientY - rect.top) * scaleY;
+                mouseX = Math.min(Math.max(mouseX, 0), canvas.width);
+                mouseY = Math.min(Math.max(mouseY, 0), canvas.height);
+            });
+            
+            canvas.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                if (player.health <= 0 || ai.health <= 0) return;
+                if (e.button === 0) playerPunch(false);
+                if (e.button === 2) playerPunch(true);
+            });
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            
+            window.addEventListener('keydown', (e) => {
+                if(e.key === 'a' || e.key === 'A' || e.key === 'ф') { leftPressed = true; e.preventDefault(); }
+                if(e.key === 'd' || e.key === 'D' || e.key === 'в') { rightPressed = true; e.preventDefault(); }
+            });
+            window.addEventListener('keyup', (e) => {
+                if(e.key === 'a' || e.key === 'A' || e.key === 'ф') leftPressed = false;
+                if(e.key === 'd' || e.key === 'D' || e.key === 'в') rightPressed = false;
+            });
+        }
+        
+        function resetGame() {
+            player.health = player.maxHealth;
+            ai.health = ai.maxHealth;
+            player.x = 200;
+            ai.x = MAX_X - 250;
+            currentAnim = 'standing';
+            isAttacking = false;
+            playerAttackCooldown = 0;
+            hitEffects = [];
+            screenShake = 5;
+        }
+        
+        // ========== ЗАПУСК ==========
+        async function init() {
+            setupControls();
+            document.getElementById('resetBtn').addEventListener('click', resetGame);
+            
+            const success = await loadAllAnimations();
+            if (success) {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                // Запуск игрового цикла
+                function gameLoop() {
+                    updateMovement();
+                    updateAI();
+                    updateAnimation();
+                    updateTimers();
+                    draw();
+                    requestAnimationFrame(gameLoop);
+                }
+                gameLoop();
+            }
+        }
+        
+        init();
+    })();
+</script>
+</body>
+</html>
