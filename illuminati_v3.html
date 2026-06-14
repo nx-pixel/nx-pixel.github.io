@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Иллюминат: карточная игра с подробной справкой</title>
+    <style>
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            background: linear-gradient(145deg, #0a1a1f 0%, #0a0f12 100%);
+            font-family: 'Segoe UI', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .game-container {
+            max-width: 1400px;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.55);
+            border-radius: 3rem;
+            backdrop-filter: blur(3px);
+            box-shadow: 0 20px 35px rgba(0,0,0,0.5);
+            padding: 1.2rem;
+            border: 1px solid #d4af3777;
+            position: relative;
+        }
+        .help-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: #2e241f;
+            border: 1px solid #c9a23d;
+            color: #ffdd99;
+            font-size: 1.2rem;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.1s;
+            z-index: 10;
+        }
+        .help-btn:hover {
+            background: #aa7c3c;
+            transform: scale(1.05);
+        }
+        .status-bar {
+            background: #000000aa;
+            border-radius: 2rem;
+            padding: 0.8rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+            color: #ffecb3;
+        }
+        .player-stats, .ai-stats {
+            background: #1e2a2ecc;
+            padding: 0.5rem 1.2rem;
+            border-radius: 2rem;
+            min-width: 200px;
+        }
+        .power { font-size: 1.8rem; font-weight: bold; color: gold; }
+        .power-decimal { font-size: 0.9rem; color: #c9a23d; margin-left: 5px; }
+        .turn-indicator {
+            background: #231f1b;
+            padding: 0.5rem 1.5rem;
+            border-radius: 3rem;
+            font-weight: bold;
+            border-left: 5px solid #e6b422;
+        }
+        .boards { display: flex; flex-wrap: wrap; gap: 1.5rem; margin: 1.5rem 0; }
+        .board {
+            flex: 1;
+            background: #142024bb;
+            border-radius: 2rem;
+            padding: 1rem;
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+        }
+        .board h2 {
+            text-align: center;
+            font-size: 1.3rem;
+            border-bottom: 2px dashed #b8860b;
+            color: #f7d44a;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .group-list {
+            background: #00000055;
+            border-radius: 1.5rem;
+            padding: 10px;
+            max-height: 320px;
+            overflow-y: auto;
+            min-height: 120px;
+            scroll-behavior: smooth;
+        }
+        .group-list::-webkit-scrollbar { width: 8px; }
+        .group-list::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 10px; }
+        .group-list::-webkit-scrollbar-thumb { background: #c9a23d; border-radius: 10px; }
+        .group-card {
+            background: #1f2c2ef2;
+            border-left: 6px solid #e6b422;
+            margin: 6px 0;
+            padding: 8px 12px;
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #ffe6b3;
+            font-weight: bold;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .group-card.illuminati {
+            border-left-color: #ffaa33;
+            background: linear-gradient(135deg, #3a2a1a, #2a2a1a);
+            box-shadow: 0 0 8px rgba(255, 170, 51, 0.5);
+        }
+        .group-card.targetable {
+            border: 2px solid #ff4444;
+            background: #5a2a2a;
+            cursor: crosshair;
+        }
+        .group-card.strong { border-left-color: #ff4444; background: #3a2222cc; }
+        .group-card.new { animation: highlightFlash 0.8s ease-out; }
+        @keyframes highlightFlash {
+            0% { background: #c9a23d; transform: scale(1.02); }
+            100% { background: #1f2c2ef2; transform: scale(1); }
+        }
+        .group-category {
+            font-size: 0.7rem;
+            background: #00000088;
+            padding: 2px 8px;
+            border-radius: 20px;
+            margin-left: 8px;
+        }
+        .hand-area {
+            background: #0c191ecc;
+            border-radius: 2rem;
+            padding: 1rem;
+            margin: 20px 0;
+        }
+        .cards-hand {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+        }
+        .card {
+            background: radial-gradient(ellipse at 20% 25%, #2f3b3f, #0f1a1f);
+            width: 150px;
+            min-height: 120px;
+            border-radius: 18px;
+            border: 1px solid #cb9e5e;
+            padding: 12px 8px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+            color: #fae67a;
+            transition: all 0.1s ease;
+        }
+        .card.selected {
+            border: 3px solid #ffaa00;
+            box-shadow: 0 0 15px #ffaa00;
+            transform: scale(1.02);
+        }
+        .card:hover { transform: translateY(-5px); background: #2f454b; }
+        .card-power { font-size: 1.7rem; margin: 10px 0; color: gold; }
+        .card-category { font-size: 0.65rem; background: #00000099; display: inline-block; padding: 2px 8px; border-radius: 20px; margin-top: 5px; }
+        button {
+            background: #2e241f;
+            border: none;
+            color: #ffdd99;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: bold;
+            margin: 5px;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        button:hover { background: #aa7c3c; color: white; transform: scale(0.97); }
+        .log {
+            background: #000000aa;
+            border-radius: 1.5rem;
+            padding: 10px 15px;
+            height: 100px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #b8d0c0;
+            margin-top: 15px;
+        }
+        .log::-webkit-scrollbar { width: 6px; }
+        .log::-webkit-scrollbar-thumb { background: #c9a23d; border-radius: 10px; }
+        .deck-info {
+            font-size: 0.7rem;
+            text-align: center;
+            margin-top: 5px;
+            color: #bbaa77;
+        }
+        .sound-toggle {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            background: #000000aa;
+            border-radius: 30px;
+            padding: 6px 12px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            z-index: 100;
+        }
+        .tooltip {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #000000cc;
+            color: #ffdd99;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            z-index: 200;
+            pointer-events: none;
+            backdrop-filter: blur(5px);
+            border: 1px solid #c9a23d;
+        }
+        .modal, .help-modal, .mode-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content, .help-content, .mode-content {
+            background: #1e2a2e;
+            border: 2px solid #c9a23d;
+            border-radius: 2rem;
+            padding: 1.5rem;
+            max-width: 500px;
+            width: 90%;
+            color: #ffe6b3;
+            text-align: center;
+        }
+        .help-content {
+            max-width: 600px;
+            max-height: 85vh;
+            overflow-y: auto;
+            text-align: left;
+        }
+        .help-content h3, .help-content h4 {
+            color: #ffdd99;
+            margin-top: 0;
+        }
+        .help-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 0.8rem;
+        }
+        .help-content th, .help-content td {
+            border: 1px solid #c9a23d;
+            padding: 6px;
+            text-align: center;
+        }
+        .help-content th {
+            background: #2a3a3e;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        .mode-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-direction: column;
+            align-items: center;
+        }
+        .mode-btn-large {
+            background: #2e241f;
+            border: 2px solid #c9a23d;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.1s;
+            font-size: 1.2rem;
+            width: 100%;
+        }
+        .mode-btn-large:hover {
+            background: #aa7c3c;
+            transform: scale(1.02);
+        }
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .checkbox-container input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .preset-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .preset-item {
+            background: #2a3a3e;
+            padding: 6px 12px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: 0.1s;
+        }
+        .preset-item:hover { background: #c9a23d; color: #1a1a1a; }
+        .preset-item.selected { background: #c9a23d; color: #1a1a1a; }
+        .custom-input {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .custom-input input, .custom-input select {
+            background: #2a3a3e;
+            border: 1px solid #c9a23d;
+            color: #ffe6b3;
+            padding: 6px 12px;
+            border-radius: 30px;
+        }
+        .random-btn {
+            background: #3a2a1a;
+            padding: 8px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .random-btn:hover { background: #c9a23d; color: #1a1a1a; }
+        hr { border-color: #c9a23d; }
+        .close-btn {
+            float: right;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #c9a23d;
+        }
+        .close-btn:hover { color: #ffdd99; }
+        .synergy-plus { color: #88ff88; }
+        .synergy-minus { color: #ff8888; }
+        .info-tooltip {
+            position: fixed;
+            background: #1a2a2e;
+            border: 1px solid #c9a23d;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 0.7rem;
+            color: #ffecb3;
+            pointer-events: none;
+            z-index: 1000;
+            white-space: nowrap;
+            font-family: monospace;
+            box-shadow: 0 2px 8px black;
+        }
+        @media (max-width: 800px) {
+            .group-list { max-height: 220px; }
+            .card { width: 130px; min-height: 100px; font-size: 0.7rem; }
+            .card-power { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container" id="gameContainer" style="display: none;">
+    <div class="help-btn" id="helpBtn">❓</div>
+    
+    <div class="status-bar">
+        <div class="player-stats">🧠 ВЫ <br> <span class="power" id="playerPower">0</span><span class="power-decimal" id="playerPowerDec"></span></div>
+        <div class="turn-indicator" id="turnText">🔥 Ваш ход</div>
+        <div class="ai-stats">🤖 ИИ<br> <span class="power" id="aiPower">0</span><span class="power-decimal" id="aiPowerDec"></span></div>
+    </div>
+
+    <div class="boards">
+        <div class="board">
+            <h2>◉ ВАШ СИНДИКАТ ◉</h2>
+            <div id="playerGroups" class="group-list"></div>
+            <div style="font-size:0.65rem; text-align:center; margin-top:5px; color:#aa8866;">💡 ПКМ по группе — выкинуть в колоду (кроме Иллюмината)</div>
+        </div>
+        <div class="board">
+            <h2>● СЕТЬ ИИ ●</h2>
+            <div id="aiGroups" class="group-list"></div>
+        </div>
+    </div>
+
+    <div class="hand-area">
+        <div class="hand-title">🎴 РУКА (нажми на карту)</div>
+        <div id="handCards" class="cards-hand"></div>
+        <div style="display: flex; justify-content: center; margin-top: 12px;">
+            <button id="endTurnBtn">⏳ ЗАВЕРШИТЬ ХОД (ПРОПУСТИТЬ)</button>
+            <button id="resetGameBtn">🌀 НОВАЯ ИГРА</button>
+        </div>
+        <div class="deck-info" id="deckInfo"></div>
+    </div>
+    <div class="log" id="gameLog"></div>
+</div>
+<div class="sound-toggle" id="soundToggle" style="display: none;">🔊 Звук вкл</div>
+
+<script>
+    // ========== ЗВУКИ ==========
+    let soundEnabled = true;
+    
+    function playSound(type) {
+        if (!soundEnabled) return;
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            switch(type) {
+                case 'cardPlay': oscillator.frequency.value = 523.25; gainNode.gain.value = 0.15; oscillator.type = 'sine'; break;
+                case 'steal': oscillator.frequency.value = 659.25; gainNode.gain.value = 0.2; oscillator.type = 'square'; break;
+                case 'destroy': oscillator.frequency.value = 220; gainNode.gain.value = 0.25; oscillator.type = 'sawtooth'; break;
+                case 'win': oscillator.frequency.value = 880; gainNode.gain.value = 0.3; oscillator.type = 'triangle'; break;
+                case 'lose': oscillator.frequency.value = 164.81; gainNode.gain.value = 0.2; oscillator.type = 'sawtooth'; break;
+                default: oscillator.frequency.value = 440; gainNode.gain.value = 0.1;
+            }
+            oscillator.start();
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.8);
+            oscillator.stop(audioContext.currentTime + 0.8);
+            setTimeout(() => audioContext.close(), 900);
+        } catch(e) { }
+    }
+    
+    // ========== КАТЕГОРИИ И СИНЕРГИИ ==========
+    const CATEGORIES = {
+        GOVERNMENT: { id: "gov", icon: "🏛️", name: "Правительство" },
+        CORPORATION: { id: "corp", icon: "💼", name: "Корпорации" },
+        CULT: { id: "cult", icon: "🌿", name: "Культы" },
+        SCIENCE: { id: "sci", icon: "🔬", name: "Наука" },
+        MEDIA: { id: "media", icon: "🎭", name: "Медиа" }
+    };
+    
+    const interactionMatrix = {
+        [CATEGORIES.GOVERNMENT.id]: {
+            [CATEGORIES.GOVERNMENT.id]: 0.08,
+            [CATEGORIES.CORPORATION.id]: 0.07,
+            [CATEGORIES.CULT.id]: 0.07,
+            [CATEGORIES.SCIENCE.id]: 0,
+            [CATEGORIES.MEDIA.id]: -0.03
+        },
+        [CATEGORIES.CORPORATION.id]: {
+            [CATEGORIES.GOVERNMENT.id]: 0.07,
+            [CATEGORIES.CORPORATION.id]: 0.08,
+            [CATEGORIES.CULT.id]: -0.03,
+            [CATEGORIES.SCIENCE.id]: 0.07,
+            [CATEGORIES.MEDIA.id]: 0
+        },
+        [CATEGORIES.CULT.id]: {
+            [CATEGORIES.GOVERNMENT.id]: 0.07,
+            [CATEGORIES.CORPORATION.id]: -0.03,
+            [CATEGORIES.CULT.id]: 0.08,
+            [CATEGORIES.SCIENCE.id]: -0.03,
+            [CATEGORIES.MEDIA.id]: 0.07
+        },
+        [CATEGORIES.SCIENCE.id]: {
+            [CATEGORIES.GOVERNMENT.id]: 0,
+            [CATEGORIES.CORPORATION.id]: 0.07,
+            [CATEGORIES.CULT.id]: -0.03,
+            [CATEGORIES.SCIENCE.id]: 0.08,
+            [CATEGORIES.MEDIA.id]: -0.03
+        },
+        [CATEGORIES.MEDIA.id]: {
+            [CATEGORIES.GOVERNMENT.id]: -0.03,
+            [CATEGORIES.CORPORATION.id]: 0,
+            [CATEGORIES.CULT.id]: 0.07,
+            [CATEGORIES.SCIENCE.id]: -0.03,
+            [CATEGORIES.MEDIA.id]: 0.08
+        }
+    };
+    
+    function calculateTotalPower(groups) {
+        if (groups.length === 0) return 0;
+        let sum = groups.reduce((acc, g) => acc + (g.power || 0), 0);
+        let k = 1.0;
+        for (let i = 0; i < groups.length; i++) {
+            for (let j = i + 1; j < groups.length; j++) {
+                const cat1 = groups[i].category;
+                const cat2 = groups[j].category;
+                if (cat1 && cat2) {
+                    const effect = interactionMatrix[cat1]?.[cat2] || 0;
+                    k += effect;
+                }
+            }
+        }
+        if (k < 0) k = 0;
+        let result = sum * k;
+        result = Math.round(result * 10) / 10;
+        return result;
+    }
+    
+    // ========== ПРЕДУСТАНОВЛЕННЫЕ ИЛЛЮМИНАТЫ ==========
+    const PRESET_ILLUMINATI = [
+        { name: "👑 Монарх", category: CATEGORIES.GOVERNMENT.id, icon: "🏛️" },
+        { name: "👑 Гадес", category: CATEGORIES.GOVERNMENT.id, icon: "🏛️" },
+        { name: "👑 Цербер", category: CATEGORIES.CORPORATION.id, icon: "💼" },
+        { name: "👑 Кобальт", category: CATEGORIES.CORPORATION.id, icon: "💼" },
+        { name: "👑 Ведическая Королева", category: CATEGORIES.CULT.id, icon: "🌿" },
+        { name: "👑 Змей Горыныч", category: CATEGORIES.CULT.id, icon: "🌿" },
+        { name: "👑 Прометей", category: CATEGORIES.SCIENCE.id, icon: "🔬" },
+        { name: "👑 Нейромант", category: CATEGORIES.SCIENCE.id, icon: "🔬" },
+        { name: "👑 Глаз", category: CATEGORIES.MEDIA.id, icon: "🎭" },
+        { name: "👑 Эхо", category: CATEGORIES.MEDIA.id, icon: "🎭" }
+    ];
+    
+    function getRandomIlluminati(excludeName = null) {
+        const available = PRESET_ILLUMINATI.filter(i => i.name !== excludeName);
+        if (available.length === 0) return { ...PRESET_ILLUMINATI[0] };
+        const random = available[Math.floor(Math.random() * available.length)];
+        return { ...random };
+    }
+    
+    // ========== КАРТЫ КОЛОДЫ ==========
+    const GROUP_TEMPLATES = [
+        { name: "🏛️ Белый дом", power: 3, category: CATEGORIES.GOVERNMENT.id, icon: "🏛️" },
+        { name: "🏛️ Кремль", power: 3, category: CATEGORIES.GOVERNMENT.id, icon: "🏛️" },
+        { name: "🏛️ ФСБ", power: 2, category: CATEGORIES.GOVERNMENT.id, icon: "🏛️" },
+        { name: "💼 BlackRock", power: 4, category: CATEGORIES.CORPORATION.id, icon: "💼" },
+        { name: "💼 Google", power: 3, category: CATEGORIES.CORPORATION.id, icon: "💼" },
+        { name: "💼 Amazon", power: 3, category: CATEGORIES.CORPORATION.id, icon: "💼" },
+        { name: "💼 Lockheed Martin", power: 4, category: CATEGORIES.CORPORATION.id, icon: "💼" },
+        { name: "🌿 Иллюминаты", power: 5, category: CATEGORIES.CULT.id, icon: "🌿" },
+        { name: "🌿 Череп и кости", power: 4, category: CATEGORIES.CULT.id, icon: "🌿" },
+        { name: "🌿 Масоны", power: 3, category: CATEGORIES.CULT.id, icon: "🌿" },
+        { name: "🌿 Орден Золотой Зари", power: 4, category: CATEGORIES.CULT.id, icon: "🌿" },
+        { name: "🔬 ЦЕРН", power: 3, category: CATEGORIES.SCIENCE.id, icon: "🔬" },
+        { name: "🔬 DARPA", power: 4, category: CATEGORIES.SCIENCE.id, icon: "🔬" },
+        { name: "🔬 MIT", power: 3, category: CATEGORIES.SCIENCE.id, icon: "🔬" },
+        { name: "🔬 Сингулярность", power: 5, category: CATEGORIES.SCIENCE.id, icon: "🔬" },
+        { name: "🎭 CNN", power: 2, category: CATEGORIES.MEDIA.id, icon: "🎭" },
+        { name: "🎭 Голливуд", power: 3, category: CATEGORIES.MEDIA.id, icon: "🎭" },
+        { name: "🎭 MTV", power: 2, category: CATEGORIES.MEDIA.id, icon: "🎭" },
+        { name: "🎭 YouTube", power: 2, category: CATEGORIES.MEDIA.id, icon: "🎭" },
+        { name: "🏛️ Пентагон", power: 4, category: CATEGORIES.GOVERNMENT.id, icon: "🏛️" },
+        { name: "💼 Фармкартель", power: 4, category: CATEGORIES.CORPORATION.id, icon: "💼" },
+        { name: "🌿 Древние маги", power: 4, category: CATEGORIES.CULT.id, icon: "🌿" },
+        { name: "🔬 Биокаст", power: 4, category: CATEGORIES.SCIENCE.id, icon: "🔬" },
+        { name: "🎭 Дисней", power: 3, category: CATEGORIES.MEDIA.id, icon: "🎭" },
+        { name: "🏛️ ЦРУ", power: 3, category: CATEGORIES.GOVERNMENT.id, icon: "🏛️" },
+        { name: "💼 Shell", power: 3, category: CATEGORIES.CORPORATION.id, icon: "💼" },
+        { name: "🌿 Братство змеи", power: 4, category: CATEGORIES.CULT.id, icon: "🌿" },
+        { name: "🔬 Tesla", power: 3, category: CATEGORIES.SCIENCE.id, icon: "🔬" },
+        { name: "🎭 Ватикан", power: 4, category: CATEGORIES.MEDIA.id, icon: "🎭" },
+        { name: "🌍 ЮНЕСКО", power: 2, category: CATEGORIES.MEDIA.id, icon: "🎭" }
+    ];
+    
+    const EVENT_BRIBE = { id: "bribe", name: "💰 Подкуп/переманивание элит", type: "event", effect: "bribe", desc: "Перемани любую группу врага (кроме Иллюмината)" };
+    const EVENT_SABOTAGE = { id: "sabotage", name: "💣 Саботаж", type: "event", effect: "sabotage", desc: "Уничтожь любую группу врага (кроме Иллюмината)" };
+    
+    function buildFullDeck() {
+        const deck = [];
+        for (let i = 0; i < GROUP_TEMPLATES.length; i++) {
+            deck.push({
+                id: `group_${i}`,
+                name: GROUP_TEMPLATES[i].name,
+                type: "group",
+                power: GROUP_TEMPLATES[i].power,
+                category: GROUP_TEMPLATES[i].category,
+                icon: GROUP_TEMPLATES[i].icon,
+                desc: `+${GROUP_TEMPLATES[i].power} влияния`,
+                isIlluminati: false
+            });
+        }
+        for (let i = 0; i < 5; i++) {
+            deck.push({ ...EVENT_BRIBE, uniqueId: `bribe_${i}` });
+            deck.push({ ...EVENT_SABOTAGE, uniqueId: `sabotage_${i}` });
+        }
+        return deck;
+    }
+    
+    function shuffle(deck) {
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+        return deck;
+    }
+    
+    function getCategoryIcon(catId) {
+        for (let key in CATEGORIES) {
+            if (CATEGORIES[key].id === catId) return CATEGORIES[key].icon;
+        }
+        return "❓";
+    }
+    
+    // ========== ФУНКЦИИ ПОДСКАЗОК ==========
+    let tooltipsEnabled = false;
+    let currentPreviewTooltip = null;
+    
+    function showPreviewTooltip(x, y, html) {
+        if (!tooltipsEnabled) return;
+        hidePreviewTooltip();
+        const div = document.createElement('div');
+        div.className = 'info-tooltip';
+        div.innerHTML = html;
+        div.style.left = (x + 15) + 'px';
+        div.style.top = (y + 15) + 'px';
+        document.body.appendChild(div);
+        currentPreviewTooltip = div;
+    }
+    
+    function hidePreviewTooltip() {
+        if (currentPreviewTooltip) {
+            currentPreviewTooltip.remove();
+            currentPreviewTooltip = null;
+        }
+    }
+    
+    function simulateOutcome(callback) {
+        if (!currentGame || currentGame.currentTurn !== "player") return null;
+        const previewState = callback();
+        if (previewState) {
+            const playerPowerVal = previewState.playerPower;
+            const aiPowerVal = previewState.aiPower;
+            const playerDiff = (playerPowerVal - currentGame.player.power).toFixed(1);
+            const aiDiff = (aiPowerVal - currentGame.ai.power).toFixed(1);
+            return `🔄 Счёт после хода:<br>🧠 ВЫ: ${playerPowerVal.toFixed(1)} (${playerDiff >= 0 ? '+' : ''}${playerDiff})<br>🤖 ИИ: ${aiPowerVal.toFixed(1)} (${aiDiff >= 0 ? '+' : ''}${aiDiff})`;
+        }
+        return null;
+    }
+    
+    // ========== ИГРОВОЙ ДВИЖОК ==========
+    class IlluminatiGame {
+        constructor(gameMode, winTarget, playerIlluminati, aiIlluminati) {
+            this.gameMode = gameMode; // 'classic' или 'endless'
+            this.winTarget = winTarget; // для классического: 33 или 101
+            this.playerIlluminati = playerIlluminati;
+            this.aiIlluminati = aiIlluminati;
+            this.mainDeck = shuffle(buildFullDeck());
+            this.discardPile = [];
+            this.player = { groups: [], hand: [], power: 0 };
+            this.ai = { groups: [], hand: [], power: 0 };
+            this.currentTurn = "player";
+            this.gameOver = false;
+            this.winner = null;
+            this.pendingEvent = null;
+            this.player.groups.push({
+                ...playerIlluminati,
+                power: 3,
+                type: "group",
+                isIlluminati: true,
+                desc: "👑 Не может быть украден, уничтожен или выкинут"
+            });
+            this.ai.groups.push({
+                ...aiIlluminati,
+                power: 3,
+                type: "group",
+                isIlluminati: true,
+                desc: "👑 Не может быть украден, уничтожен или выкинут"
+            });
+            this.initGame();
+        }
+        
+        drawFromDeck() {
+            if (this.mainDeck.length === 0) {
+                if (this.discardPile.length === 0) return null;
+                this.mainDeck = shuffle([...this.discardPile]);
+                this.discardPile = [];
+                this.addLog("📦 Колода пуста — сброс перетасован.");
+            }
+            return this.mainDeck.pop();
+        }
+        
+        returnToDiscard(card) {
+            if (card) this.discardPile.push(card);
+        }
+        
+        initGame() {
+            this.player.hand = [];
+            this.ai.hand = [];
+            for (let i = 0; i < 4; i++) {
+                const pc = this.drawFromDeck();
+                if (pc) this.player.hand.push(pc);
+                const ac = this.drawFromDeck();
+                if (ac) this.ai.hand.push(ac);
+            }
+            this.recalcPower();
+        }
+        
+        recalcPower() {
+            this.player.power = calculateTotalPower(this.player.groups);
+            this.ai.power = calculateTotalPower(this.ai.groups);
+            
+            if (!this.gameOver && this.gameMode === 'classic') {
+                if (this.player.power >= this.winTarget) { 
+                    this.gameOver = true; 
+                    this.winner = "player"; 
+                    playSound('win');
+                }
+                else if (this.ai.power >= this.winTarget) { 
+                    this.gameOver = true; 
+                    this.winner = "ai"; 
+                    playSound('lose');
+                }
+            }
+        }
+        
+        addLog(msg) {
+            const logDiv = document.getElementById("gameLog");
+            const p = document.createElement("div");
+            p.innerHTML = `🕯️ ${msg}`;
+            logDiv.appendChild(p);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            while (logDiv.children.length > 22) logDiv.removeChild(logDiv.firstChild);
+        }
+        
+        isIlluminatiGroup(group) { return group.isIlluminati === true; }
+        
+        applyEvent(eventCard, targetGroup, owner, targetOwner) {
+            if (this.isIlluminatiGroup(targetGroup)) {
+                this.addLog(`⚠️ Нельзя применить ${eventCard.name} на Иллюмината "${targetGroup.name}"!`);
+                return false;
+            }
+            let targetGroups = targetOwner === "player" ? this.player.groups : this.ai.groups;
+            const groupIndex = targetGroups.findIndex(g => g === targetGroup);
+            if (groupIndex === -1) return false;
+            if (eventCard.effect === "bribe") {
+                const stolen = targetGroups.splice(groupIndex, 1)[0];
+                if (owner === "player") this.player.groups.push(stolen);
+                else this.ai.groups.push(stolen);
+                this.addLog(`${owner === "player" ? "ВЫ" : "ИИ"} применил ПОДКУП/ПЕРЕМАНИВАНИЕ на "${stolen.name}" → перешла к ${owner === "player" ? "вам" : "ИИ"}`);
+                playSound('steal');
+            } else if (eventCard.effect === "sabotage") {
+                const destroyed = targetGroups.splice(groupIndex, 1)[0];
+                this.returnToDiscard(destroyed);
+                this.addLog(`${owner === "player" ? "ВЫ" : "ИИ"} применил САБОТАЖ на "${destroyed.name}" → уничтожена`);
+                playSound('destroy');
+            }
+            this.recalcPower();
+            return true;
+        }
+        
+        addGroup(owner, cardIndex) {
+            let hand = owner === "player" ? this.player.hand : this.ai.hand;
+            let groups = owner === "player" ? this.player.groups : this.ai.groups;
+            if (cardIndex >= hand.length) return false;
+            const card = hand[cardIndex];
+            if (card.type !== "group") return false;
+            groups.push({ ...card });
+            hand.splice(cardIndex, 1);
+            this.addLog(`${owner === "player" ? "ВЫ" : "ИИ"} добавил группу: ${card.name} (+${card.power})`);
+            playSound('cardPlay');
+            this.recalcPower();
+            return true;
+        }
+        
+        discardGroup(owner, group) {
+            if (this.isIlluminatiGroup(group)) {
+                this.addLog(`⚠️ Нельзя выкинуть Иллюмината "${group.name}"!`);
+                return false;
+            }
+            let groups = owner === "player" ? this.player.groups : this.ai.groups;
+            const idx = groups.findIndex(g => g === group);
+            if (idx === -1) return false;
+            const removed = groups.splice(idx, 1)[0];
+            this.returnToDiscard(removed);
+            this.addLog(`${owner === "player" ? "ВЫ" : "ИИ"} выкинул группу: ${removed.name} → вернулась в колоду`);
+            playSound('cardPlay');
+            this.recalcPower();
+            return true;
+        }
+        
+        skipTurn(owner) {
+            this.addLog(`${owner === "player" ? "ВЫ" : "ИИ"} пропускает ход`);
+            this.currentTurn = owner === "player" ? "ai" : "player";
+        }
+        
+        endTurnAfterAction(owner) {
+            if (owner === "player") {
+                const newCard = this.drawFromDeck();
+                if (newCard) this.player.hand.push(newCard);
+                this.currentTurn = "ai";
+                if (newCard) this.addLog("Вы взяли карту в конце хода.");
+            } else {
+                const newCard = this.drawFromDeck();
+                if (newCard) this.ai.hand.push(newCard);
+                this.currentTurn = "player";
+                if (newCard) this.addLog("ИИ взял карту в конце хода.");
+            }
+        }
+        
+        evaluateScoreAfterMove(move) {
+            let newPlayerGroups = [...this.player.groups];
+            let newAiGroups = [...this.ai.groups];
+            let newAiHand = [...this.ai.hand];
+            if (move.type === "bribe") {
+                const targetIdx = newPlayerGroups.findIndex(g => g === move.targetGroup);
+                if (targetIdx !== -1 && !this.isIlluminatiGroup(move.targetGroup)) {
+                    const stolen = newPlayerGroups.splice(targetIdx, 1)[0];
+                    newAiGroups.push(stolen);
+                }
+                const eventIdx = newAiHand.findIndex(c => c === move.card);
+                if (eventIdx !== -1) newAiHand.splice(eventIdx, 1);
+            } else if (move.type === "sabotage") {
+                const targetIdx = newPlayerGroups.findIndex(g => g === move.targetGroup);
+                if (targetIdx !== -1 && !this.isIlluminatiGroup(move.targetGroup)) {
+                    newPlayerGroups.splice(targetIdx, 1);
+                }
+                const eventIdx = newAiHand.findIndex(c => c === move.card);
+                if (eventIdx !== -1) newAiHand.splice(eventIdx, 1);
+            } else if (move.type === "addGroup") {
+                newAiGroups.push({ ...move.card });
+                const cardIdx = newAiHand.findIndex(c => c === move.card);
+                if (cardIdx !== -1) newAiHand.splice(cardIdx, 1);
+            } else if (move.type === "discardGroup") {
+                if (!this.isIlluminatiGroup(move.groupToDiscard)) {
+                    const groupIdx = newAiGroups.findIndex(g => g === move.groupToDiscard);
+                    if (groupIdx !== -1) newAiGroups.splice(groupIdx, 1);
+                }
+            }
+            const newAiPower = calculateTotalPower(newAiGroups);
+            const newPlayerPower = calculateTotalPower(newPlayerGroups);
+            return { score: newAiPower - newPlayerPower, aiPower: newAiPower, playerPower: newPlayerPower };
+        }
+        
+        aiTurn() {
+            if (this.gameOver && this.gameMode === 'classic') return null;
+            if (this.currentTurn !== "ai") return null;
+            const possibleMoves = [];
+            for (let i = 0; i < this.ai.hand.length; i++) {
+                const card = this.ai.hand[i];
+                if (card.effect === "bribe") {
+                    for (let group of this.player.groups) {
+                        if (!this.isIlluminatiGroup(group)) possibleMoves.push({ type: "bribe", card, targetGroup: group });
+                    }
+                } else if (card.effect === "sabotage") {
+                    for (let group of this.player.groups) {
+                        if (!this.isIlluminatiGroup(group)) possibleMoves.push({ type: "sabotage", card, targetGroup: group });
+                    }
+                } else if (card.type === "group") {
+                    possibleMoves.push({ type: "addGroup", card });
+                }
+            }
+            for (let group of this.ai.groups) {
+                if (!this.isIlluminatiGroup(group)) possibleMoves.push({ type: "discardGroup", groupToDiscard: group });
+            }
+            possibleMoves.push({ type: "skip" });
+            let bestMove = null;
+            let bestScore = -Infinity;
+            let winningMove = null;
+            for (let move of possibleMoves) {
+                const evalResult = this.evaluateScoreAfterMove(move);
+                if (this.gameMode === 'classic' && evalResult.aiPower >= this.winTarget) { winningMove = move; break; }
+                if (evalResult.score > bestScore) { bestScore = evalResult.score; bestMove = move; }
+            }
+            const finalMove = winningMove || bestMove;
+            if (!finalMove) return null;
+            if (finalMove.type === "bribe") {
+                const cardIdx = this.ai.hand.findIndex(c => c === finalMove.card);
+                if (cardIdx !== -1) {
+                    this.applyEvent(finalMove.card, finalMove.targetGroup, "ai", "player");
+                    this.ai.hand.splice(cardIdx, 1);
+                    this.returnToDiscard(finalMove.card);
+                }
+            } else if (finalMove.type === "sabotage") {
+                const cardIdx = this.ai.hand.findIndex(c => c === finalMove.card);
+                if (cardIdx !== -1) {
+                    this.applyEvent(finalMove.card, finalMove.targetGroup, "ai", "player");
+                    this.ai.hand.splice(cardIdx, 1);
+                    this.returnToDiscard(finalMove.card);
+                }
+            } else if (finalMove.type === "addGroup") {
+                const cardIdx = this.ai.hand.findIndex(c => c === finalMove.card);
+                if (cardIdx !== -1) this.addGroup("ai", cardIdx);
+            } else if (finalMove.type === "discardGroup") {
+                this.discardGroup("ai", finalMove.groupToDiscard);
+            } else if (finalMove.type === "skip") {
+                this.skipTurn("ai");
+            }
+            this.recalcPower();
+            if (finalMove.type !== "discardGroup" && finalMove.type !== "skip") this.endTurnAfterAction("ai");
+            else if (finalMove.type !== "skip") { this.currentTurn = "player"; this.addLog("Ход передан игроку (без добора карты)."); }
+            return { logs: [], gameOver: this.gameOver, winner: this.winner };
+        }
+    }
+    
+    // ========== ВЫБОР ИЛЛЮМИНАТА ==========
+    let currentGame = null;
+    let currentMode = null;
+    let currentWinTarget = 33;
+    let pendingEventCard = null;
+    let pendingEventCardIdx = null;
+    let tooltipDiv = null;
+    let selectedPlayerIll = null;
+    let selectedAiIll = null;
+    
+    function showHelp() {
+        const modal = document.createElement('div');
+        modal.className = 'help-modal';
+        modal.innerHTML = `
+            <div class="help-content">
+                <span class="close-btn" id="closeHelp">&times;</span>
+                <h3>📜 ИЛЛЮМИНАТ — КРАТКАЯ СПРАВКА</h3>
+                <h4>🌍 Что это за игра?</h4>
+                <p>Вы — глава тайного общества («Иллюминат»), которое стремится к <strong>мировому господству</strong>. Вы захватываете другие группировки (корпорации, культы, медиа, правительства, научные центры), чтобы наращивать своё влияние и подавлять противника.</p>
+                <p>Победа достигается не просто суммированием сил, а <strong>умным подбором союзников</strong>: одни группы усиливают друг друга, другие — ослабляют.</p>
+                
+                <h4>🎯 Цель игры</h4>
+                <p><strong>Классический режим:</strong> первым набрать <strong>33 или 101 очко влияния</strong> (на выбор)<br>
+                <strong>Бесконечный режим:</strong> игра без лимита — стройте любую империю</p>
+                
+                <h4>👑 Ваш Иллюминат (неустранимая карта)</h4>
+                <p>В начале игры вы выбираете Иллюмината — карту силы 3 с фиксированной категорией. Его <strong>нельзя украсть, уничтожить или выкинуть</strong> — он остаётся с вами навсегда.</p>
+                
+                <h4>🔄 Ход игры</h4>
+                <p>В свой ход вы можете совершить <strong>ОДНО</strong> действие:<br>
+                - Добавить группу из руки<br>
+                - Применить «Подкуп/переманивание элит» на любую группу противника<br>
+                - Применить «Саботаж» на любую группу противника<br>
+                - Выкинуть свою группу (ПКМ)<br>
+                - Пропустить ход</p>
+                <p>После большинства действий вы добираете 1 карту (кроме выкидывания своей группы).</p>
+                
+                <h4>📊 Как работает сила и взаимовлияние категорий</h4>
+                <p><strong>Формула:</strong> Итог = (Сумма базовых сил) × (1 + сумма попарных эффектов)</p>
+                
+                <h4>🔗 Таблица взаимодействий категорий</h4>
+                <table>
+                    <tr><th></th><th>🏛️</th><th>💼</th><th>🌿</th><th>🔬</th><th>🎭</th></tr>
+                    <tr><th>🏛️</th><td class="synergy-plus">+0.08</td><td class="synergy-plus">+0.07</td><td class="synergy-plus">+0.07</td><td>0</td><td class="synergy-minus">-0.03</td></tr>
+                    <tr><th>💼</th><td class="synergy-plus">+0.07</td><td class="synergy-plus">+0.08</td><td class="synergy-minus">-0.03</td><td class="synergy-plus">+0.07</td><td>0</td></tr>
+                    <tr><th>🌿</th><td class="synergy-plus">+0.07</td><td class="synergy-minus">-0.03</td><td class="synergy-plus">+0.08</td><td class="synergy-minus">-0.03</td><td class="synergy-plus">+0.07</td></tr>
+                    <tr><th>🔬</th><td>0</td><td class="synergy-plus">+0.07</td><td class="synergy-minus">-0.03</td><td class="synergy-plus">+0.08</td><td class="synergy-minus">-0.03</td></tr>
+                    <tr><th>🎭</th><td class="synergy-minus">-0.03</td><td>0</td><td class="synergy-plus">+0.07</td><td class="synergy-minus">-0.03</td><td class="synergy-plus">+0.08</td></tr>
+                </table>
+                
+                <h4>📖 Логика взаимодействий</h4>
+                <ul>
+                    <li><strong>🏛️+🏛️ (0.08):</strong> Одна структура власти — единая вертикаль</li>
+                    <li><strong>🏛️+💼 (0.07):</strong> Государственно-частное партнёрство</li>
+                    <li><strong>🏛️+🌿 (0.07):</strong> Союз трона и алтаря</li>
+                    <li><strong>🏛️+🎭 (-0.03):</strong> Конфликт власти и свободы слова</li>
+                    <li><strong>💼+🌿 (-0.03):</strong> Прибыль vs жертвенность</li>
+                    <li><strong>💼+🔬 (0.07):</strong> Корпорации финансируют науку</li>
+                    <li><strong>🌿+🎭 (0.07):</strong> Культы манипулируют медиа</li>
+                    <li><strong>🌿+🔬 (-0.03):</strong> Вера vs знание</li>
+                    <li><strong>🔬+🎭 (-0.03):</strong> Наука vs хайп</li>
+                </ul>
+                
+                <h4>🧠 Стратегия</h4>
+                <p><strong>Монобилд</strong> — все карты одной категории дают +0.08 за каждую пару.<br>
+                <strong>Гибрид</strong> — штрафы небольшие (-0.03), можно смешивать категории без страха.<br>
+                <strong>Подкуп/переманивание</strong> — усиливает вас и ослабляет врага.<br>
+                <strong>Саботаж</strong> — только ослабляет врага (полезен, когда враг близок к победе).</p>
+                
+                <h4>🎮 Управление</h4>
+                <p>🔹 Сыграть группу — кликнуть на карту в руке<br>
+                🔹 Применить событие — кликнуть на событие → кликнуть на группу противника<br>
+                🔹 Выкинуть свою группу — <strong>ПКМ</strong> по группе<br>
+                🔹 Отменить выбор цели — кликнуть на ту же карту события повторно<br>
+                🔹 Пропустить ход — кнопка «Завершить ход»<br>
+                🔹 Новая игра — кнопка «Новая игра»<br>
+                🔹 Звук — кнопка в правом нижнем углу</p>
+                <div class="random-btn" id="closeHelpBtn" style="margin-top:15px;">ЗАКРЫТЬ</div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        const close = () => modal.remove();
+        modal.querySelector('#closeHelp')?.addEventListener('click', close);
+        modal.querySelector('#closeHelpBtn')?.addEventListener('click', close);
+        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    }
+    
+    function showModal(title, onConfirm) {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <h3>${title}</h3>
+                    <div class="modal-buttons">
+                        <div class="random-btn" data-choice="random">🎲 СЛУЧАЙНЫЙ</div>
+                        <div class="random-btn" data-choice="custom">✍️ ВРУЧНУЮ</div>
+                        <div class="random-btn" data-choice="preset">📜 ИЗ СПИСКА</div>
+                    </div>
+                    <div id="presetContainer" style="display: none;">
+                        <hr>
+                        <div class="preset-list" id="presetList"></div>
+                    </div>
+                    <div id="customContainer" style="display: none;">
+                        <hr>
+                        <div class="custom-input">
+                            <input type="text" id="customName" placeholder="Имя (например, Тень)" maxlength="30">
+                            <select id="customCategory">
+                                <option value="gov">🏛️ Правительство</option>
+                                <option value="corp">💼 Корпорации</option>
+                                <option value="cult">🌿 Культы</option>
+                                <option value="sci">🔬 Наука</option>
+                                <option value="media">🎭 Медиа</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; justify-content: center; margin-top: 10px;">
+                            <div class="random-btn" id="confirmCustom">✅ ПОДТВЕРДИТЬ</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            const presetContainer = modal.querySelector('#presetContainer');
+            const customContainer = modal.querySelector('#customContainer');
+            const presetList = modal.querySelector('#presetList');
+            PRESET_ILLUMINATI.forEach((ill, idx) => {
+                const catIcon = getCategoryIcon(ill.category);
+                const div = document.createElement('div');
+                div.className = 'preset-item';
+                div.textContent = `${catIcon} ${ill.name}`;
+                div.dataset.index = idx;
+                div.addEventListener('click', () => {
+                    document.querySelectorAll('.preset-item').forEach(el => el.classList.remove('selected'));
+                    div.classList.add('selected');
+                    onConfirm({ type: 'preset', data: ill });
+                    modal.remove();
+                    resolve(ill);
+                });
+                presetList.appendChild(div);
+            });
+            modal.querySelectorAll('[data-choice]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const choice = btn.dataset.choice;
+                    if (choice === 'random') {
+                        const random = getRandomIlluminati();
+                        onConfirm({ type: 'random', data: random });
+                        modal.remove();
+                        resolve(random);
+                    } else if (choice === 'preset') {
+                        presetContainer.style.display = 'block';
+                        customContainer.style.display = 'none';
+                    } else if (choice === 'custom') {
+                        customContainer.style.display = 'block';
+                        presetContainer.style.display = 'none';
+                    }
+                });
+            });
+            modal.querySelector('#confirmCustom')?.addEventListener('click', () => {
+                const name = modal.querySelector('#customName').value.trim();
+                const category = modal.querySelector('#customCategory').value;
+                if (!name) { alert('Введите имя Иллюмината'); return; }
+                const customIll = { name: `👑 ${name}`, category: category };
+                onConfirm({ type: 'custom', data: customIll });
+                modal.remove();
+                resolve(customIll);
+            });
+        });
+    }
+    
+    async function selectIlluminati(playerName) {
+        return new Promise((resolve) => {
+            showModal(`Выберите Иллюмината для ${playerName}`, (result) => {
+                resolve(result.data);
+            });
+        });
+    }
+    
+    function showModeSelection() {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'mode-modal';
+            modal.innerHTML = `
+                <div class="mode-content">
+                    <h3>🎮 ВЫБЕРИТЕ РЕЖИМ ИГРЫ</h3>
+                    <div class="mode-buttons">
+                        <div class="mode-btn-large" data-mode="classic" data-target="33">🏆 КЛАССИЧЕСКИЙ (до 33 очков)</div>
+                        <div class="mode-btn-large" data-mode="classic" data-target="101">🏆 КЛАССИЧЕСКИЙ (до 101 очка)</div>
+                        <div class="mode-btn-large" data-mode="endless" data-target="0">♾️ БЕСКОНЕЧНЫЙ (без лимита)</div>
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="tooltipsCheckbox"> 🔍 Включить режим подсказок (при наведении на карту)
+                        </label>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            const checkbox = modal.querySelector('#tooltipsCheckbox');
+            modal.querySelectorAll('.mode-btn-large').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    tooltipsEnabled = checkbox ? checkbox.checked : false;
+                    const mode = btn.dataset.mode;
+                    const target = parseInt(btn.dataset.target);
+                    modal.remove();
+                    resolve({ mode, target });
+                });
+            });
+        });
+    }
+    
+    async function startGame() {
+        const playerIll = await selectIlluminati('ИГРОКА');
+        let aiIll = null;
+        while (!aiIll || aiIll.name === playerIll.name) {
+            aiIll = await selectIlluminati('ИИ');
+            if (aiIll.name === playerIll.name) {
+                alert(`Иллюминат "${aiIll.name}" уже выбран игроком. Выберите другого.`);
+                aiIll = null;
+            }
+        }
+        const { mode, target } = await showModeSelection();
+        
+        document.getElementById('gameContainer').style.display = 'block';
+        document.getElementById('soundToggle').style.display = 'block';
+        
+        currentGame = new IlluminatiGame(mode, target, playerIll, aiIll);
+        renderGame(currentGame, null);
+        if (mode === 'classic') {
+            currentGame.addLog(`======== НОВАЯ ИГРА ========`);
+            currentGame.addLog(`🎮 Режим: КЛАССИЧЕСКИЙ (до ${target} очков)`);
+        } else {
+            currentGame.addLog(`======== НОВАЯ ИГРА ========`);
+            currentGame.addLog(`🎮 Режим: БЕСКОНЕЧНЫЙ`);
+        }
+        currentGame.addLog(`👑 Ваш Иллюминат: ${playerIll.name} (${getCategoryIcon(playerIll.category)})`);
+        currentGame.addLog(`👑 Иллюминат ИИ: ${aiIll.name} (${getCategoryIcon(aiIll.category)})`);
+        if (tooltipsEnabled) currentGame.addLog(`🔍 Режим подсказок включён — наводи мышку на карты для просчёта исхода.`);
+        if (currentGame.currentTurn === "ai") performAITurn();
+    }
+    
+    // ========== UI ==========
+    function showTooltip(text, duration = 2000) {
+        if (tooltipDiv) tooltipDiv.remove();
+        tooltipDiv = document.createElement('div');
+        tooltipDiv.className = 'tooltip';
+        tooltipDiv.textContent = text;
+        document.body.appendChild(tooltipDiv);
+        setTimeout(() => { if (tooltipDiv) tooltipDiv.remove(); tooltipDiv = null; }, duration);
+    }
+    
+    function clearTargetSelection() {
+        pendingEventCard = null;
+        pendingEventCardIdx = null;
+        document.querySelectorAll('.group-card.targetable').forEach(el => el.classList.remove('targetable'));
+        document.querySelectorAll('.card.selected').forEach(el => el.classList.remove('selected'));
+    }
+    
+    function scrollToBottom(element) { if (element) element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' }); }
+    
+    function highlightNewGroup(containerId, groupElement) {
+        if (containerId && groupElement) {
+            groupElement.classList.add('new');
+            setTimeout(() => groupElement.classList.remove('new'), 800);
+            const container = document.getElementById(containerId);
+            scrollToBottom(container);
+        }
+    }
+    
+    function renderGame(game, addedGroupInfo = null) {
+        if (!game) return;
+        document.getElementById("playerPower").innerText = Math.floor(game.player.power);
+        const playerDec = (game.player.power % 1).toFixed(1);
+        document.getElementById("playerPowerDec").innerText = playerDec !== "0.0" ? playerDec : "";
+        document.getElementById("aiPower").innerText = Math.floor(game.ai.power);
+        const aiDec = (game.ai.power % 1).toFixed(1);
+        document.getElementById("aiPowerDec").innerText = aiDec !== "0.0" ? aiDec : "";
+        let turnText = "";
+        if (game.gameOver && game.gameMode === 'classic') {
+            turnText = game.winner === "player" ? "🏆 ПОБЕДА!" : "💀 ПОРАЖЕНИЕ";
+        } else {
+            turnText = game.currentTurn === "player" ? "✨ ВАШ ХОД ✨" : "⌛ ХОД ИИ ...";
+            if (game.gameMode === 'endless') turnText += " ♾️";
+        }
+        document.getElementById("turnText").innerHTML = turnText;
+        const oldPlayerCount = currentGame ? currentGame.player.groups.length : 0;
+        const oldAiCount = currentGame ? currentGame.ai.groups.length : 0;
+        const playerGroupsHtml = game.player.groups.map((g, idx) => {
+            const catIcon = getCategoryIcon(g.category);
+            const illuminatiClass = g.isIlluminati ? 'illuminati' : '';
+            return `<div class="group-card ${g.power >= 4 ? 'strong' : ''} ${illuminatiClass}" data-player-group-idx="${idx}" data-group-name="${g.name}" data-is-illuminati="${g.isIlluminati || false}"><span>${g.name} ${g.isIlluminati ? '👑' : ''}<span class="group-category">${catIcon}</span></span><span>⚡${g.power}</span></div>`;
+        }).join("");
+        document.getElementById("playerGroups").innerHTML = playerGroupsHtml || "<div style='text-align:center;color:#888;padding:20px;'>Нет групп</div>";
+        const aiGroupsHtml = game.ai.groups.map((g, idx) => {
+            const catIcon = getCategoryIcon(g.category);
+            const illuminatiClass = g.isIlluminati ? 'illuminati' : '';
+            return `<div class="group-card ${g.power >= 4 ? 'strong' : ''} ${illuminatiClass}" data-ai-group-idx="${idx}" data-group-name="${g.name}" data-is-illuminati="${g.isIlluminati || false}"><span>${g.name} ${g.isIlluminati ? '👑' : ''}<span class="group-category">${catIcon}</span></span><span>⚡${g.power}</span></div>`;
+        }).join("");
+        document.getElementById("aiGroups").innerHTML = aiGroupsHtml || "<div style='text-align:center;color:#888;padding:20px;'>Нет групп</div>";
+        if (game.player.groups.length > oldPlayerCount && addedGroupInfo && addedGroupInfo.owner === 'player') {
+            const newEl = document.querySelector('#playerGroups .group-card:last-child');
+            if (newEl) highlightNewGroup('playerGroups', newEl);
+        }
+        if (game.ai.groups.length > oldAiCount && addedGroupInfo && addedGroupInfo.owner === 'ai') {
+            const newEl = document.querySelector('#aiGroups .group-card:last-child');
+            if (newEl) highlightNewGroup('aiGroups', newEl);
+        }
+        if (pendingEventCard && game.currentTurn === "player") {
+            document.querySelectorAll('#aiGroups .group-card').forEach(el => {
+                const isIll = el.dataset.isIlluminati === 'true';
+                if (!isIll) el.classList.add('targetable');
+            });
+        } else {
+            document.querySelectorAll('.group-card.targetable').forEach(el => el.classList.remove('targetable'));
+        }
+        const deckCount = game.mainDeck.length;
+        const discardCount = game.discardPile.length;
+        let modeText = '';
+        if (game.gameMode === 'classic') {
+            modeText = `🏆 до ${game.winTarget}`;
+        } else {
+            modeText = '♾️ безлимит';
+        }
+        document.getElementById("deckInfo").innerHTML = `📚 Колода: ${deckCount} | 🗑️ Сброс: ${discardCount} | Режим: ${modeText} | Групп: ${game.player.groups.length} / ${game.ai.groups.length}`;
+        const handContainer = document.getElementById("handCards");
+        const isGameActive = !(game.gameOver && game.gameMode === 'classic');
+        if (isGameActive && game.currentTurn === "player") {
+            handContainer.innerHTML = game.player.hand.map((card, idx) => {
+                let catDisplay = "";
+                if (card.type === "group" && card.category) {
+                    catDisplay = `<div class="card-category">${getCategoryIcon(card.category)} ${CATEGORIES[Object.keys(CATEGORIES).find(k => CATEGORIES[k].id === card.category)]?.name || ""}</div>`;
+                }
+                const selectedClass = (pendingEventCard === card) ? 'selected' : '';
+                return `<div class="card ${selectedClass}" data-hand-idx="${idx}" data-card-effect="${card.effect || ''}">
+                    <div class="card-name">${card.name}</div>
+                    <div class="card-power">${card.type === "group" ? "✦"+card.power : "⚡"}</div>
+                    <div>${card.desc}</div>
+                    ${catDisplay}
+                </div>`;
+            }).join("");
+            document.querySelectorAll('.card[data-hand-idx]').forEach(el => {
+                el.removeEventListener('click', handleCardClick);
+                el.addEventListener('click', handleCardClick);
+                if (tooltipsEnabled && el) {
+                    const card = currentGame.player.hand[parseInt(el.getAttribute('data-hand-idx'))];
+                    if (card && card.type === "group") {
+                        el.addEventListener('mouseenter', (e) => {
+                            const sim = simulateOutcome(() => {
+                                let newPlayerGroups = [...currentGame.player.groups, { ...card }];
+                                let newPlayerPower = calculateTotalPower(newPlayerGroups);
+                                let newAiPower = currentGame.ai.power;
+                                return { playerPower: newPlayerPower, aiPower: newAiPower };
+                            });
+                            if (sim) showPreviewTooltip(e.clientX, e.clientY, sim);
+                        });
+                        el.addEventListener('mouseleave', () => hidePreviewTooltip());
+                    }
+                }
+            });
+        } else {
+            handContainer.innerHTML = !isGameActive ? "<div style='text-align:center;color:#888;'>Игра окончена</div>" : "<div style='text-align:center;color:#888;'>ИИ думает...</div>";
+        }
+        document.querySelectorAll('#playerGroups .group-card').forEach(el => {
+            el.removeEventListener('contextmenu', handleRightClick);
+            el.addEventListener('contextmenu', handleRightClick);
+        });
+        if (tooltipsEnabled && pendingEventCard && currentGame.currentTurn === "player") {
+            document.querySelectorAll('#aiGroups .group-card').forEach(el => {
+                const isIll = el.dataset.isIlluminati === 'true';
+                if (!isIll) {
+                    el.addEventListener('mouseenter', (e) => {
+                        const groupIdx = parseInt(el.getAttribute('data-ai-group-idx'));
+                        const targetGroup = currentGame.ai.groups[groupIdx];
+                        if (targetGroup && !currentGame.isIlluminatiGroup(targetGroup)) {
+                            const sim = simulateOutcome(() => {
+                                let newPlayerGroups = [...currentGame.player.groups];
+                                let newAiGroups = [...currentGame.ai.groups];
+                                const idx = newAiGroups.findIndex(g => g === targetGroup);
+                                if (idx !== -1) {
+                                    if (pendingEventCard.effect === "bribe") {
+                                        const stolen = newAiGroups.splice(idx, 1)[0];
+                                        newPlayerGroups.push(stolen);
+                                    } else if (pendingEventCard.effect === "sabotage") {
+                                        newAiGroups.splice(idx, 1);
+                                    }
+                                }
+                                let newPlayerPower = calculateTotalPower(newPlayerGroups);
+                                let newAiPower = calculateTotalPower(newAiGroups);
+                                return { playerPower: newPlayerPower, aiPower: newAiPower };
+                            });
+                            if (sim) showPreviewTooltip(e.clientX, e.clientY, sim);
+                        }
+                    });
+                    el.addEventListener('mouseleave', () => hidePreviewTooltip());
+                }
+            });
+        }
+    }
+    
+    async function handleRightClick(e) {
+        e.preventDefault();
+        if (!currentGame) return;
+        if (currentGame.gameOver && currentGame.gameMode === 'classic') return;
+        if (currentGame.currentTurn !== "player") { showTooltip("⚠️ Сейчас не ваш ход", 1500); return; }
+        if (pendingEventCard) { showTooltip("❌ Сначала завершите текущее действие", 1500); return; }
+        const groupDiv = e.currentTarget;
+        const groupIdx = groupDiv.getAttribute('data-player-group-idx');
+        if (groupIdx === null) return;
+        const group = currentGame.player.groups[parseInt(groupIdx)];
+        if (!group) return;
+        if (group.isIlluminati) { showTooltip("👑 Нельзя выкинуть Иллюмината!", 1500); return; }
+        if (confirm(`🗑️ Выкинуть карту "${group.name}" в колоду?\nОна вернётся в игру позже. Ход завершится.`)) {
+            const success = currentGame.discardGroup("player", group);
+            if (success) {
+                hidePreviewTooltip();
+                renderGame(currentGame, null);
+                currentGame.currentTurn = "ai";
+                currentGame.addLog("Ход передан ИИ (без добора карты).");
+                renderGame(currentGame, null);
+                await performAITurn();
+            }
+        }
+    }
+    
+    async function handleCardClick(e) {
+        const cardDiv = e.currentTarget;
+        const handIdx = parseInt(cardDiv.getAttribute('data-hand-idx'));
+        if (isNaN(handIdx)) return;
+        if (!currentGame) return;
+        if (currentGame.gameOver && currentGame.gameMode === 'classic') return;
+        if (currentGame.currentTurn !== "player") { showTooltip("⚠️ Сейчас не ваш ход", 1500); return; }
+        const card = currentGame.player.hand[handIdx];
+        if (!card) return;
+        if (pendingEventCard === card) {
+            clearTargetSelection();
+            showTooltip("🔁 Выбор цели отменён", 1000);
+            renderGame(currentGame, null);
+            return;
+        }
+        if (card.type === "event") {
+            clearTargetSelection();
+            pendingEventCard = card;
+            pendingEventCardIdx = handIdx;
+            showTooltip(`🎯 Выбрано: ${card.name}. Теперь кликни на ЛЮБУЮ группу противника (кроме Иллюмината)`, 3000);
+            renderGame(currentGame, null);
+            return;
+        }
+        if (card.type === "group") {
+            const success = currentGame.addGroup("player", handIdx);
+            if (success) {
+                hidePreviewTooltip();
+                renderGame(currentGame, { owner: 'player' });
+                currentGame.endTurnAfterAction("player");
+                renderGame(currentGame, null);
+                if (!(currentGame.gameOver && currentGame.gameMode === 'classic')) await performAITurn();
+            }
+            return;
+        }
+    }
+    
+    function setupGroupTargeting() {
+        document.addEventListener('click', async (e) => {
+            if (!currentGame) return;
+            if (currentGame.gameOver && currentGame.gameMode === 'classic') return;
+            if (currentGame.currentTurn !== "player") return;
+            if (!pendingEventCard) return;
+            let targetGroupDiv = e.target.closest('#aiGroups .group-card');
+            if (!targetGroupDiv) return;
+            const isIlluminati = targetGroupDiv.dataset.isIlluminati === 'true';
+            if (isIlluminati) { showTooltip("👑 Нельзя применить событие на Иллюмината!", 1500); return; }
+            const groupIdx = targetGroupDiv.getAttribute('data-ai-group-idx');
+            if (groupIdx === null) return;
+            const targetGroup = currentGame.ai.groups[parseInt(groupIdx)];
+            if (!targetGroup) return;
+            const success = currentGame.applyEvent(pendingEventCard, targetGroup, "player", "ai");
+            if (success) {
+                hidePreviewTooltip();
+                if (pendingEventCardIdx !== null && currentGame.player.hand[pendingEventCardIdx] === pendingEventCard) {
+                    const removed = currentGame.player.hand.splice(pendingEventCardIdx, 1)[0];
+                    currentGame.returnToDiscard(removed);
+                }
+                currentGame.recalcPower();
+                clearTargetSelection();
+                renderGame(currentGame, { owner: 'player' });
+                currentGame.endTurnAfterAction("player");
+                renderGame(currentGame, null);
+                if (!(currentGame.gameOver && currentGame.gameMode === 'classic')) await performAITurn();
+            } else {
+                showTooltip("❌ Не удалось применить событие", 1500);
+                clearTargetSelection();
+                renderGame(currentGame, null);
+            }
+        });
+    }
+    
+    async function performAITurn() {
+        if (!currentGame) return;
+        if (currentGame.gameOver && currentGame.gameMode === 'classic') return;
+        if (currentGame.currentTurn !== "ai") return;
+        hidePreviewTooltip();
+        renderGame(currentGame, null);
+        await new Promise(r => setTimeout(r, 500));
+        currentGame.aiTurn();
+        renderGame(currentGame, null);
+    }
+    
+    function resetGame() {
+        hidePreviewTooltip();
+        if (pendingEventCard) clearTargetSelection();
+        document.getElementById('gameContainer').style.display = 'none';
+        document.getElementById('soundToggle').style.display = 'none';
+        startGame();
+    }
+    
+    document.getElementById("endTurnBtn")?.addEventListener("click", () => {
+        if (!currentGame) return;
+        if (currentGame.gameOver && currentGame.gameMode === 'classic') return;
+        if (currentGame.currentTurn !== "player") return;
+        if (pendingEventCard) {
+            clearTargetSelection();
+            renderGame(currentGame, null);
+            showTooltip("❌ Выбор цели отменён", 1000);
+            return;
+        }
+        hidePreviewTooltip();
+        currentGame.skipTurn("player");
+        renderGame(currentGame, null);
+        performAITurn();
+    });
+    document.getElementById("resetGameBtn")?.addEventListener("click", () => resetGame());
+    document.getElementById("helpBtn")?.addEventListener("click", () => showHelp());
+    
+    const soundToggleBtn = document.getElementById('soundToggle');
+    if (soundToggleBtn) {
+        soundToggleBtn.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            soundToggleBtn.textContent = soundEnabled ? "🔊 Звук вкл" : "🔇 Звук выкл";
+        });
+    }
+    
+    setupGroupTargeting();
+    startGame();
+</script>
+</body>
+</html>
