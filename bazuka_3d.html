@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Охота на демонов - обратная мини-карта</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a12; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            gap: 20px;
+            background: rgba(10, 10, 18, 0.85);
+            padding: 10px 24px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(10px);
+            color: #fff;
+            font-size: 14px;
+            pointer-events: none;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        #ui span { color: #ffaa44; }
+        #ui .enemy-count { color: #ff6644; }
+        #info {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.12);
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px 16px;
+            border-radius: 20px;
+            z-index: 10;
+            pointer-events: none;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+            white-space: nowrap;
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            pointer-events: none;
+            color: rgba(255, 170, 68, 0.35);
+            font-size: 26px;
+            font-weight: 100;
+            text-shadow: 0 0 20px rgba(255, 170, 68, 0.08);
+        }
+        #minimap {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 170, 68, 0.3);
+            background: rgba(10, 10, 20, 0.85);
+            z-index: 10;
+            overflow: hidden;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5), inset 0 0 30px rgba(0,0,0,0.3);
+        }
+        #minimap canvas {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+        }
+        @media (max-width: 768px) {
+            #ui { font-size: 11px; padding: 6px 14px; gap: 12px; top: 12px; }
+            #info { font-size: 10px; padding: 4px 14px; bottom: 15px; white-space: normal; }
+            #minimap { width: 140px; height: 140px; top: 68px; right: 10px; }
+            #minimap canvas { width: 140px; height: 140px; }
+            #crosshair { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <div>🏆 СЧЁТ: <span id="scoreDisplay">0</span></div>
+        <div>👹 МОНСТРЫ: <span class="enemy-count" id="enemyCount">0</span></div>
+        <div>💀 УБИТО: <span id="killsDisplay">0</span></div>
+        <div>❤️ <span id="healthDisplay">100</span></div>
+        <div>🔫 <span id="fireStatus" style="color:#ff4422;">ВЫКЛ</span></div>
+    </div>
+    <div id="crosshair">✚</div>
+    <div id="info">S — вперёд | W — назад | A/D — влево/вправо | Мышь — поворот | ЛКМ — ВКЛ/ВЫКЛ стрельбы</div>
+
+    <div id="minimap">
+        <canvas id="minimapCanvas" width="200" height="200"></canvas>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // ================================================================
+        //  КОНФИГ
+        // ================================================================
+
+        const CONFIG = {
+            MONSTERS: {
+                INITIAL_COUNT: 8,
+                COUNT_INCREMENT: 3,
+                COUNT_INCREMENT_INTERVAL: 15,
+                MAX_COUNT: 120,
+                BASE_SPEED: 1.2,
+                BASE_SIZE: 1.2,
+                BASE_HEALTH: 1,
+                SPEED_PER_SCORE: 0.01,
+                SIZE_PER_SCORE: 0.002,
+                HEALTH_PER_SCORE: 0.5,
+                SPAWN_MIN_DIST: 60,
+                SPAWN_MAX_DIST: 150,
+                ATTACK_DIST: 2.5,
+                RESPAWN_DELAY: 2000,
+            },
+            PLAYER: {
+                EYE_HEIGHT: 1.6,
+                SPEED: 3.12,
+                HEALTH: 100,
+            },
+            WEAPON: {
+                BULLET_SPEED: 40,
+                BULLET_LIFETIME: 2.5,
+                SHOOT_INTERVAL: 0.15,
+                BULLET_DAMAGE: 15,
+                BULLET_RADIUS: 0.12,
+            },
+            WORLD: {
+                MIN: -20000,
+                MAX: 20000,
+                BUILDINGS: true,
+            },
+            GRAPHICS: {
+                LIGHT_INTENSITY: 0.75,
+                FOG_DENSITY: 0.00006,
+                MAX_MONSTERS: 300,
+            },
+            MINIMAP: {
+                SIZE: 200,
+                RADIUS: 50,
+                PLAYER_COLOR: '#44ff44',
+                ENEMY_COLOR: '#ff4444',
+                BUILDING_COLOR: 'rgba(255,170,68,0.15)',
+                BACKGROUND: 'rgba(10,10,20,0.85)',
+                BORDER_COLOR: 'rgba(255,170,68,0.3)',
+                DIRECTION_LINE: '#44ff44',
+            }
+        };
+
+        // ================================================================
+        //  КАЛИБРОВКА
+        // ================================================================
+
+        const PIXEL_TO_METER = 1.7 / 54;
+        const PLAYER_SPEED_METERS_PER_SEC = 99 * PIXEL_TO_METER;
+
+        const WORLD_MIN = CONFIG.WORLD.MIN * PIXEL_TO_METER;
+        const WORLD_MAX = CONFIG.WORLD.MAX * PIXEL_TO_METER;
+        const WORLD_SIZE = WORLD_MAX - WORLD_MIN;
+
+        // ================================================================
+        //  ЗДАНИЯ
+        // ================================================================
+
+        const BUILDINGS_PIXELS = [
+            { x: -8000, y: -7000, w: 1800, d: 1400, roof: "#8B7B6A", wall: "#5A4A3A", height: 120 },
+            { x: -5500, y: -7200, w: 1600, d: 1600, roof: "#7B6B5A", wall: "#4A3A2A", height: 100 },
+            { x: -7500, y: -5000, w: 2000, d: 1200, roof: "#8B7B6A", wall: "#5A4A3A", height: 150 },
+            { x: 5000, y: -6000, w: 1100, d: 1100, roof: "#9B8B7A", wall: "#6B5B4A", height: 80 },
+            { x: 6500, y: -5800, w: 1000, d: 1000, roof: "#A89888", wall: "#7B6B5A", height: 80 },
+            { x: 5500, y: -4500, w: 1200, d: 1200, roof: "#8B7B6A", wall: "#5A4A3A", height: 90 },
+            { x: 7000, y: -4000, w: 900, d: 900, roof: "#9B8B7A", wall: "#6B5B4A", height: 70 },
+            { x: 8000, y: 5000, w: 800, d: 800, roof: "#7B6B5A", wall: "#4A3A2A", height: 250 },
+            { x: 9500, y: 5500, w: 900, d: 900, roof: "#6B5B4A", wall: "#3A2A1A", height: 280 },
+            { x: 7000, y: 7000, w: 1500, d: 1500, roof: "#8B7B6A", wall: "#5A4A3A", height: 180 },
+            { x: -7000, y: 6000, w: 1300, d: 1300, roof: "#6A7B5A", wall: "#4A5A3A", height: 60 },
+            { x: -8500, y: 7500, w: 1400, d: 1400, roof: "#5A6B4A", wall: "#3A4A2A", height: 60 },
+            { x: -5000, y: 8000, w: 1000, d: 1000, roof: "#6A5A4A", wall: "#4A3A2A", height: 40 },
+            { x: -6500, y: 9000, w: 1200, d: 1200, roof: "#5A4A3A", wall: "#3A2A1A", height: 40 },
+            { x: 0, y: 0, w: 2500, d: 2000, roof: "#B8A898", wall: "#7B6B5A", height: 300 },
+            { x: 2000, y: 1500, w: 1000, d: 1000, roof: "#9B8B7A", wall: "#6B5B4A", height: 80 },
+            { x: -1500, y: 2000, w: 1200, d: 1200, roof: "#8B7B6A", wall: "#5A4A3A", height: 120 },
+            { x: 3000, y: -2000, w: 1400, d: 1400, roof: "#7B6B5A", wall: "#4A3A2A", height: 220 },
+            { x: -3000, y: -2500, w: 1600, d: 1600, roof: "#6A5A4A", wall: "#4A3A2A", height: 50 },
+            { x: 4000, y: 8000, w: 1100, d: 1100, roof: "#9B8B7A", wall: "#6B5B4A", height: 80 },
+            { x: -4000, y: -8000, w: 1300, d: 1300, roof: "#8B7B6A", wall: "#5A4A3A", height: 100 },
+            { x: 9000, y: -8000, w: 1000, d: 1000, roof: "#7B6B5A", wall: "#4A3A2A", height: 200 },
+            { x: -9000, y: 8000, w: 1200, d: 1200, roof: "#6A7B5A", wall: "#4A5A3A", height: 60 }
+        ];
+
+        const BUILDINGS = BUILDINGS_PIXELS.map(b => ({
+            x: b.x * PIXEL_TO_METER,
+            y: b.y * PIXEL_TO_METER,
+            w: b.w * PIXEL_TO_METER,
+            d: b.d * PIXEL_TO_METER,
+            height: b.height * PIXEL_TO_METER,
+            roof: b.roof,
+            wall: b.wall,
+        }));
+
+        // ================================================================
+        //  КОЛЛИЗИЯ
+        // ================================================================
+
+        function isInsideBuilding(x, z, radius) {
+            for (const b of BUILDINGS) {
+                const hw = b.w / 2 + radius;
+                const hd = b.d / 2 + radius;
+                if (x > b.x - hw && x < b.x + hw && z > b.y - hd && z < b.y + hd) return true;
+            }
+            return false;
+        }
+
+        function findSafeStart() {
+            const candidates = [
+                [0, -3000 * PIXEL_TO_METER],
+                [0, 3000 * PIXEL_TO_METER],
+                [-3000 * PIXEL_TO_METER, 0],
+                [3000 * PIXEL_TO_METER, 0],
+                [0, 0]
+            ];
+            for (const [cx, cz] of candidates) {
+                if (!isInsideBuilding(cx, cz, 1)) return { x: cx, z: cz };
+            }
+            return { x: WORLD_MIN + 100, z: WORLD_MIN + 100 };
+        }
+
+        // ================================================================
+        //  ЗВУКИ
+        // ================================================================
+
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playShootSound() {
+            if (!audioCtx) return;
+            try {
+                const now = audioCtx.currentTime;
+                const bs = audioCtx.sampleRate * 0.08;
+                const buf = audioCtx.createBuffer(1, bs, audioCtx.sampleRate);
+                const d = buf.getChannelData(0);
+                for (let i = 0; i < bs; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / bs * 4);
+                const n = audioCtx.createBufferSource();
+                n.buffer = buf;
+                const g = audioCtx.createGain();
+                g.gain.setValueAtTime(0.12, now);
+                g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                n.connect(g);
+                g.connect(audioCtx.destination);
+                n.start();
+                n.stop(now + 0.08);
+                const osc = audioCtx.createOscillator();
+                const g2 = audioCtx.createGain();
+                osc.connect(g2);
+                g2.connect(audioCtx.destination);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+                g2.gain.setValueAtTime(0.1, now);
+                g2.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                osc.start();
+                osc.stop(now + 0.1);
+            } catch (e) {}
+        }
+
+        function playExplosionSound() {
+            if (!audioCtx) return;
+            try {
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                osc.connect(g);
+                g.connect(audioCtx.destination);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
+                g.gain.setValueAtTime(0.15, now);
+                g.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.start();
+                osc.stop(now + 0.3);
+                const bs = audioCtx.sampleRate * 0.15;
+                const buf = audioCtx.createBuffer(1, bs, audioCtx.sampleRate);
+                const d = buf.getChannelData(0);
+                for (let i = 0; i < bs; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / bs * 3);
+                const n = audioCtx.createBufferSource();
+                n.buffer = buf;
+                const g2 = audioCtx.createGain();
+                g2.gain.setValueAtTime(0.12, now);
+                g2.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                n.connect(g2);
+                g2.connect(audioCtx.destination);
+                n.start();
+                n.stop(now + 0.15);
+            } catch (e) {}
+        }
+
+        // ================================================================
+        //  THREE.JS СЦЕНА (СОКРАЩЕНА)
+        // ================================================================
+
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x0a0a1a, CONFIG.GRAPHICS.FOG_DENSITY);
+
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, WORLD_SIZE * 3);
+        camera.position.set(0, CONFIG.PLAYER.EYE_HEIGHT, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = CONFIG.GRAPHICS.LIGHT_INTENSITY * 0.8 + 0.2;
+        document.body.prepend(renderer.domElement);
+
+        // --- НЕБО ---
+        const skyTop = new THREE.Color().setHSL(0.7, 0.5, 0.08 + CONFIG.GRAPHICS.LIGHT_INTENSITY * 0.12);
+        const skyBottom = new THREE.Color().setHSL(0.7, 0.4, 0.12 + CONFIG.GRAPHICS.LIGHT_INTENSITY * 0.15);
+        const skyGeo = new THREE.SphereGeometry(WORLD_SIZE * 1.5, 16, 16);
+        const skyMat = new THREE.ShaderMaterial({
+            side: THREE.BackSide,
+            uniforms: {
+                uTop: { value: skyTop },
+                uBottom: { value: skyBottom },
+                uOffset: { value: 20 },
+                uExp: { value: 0.6 },
+            },
+            vertexShader: `varying vec3 vPos; void main() { vPos = (modelMatrix * vec4(position, 1.0)).xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+            fragmentShader: `uniform vec3 uTop; uniform vec3 uBottom; uniform float uOffset; uniform float uExp; varying vec3 vPos; void main() { float h = normalize(vPos + uOffset).y; gl_FragColor = vec4(mix(uBottom, uTop, max(pow(max(h, 0.0), uExp), 0.0)), 1.0); }`,
+        });
+        scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+        // --- ЗВЁЗДЫ ---
+        const starCount = 600;
+        const starGeo = new THREE.BufferGeometry();
+        const starPos = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount; i++) {
+            const th = Math.random() * Math.PI * 2;
+            const ph = Math.acos(Math.random() * 2 - 1);
+            const r = WORLD_SIZE * 1.4 + Math.random() * WORLD_SIZE * 0.2;
+            starPos[i * 3] = r * Math.sin(ph) * Math.cos(th);
+            starPos[i * 3 + 1] = Math.abs(r * Math.cos(ph)) * 0.7 + 10;
+            starPos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
+        }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starMat = new THREE.PointsMaterial({ color: 0x8888cc, size: 1.2, transparent: true, opacity: 0.4,
+            blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true });
+        scene.add(new THREE.Points(starGeo, starMat));
+
+        // --- ОСВЕЩЕНИЕ ---
+        scene.add(new THREE.AmbientLight(new THREE.Color().setHSL(0.7, 0.3, 0.15 + CONFIG.GRAPHICS.LIGHT_INTENSITY * 0.2),
+            0.5 * CONFIG.GRAPHICS.LIGHT_INTENSITY));
+        const sun = new THREE.DirectionalLight(new THREE.Color().setHSL(0.6, 0.3, 0.25 + CONFIG.GRAPHICS.LIGHT_INTENSITY *
+            0.4), 0.8 * CONFIG.GRAPHICS.LIGHT_INTENSITY);
+        sun.position.set(5000, 8000, 3000);
+        sun.castShadow = true;
+        sun.shadow.mapSize.width = 1024;
+        sun.shadow.mapSize.height = 1024;
+        sun.shadow.camera.near = 10;
+        sun.shadow.camera.far = WORLD_SIZE * 2;
+        sun.shadow.camera.left = -WORLD_SIZE * 1.2;
+        sun.shadow.camera.right = WORLD_SIZE * 1.2;
+        sun.shadow.camera.top = WORLD_SIZE * 1.2;
+        sun.shadow.camera.bottom = -WORLD_SIZE * 1.2;
+        scene.add(sun);
+        scene.add(new THREE.HemisphereLight(new THREE.Color().setHSL(0.7, 0.3, 0.2), new THREE.Color().setHSL(0.1, 0.2, 0.05),
+            0.3 * CONFIG.GRAPHICS.LIGHT_INTENSITY));
+
+        // ================================================================
+        //  ПОЛ И СТЕНЫ
+        // ================================================================
+
+        function createGroundTex() {
+            const c = document.createElement('canvas');
+            c.width = 256;
+            c.height = 256;
+            const ctx = c.getContext('2d');
+            const df = 0.3 + CONFIG.GRAPHICS.LIGHT_INTENSITY * 0.25;
+            ctx.fillStyle = `rgb(${20*df},${20*df},${30*df})`;
+            ctx.fillRect(0, 0, 256, 256);
+            for (let i = 0; i < 2000; i++) {
+                const x = Math.random() * 256,
+                    y = Math.random() * 256,
+                    s = 1 + Math.random() * 2,
+                    b = 10 + Math.random() * 25 * df;
+                ctx.fillStyle = `rgba(${b},${b},${b+15},0.25)`;
+                ctx.fillRect(x, y, s, s);
+            }
+            const tex = new THREE.CanvasTexture(c);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(60, 60);
+            tex.anisotropy = 2;
+            return tex;
+        }
+
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD_SIZE * 1.05, WORLD_SIZE * 1.05),
+            new THREE.MeshStandardMaterial({ map: createGroundTex(), roughness: 1, metalness: 0 }));
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.set(0, -0.01, 0);
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // --- СТЕНЫ ---
+        if (CONFIG.WORLD.BUILDINGS) {
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.9 });
+            const wallGroup = new THREE.Group();
+            for (const b of BUILDINGS) {
+                const h = b.height || 3;
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(b.w, h, b.d), wallMat);
+                wall.position.set(b.x, h / 2, b.y);
+                wall.castShadow = true;
+                wall.receiveShadow = true;
+                wallGroup.add(wall);
+                const roof = new THREE.Mesh(new THREE.BoxGeometry(b.w + 0.3, 0.2, b.d + 0.3),
+                    new THREE.MeshStandardMaterial({ color: b.roof, roughness: 0.8 }));
+                roof.position.set(b.x, h + 0.1, b.y);
+                roof.castShadow = true;
+                wallGroup.add(roof);
+            }
+            scene.add(wallGroup);
+        }
+
+        // ================================================================
+        //  ОРУЖИЕ
+        // ================================================================
+
+        const weaponGroup = new THREE.Group();
+        weaponGroup.position.set(0.35, -0.2, -0.4);
+        scene.add(weaponGroup);
+
+        const barrelMat = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.3, metalness: 0.7 });
+        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6), barrelMat);
+        barrel.rotation.x = Math.PI / 2;
+        barrel.position.set(0, 0, -0.25);
+        weaponGroup.add(barrel);
+
+        const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.06, 0.06, 6),
+            new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.4, metalness: 0.6 }));
+        muzzle.rotation.x = Math.PI / 2;
+        muzzle.position.set(0, 0, -0.5);
+        weaponGroup.add(muzzle);
+
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.1, 0.18),
+            new THREE.MeshStandardMaterial({ color: 0x2a3a4a, roughness: 0.5 }));
+        body.position.set(0, 0, -0.08);
+        weaponGroup.add(body);
+
+        const grip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.05),
+            new THREE.MeshStandardMaterial({ color: 0x1a1a2a, roughness: 0.8 }));
+        grip.position.set(0, -0.1, -0.04);
+        weaponGroup.add(grip);
+
+        const indicator = new THREE.Mesh(new THREE.SphereGeometry(0.025, 4, 4),
+            new THREE.MeshBasicMaterial({ color: 0xff2200, transparent: true, opacity: 0.4 }));
+        indicator.position.set(0, 0, -0.52);
+        weaponGroup.add(indicator);
+
+        const glowMesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6),
+            new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0 }));
+        glowMesh.position.set(0, 0, -0.52);
+        weaponGroup.add(glowMesh);
+
+        // ================================================================
+        //  СИСТЕМА МОНСТРОВ
+        // ================================================================
+
+        const MONSTER_TEXTURE_SIZE = 128;
+        const monsterCanvas = document.createElement('canvas');
+        monsterCanvas.width = MONSTER_TEXTURE_SIZE;
+        monsterCanvas.height = MONSTER_TEXTURE_SIZE;
+        const monsterCtx = monsterCanvas.getContext('2d');
+        const monsterTexture = new THREE.CanvasTexture(monsterCanvas);
+        monsterTexture.needsUpdate = true;
+
+        function drawMonsterOnCanvas(ctx, time, variant = 0) {
+            const cx = 64,
+                cy = 64,
+                s = 20;
+            const t = time;
+            const breathe = 1 + Math.sin(t * 0.02) * 0.02;
+            const floatY = Math.sin(t * 0.015) * 2;
+            const pulse = 0.5 + Math.sin(t * 0.03) * 0.5;
+
+            ctx.clearRect(0, 0, 128, 128);
+
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.beginPath();
+            ctx.ellipse(cx, 110 + floatY * 0.2, 40 * breathe, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = `rgba(255,50,0,${0.03 + pulse * 0.02})`;
+            ctx.beginPath();
+            ctx.arc(cx, cy + floatY, 55 + pulse * 15, 0, Math.PI * 2);
+            ctx.fill();
+
+            const grad = ctx.createRadialGradient(cx - 10 * breathe, cy - 15 * breathe + floatY, 0, cx, cy + floatY, 45 *
+                breathe);
+            const colors = [
+                ['#6a1a2a', '#8a2a3a', '#1a0a0a'],
+                ['#3a1a2a', '#5a2a3a', '#1a0a1a'],
+                ['#1a2a3a', '#2a3a5a', '#0a1a2a'],
+            ];
+            const c = colors[variant % colors.length];
+            grad.addColorStop(0, c[1]);
+            grad.addColorStop(0.5, c[0]);
+            grad.addColorStop(1, c[2]);
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy + 5 * breathe + floatY, 38 * breathe, 44 * breathe, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            const eyeColor = ['#ff2200', '#cc44ff', '#44aaff'][variant % 3];
+            ctx.shadowColor = eyeColor;
+            ctx.shadowBlur = 25;
+            ctx.fillStyle = eyeColor;
+            ctx.beginPath();
+            ctx.arc(cx - 12 * breathe, cy - 10 * breathe + floatY, 8 * breathe, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(cx + 12 * breathe, cy - 10 * breathe + floatY, 8 * breathe, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(cx - 10 * breathe, cy - 10 * breathe + floatY, 3.5 * breathe, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(cx + 14 * breathe, cy - 10 * breathe + floatY, 3.5 * breathe, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#0a0000';
+            ctx.beginPath();
+            ctx.ellipse(cx, cy + 8 * breathe + floatY, 16 * breathe, 6 * breathe, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ddd';
+            for (let i = -4; i <= 4; i++) {
+                const tx = cx + i * 4.5 * breathe;
+                const ty = cy + 5 * breathe + floatY;
+                const th = 3 + Math.sin(i * 1.3 + t * 0.02) * 2;
+                ctx.beginPath();
+                ctx.moveTo(tx - 2, ty);
+                ctx.lineTo(tx, ty + th);
+                ctx.lineTo(tx + 2, ty);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(tx - 2, ty + 8 * breathe);
+                ctx.lineTo(tx, ty + 8 * breathe - th);
+                ctx.lineTo(tx + 2, ty + 8 * breathe);
+                ctx.fill();
+            }
+
+            ctx.fillStyle = '#2a1a2a';
+            ctx.beginPath();
+            ctx.moveTo(cx - 18 * breathe, cy - 18 * breathe + floatY);
+            ctx.lineTo(cx - 12 * breathe, cy - 40 * breathe + floatY);
+            ctx.lineTo(cx - 6 * breathe, cy - 20 * breathe + floatY);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(cx + 18 * breathe, cy - 18 * breathe + floatY);
+            ctx.lineTo(cx + 12 * breathe, cy - 40 * breathe + floatY);
+            ctx.lineTo(cx + 6 * breathe, cy - 20 * breathe + floatY);
+            ctx.fill();
+        }
+
+        const MAX_MONSTERS = CONFIG.GRAPHICS.MAX_MONSTERS;
+        const monGeo = new THREE.PlaneGeometry(1, 1);
+        const monMat = new THREE.MeshBasicMaterial({
+            map: monsterTexture,
+            transparent: true,
+            depthTest: true,
+            side: THREE.DoubleSide,
+        });
+        const monsterMesh = new THREE.InstancedMesh(monGeo, monMat, MAX_MONSTERS);
+        monsterMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        monsterMesh.frustumCulled = true;
+        scene.add(monsterMesh);
+
+        let monsters = [];
+        let monsterCount = 0;
+        let activeMonsters = 0;
+        let kills = 0;
+        let score = 0;
+        const dummy = new THREE.Object3D();
+        let animTime = 0;
+
+        function createMonsterData(x, z) {
+            const currentSpeed = CONFIG.MONSTERS.BASE_SPEED + score * CONFIG.MONSTERS.SPEED_PER_SCORE;
+            const currentSize = CONFIG.MONSTERS.BASE_SIZE + score * CONFIG.MONSTERS.SIZE_PER_SCORE;
+            const currentHealth = CONFIG.MONSTERS.BASE_HEALTH + score * CONFIG.MONSTERS.HEALTH_PER_SCORE;
+
+            return {
+                x,
+                z,
+                alive: true,
+                health: currentHealth,
+                maxHealth: currentHealth,
+                speed: currentSpeed,
+                size: currentSize,
+                hurtTimer: 0,
+                attackCooldown: 0,
+                variant: Math.floor(Math.random() * 3),
+                idx: monsterCount,
+            };
+        }
+
+        function spawnMonster() {
+            if (monsterCount >= MAX_MONSTERS) return;
+
+            const minDist = CONFIG.MONSTERS.SPAWN_MIN_DIST;
+            const maxDist = CONFIG.MONSTERS.SPAWN_MAX_DIST;
+            let x, z, attempts = 0;
+
+            do {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = minDist + Math.random() * (maxDist - minDist);
+                x = player.x + Math.cos(angle) * dist;
+                z = player.z + Math.sin(angle) * dist;
+                attempts++;
+            } while (attempts < 30 && isInsideBuilding(x, z, 0.5));
+
+            const data = createMonsterData(x, z);
+            data.idx = monsterCount;
+            monsters.push(data);
+            updateMonsterMatrix(monsterCount);
+            monsterCount++;
+            activeMonsters++;
+        }
+
+        function updateMonsterMatrix(idx) {
+            const m = monsters[idx];
+            if (!m || !m.alive) {
+                dummy.scale.set(0.001, 0.001, 0.001);
+            } else {
+                const breathe = 1 + Math.sin(animTime * 0.001 + m.x) * 0.02;
+                const size = m.size * breathe;
+                dummy.position.set(m.x, size * 0.5, m.z);
+                dummy.scale.set(size * 1.2, size * 1.2, 1);
+                const dx = player.x - m.x;
+                const dz = player.z - m.z;
+                dummy.rotation.y = Math.atan2(dx, dz);
+            }
+            dummy.updateMatrix();
+            monsterMesh.setMatrixAt(idx, dummy.matrix);
+        }
+
+        function updateAllMatrices() {
+            for (let i = 0; i < monsters.length; i++) {
+                updateMonsterMatrix(i);
+            }
+            monsterMesh.instanceMatrix.needsUpdate = true;
+        }
+
+        function updateMonsterTexture(time) {
+            drawMonsterOnCanvas(monsterCtx, time, Math.floor(time / 60) % 3);
+            monsterTexture.needsUpdate = true;
+        }
+
+        function getMaxMonsters() {
+            const base = CONFIG.MONSTERS.INITIAL_COUNT;
+            const increment = CONFIG.MONSTERS.COUNT_INCREMENT;
+            const interval = CONFIG.MONSTERS.COUNT_INCREMENT_INTERVAL;
+            const max = CONFIG.MONSTERS.MAX_COUNT;
+            const additional = Math.floor(score / interval) * increment;
+            return Math.min(base + additional, max);
+        }
+
+        function respawnMonsters() {
+            const target = getMaxMonsters();
+            const toSpawn = target - activeMonsters;
+            for (let i = 0; i < toSpawn && monsterCount < MAX_MONSTERS; i++) {
+                spawnMonster();
+            }
+        }
+
+        // ================================================================
+        //  ИГРОК
+        // ================================================================
+
+        const startPos = findSafeStart();
+        const player = {
+            x: startPos.x,
+            z: startPos.z,
+            angle: 0,
+            pitch: 0,
+            height: CONFIG.PLAYER.EYE_HEIGHT,
+            speed: PLAYER_SPEED_METERS_PER_SEC,
+            health: CONFIG.PLAYER.HEALTH,
+        };
+
+        // ================================================================
+        //  СНАРЯДЫ
+        // ================================================================
+
+        const bullets = [];
+        let isFiring = false;
+        let shootTimer = 0;
+
+        const bulletGeo = new THREE.SphereGeometry(CONFIG.WEAPON.BULLET_RADIUS, 6, 6);
+        const bulletGlowGeo = new THREE.SphereGeometry(CONFIG.WEAPON.BULLET_RADIUS * 2, 6, 6);
+
+        function createBullet(origin, dir) {
+            const mesh = new THREE.Mesh(bulletGeo, new THREE.MeshBasicMaterial({ color: 0xff8833 }));
+            const glow = new THREE.Mesh(bulletGlowGeo, new THREE.MeshBasicMaterial({
+                color: 0xff6622,
+                transparent: true,
+                opacity: 0.15,
+            }));
+            mesh.add(glow);
+            const core = new THREE.Mesh(new THREE.SphereGeometry(CONFIG.WEAPON.BULLET_RADIUS * 0.5, 4, 4),
+                new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            mesh.add(core);
+
+            const spawnOffset = dir.clone().multiplyScalar(2.0);
+            mesh.position.copy(origin).add(spawnOffset);
+
+            scene.add(mesh);
+            return {
+                mesh,
+                vel: dir.clone().multiplyScalar(CONFIG.WEAPON.BULLET_SPEED),
+                life: CONFIG.WEAPON.BULLET_LIFETIME
+            };
+        }
+
+        function createExplosion(pos) {
+            playExplosionSound();
+            const colors = [0xff6622, 0xff8844, 0xffaa66, 0xffffff];
+            for (let i = 0; i < 15; i++) {
+                const s = 0.1 + Math.random() * 0.3;
+                const p = new THREE.Mesh(new THREE.SphereGeometry(s, 4, 4),
+                    new THREE.MeshBasicMaterial({
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        transparent: true,
+                        opacity: 0.8
+                    }));
+                p.position.copy(pos);
+                p.position.x += (Math.random() - 0.5) * 0.3;
+                p.position.z += (Math.random() - 0.5) * 0.3;
+                p.position.y += Math.random() * 0.3;
+                const sp = 2 + Math.random() * 5,
+                    a = Math.random() * Math.PI * 2,
+                    a2 = Math.random() * Math.PI * 0.5;
+                p.userData = {
+                    vx: Math.cos(a) * Math.cos(a2) * sp,
+                    vy: Math.sin(a2) * sp + 2,
+                    vz: Math.sin(a) * Math.cos(a2) * sp,
+                    life: 0.4 + Math.random() * 0.6,
+                    maxLife: 0.4 + Math.random() * 0.6
+                };
+                scene.add(p);
+                if (!window.parts) window.parts = [];
+                window.parts.push(p);
+            }
+            const flash = new THREE.Mesh(new THREE.SphereGeometry(1.2, 6, 6),
+                new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0.5 }));
+            flash.position.copy(pos);
+            flash.userData = { life: 0.1, maxLife: 0.1 };
+            scene.add(flash);
+            if (!window.flashes) window.flashes = [];
+            window.flashes.push(flash);
+        }
+
+        function updateBullets(delta) {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                b.life -= delta;
+                b.mesh.position.x += b.vel.x * delta;
+                b.mesh.position.z += b.vel.z * delta;
+                b.mesh.position.y += b.vel.y * delta;
+                b.mesh.rotation.x += delta * 5;
+                b.mesh.rotation.z += delta * 3;
+
+                let hitEnemy = false;
+                for (const m of monsters) {
+                    if (!m.alive) continue;
+                    const dx = b.mesh.position.x - m.x;
+                    const dz = b.mesh.position.z - m.z;
+                    const dist = Math.sqrt(dx * dx + dz * dz);
+                    if (dist < 1.5 && b.mesh.position.y < 2.0) {
+                        m.health -= CONFIG.WEAPON.BULLET_DAMAGE;
+                        m.hurtTimer = 10;
+                        if (m.health <= 0) {
+                            m.alive = false;
+                            activeMonsters--;
+                            kills++;
+                            score += 10;
+                            createExplosion(b.mesh.position.clone());
+                            playExplosionSound();
+                            document.getElementById('scoreDisplay').textContent = score;
+                            document.getElementById('killsDisplay').textContent = kills;
+                            respawnMonsters();
+                        } else {
+                            createExplosion(b.mesh.position.clone());
+                        }
+                        hitEnemy = true;
+                        break;
+                    }
+                }
+
+                if (hitEnemy) {
+                    scene.remove(b.mesh);
+                    bullets.splice(i, 1);
+                    continue;
+                }
+
+                let hitBuilding = false;
+                if (CONFIG.WORLD.BUILDINGS) {
+                    for (const bld of BUILDINGS) {
+                        const hw = bld.w / 2 + CONFIG.WEAPON.BULLET_RADIUS;
+                        const hd = bld.d / 2 + CONFIG.WEAPON.BULLET_RADIUS;
+                        if (b.mesh.position.x > bld.x - hw && b.mesh.position.x < bld.x + hw &&
+                            b.mesh.position.z > bld.y - hd && b.mesh.position.z < bld.y + hd &&
+                            b.mesh.position.y < bld.height) {
+                            hitBuilding = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (b.mesh.position.y < -0.1 || hitBuilding || b.life <= 0 ||
+                    b.mesh.position.x < WORLD_MIN || b.mesh.position.x > WORLD_MAX ||
+                    b.mesh.position.z < WORLD_MIN || b.mesh.position.z > WORLD_MAX) {
+                    if (b.mesh.position.y < -0.1 || hitBuilding) createExplosion(b.mesh.position.clone());
+                    scene.remove(b.mesh);
+                    bullets.splice(i, 1);
+                }
+            }
+
+            const cleanParticles = (arr) => {
+                if (!arr) return;
+                for (let i = arr.length - 1; i >= 0; i--) {
+                    const p = arr[i];
+                    p.userData.life -= delta;
+                    p.position.x += p.userData.vx * delta;
+                    p.position.y += p.userData.vy * delta;
+                    p.position.z += p.userData.vz * delta;
+                    p.userData.vy -= 3 * delta;
+                    p.material.opacity = (p.userData.life / p.userData.maxLife) * 0.7;
+                    p.scale.setScalar(1 + (1 - p.userData.life / p.userData.maxLife) * 1.5);
+                    if (p.userData.life <= 0 || p.position.y < -0.5) { scene.remove(p);
+                        arr.splice(i, 1); }
+                }
+            };
+            cleanParticles(window.parts);
+            cleanParticles(window.flashes);
+        }
+
+        // ================================================================
+        //  ===== ПОВОРОТНАЯ МИНИ-КАРТА (ОБРАТНОЕ ВРАЩЕНИЕ) =====
+        // ================================================================
+
+        const minimapCanvas = document.getElementById('minimapCanvas');
+        const minimapCtx = minimapCanvas.getContext('2d');
+        const MINIMAP_SIZE = CONFIG.MINIMAP.SIZE;
+        const MINIMAP_RADIUS = CONFIG.MINIMAP.RADIUS;
+        const CENTER = MINIMAP_SIZE / 2;
+
+        function drawMinimap() {
+            const w = MINIMAP_SIZE;
+            const h = MINIMAP_SIZE;
+            const cx = CENTER;
+            const cy = CENTER;
+
+            // Очистка
+            minimapCtx.clearRect(0, 0, w, h);
+
+            // Фон (круглый)
+            minimapCtx.beginPath();
+            minimapCtx.arc(cx, cy, w / 2, 0, Math.PI * 2);
+            minimapCtx.fillStyle = CONFIG.MINIMAP.BACKGROUND;
+            minimapCtx.fill();
+            minimapCtx.strokeStyle = CONFIG.MINIMAP.BORDER_COLOR;
+            minimapCtx.lineWidth = 2;
+            minimapCtx.stroke();
+
+            // Обрезаем по кругу
+            minimapCtx.save();
+            minimapCtx.beginPath();
+            minimapCtx.arc(cx, cy, w / 2 - 1, 0, Math.PI * 2);
+            minimapCtx.clip();
+
+            // ===== ОБРАТНОЕ ВРАЩЕНИЕ: карта поворачивается ПРОТИВ движения игрока =====
+            // Чтобы игрок всегда смотрел вверх, карта должна вращаться в ОБРАТНУЮ сторону
+            const rotAngle = player.angle; // ← ПОЛОЖИТЕЛЬНОЕ значение (было -player.angle)
+
+            minimapCtx.translate(cx, cy);
+            minimapCtx.rotate(rotAngle);
+            minimapCtx.translate(-cx, -cy);
+
+            // --- ЗДАНИЯ на миникарте (повёрнутые) ---
+            if (CONFIG.WORLD.BUILDINGS) {
+                for (const b of BUILDINGS) {
+                    const dx = b.x - player.x;
+                    const dz = b.y - player.z;
+                    const dist = Math.sqrt(dx * dx + dz * dz);
+                    if (dist > MINIMAP_RADIUS) continue;
+
+                    const scale = w / 2 / MINIMAP_RADIUS;
+                    const mx = cx + dx * scale;
+                    const my = cy + dz * scale;
+                    const mw = (b.w / 2) * scale;
+                    const mh = (b.d / 2) * scale;
+
+                    minimapCtx.fillStyle = CONFIG.MINIMAP.BUILDING_COLOR;
+                    minimapCtx.fillRect(mx - mw, my - mh, mw * 2, mh * 2);
+                    minimapCtx.strokeStyle = 'rgba(255,170,68,0.05)';
+                    minimapCtx.lineWidth = 0.5;
+                    minimapCtx.strokeRect(mx - mw, my - mh, mw * 2, mh * 2);
+                }
+            }
+
+            // --- МОНСТРЫ на миникарте (повёрнутые) ---
+            for (const m of monsters) {
+                if (!m.alive) continue;
+                const dx = m.x - player.x;
+                const dz = m.z - player.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+                if (dist > MINIMAP_RADIUS) continue;
+
+                const scale = w / 2 / MINIMAP_RADIUS;
+                const mx = cx + dx * scale;
+                const my = cy + dz * scale;
+
+                const size = 2 + m.size * 0.5;
+
+                minimapCtx.shadowColor = CONFIG.MINIMAP.ENEMY_COLOR;
+                minimapCtx.shadowBlur = 4;
+                minimapCtx.fillStyle = CONFIG.MINIMAP.ENEMY_COLOR;
+                minimapCtx.beginPath();
+                minimapCtx.arc(mx, my, Math.min(size, 4), 0, Math.PI * 2);
+                minimapCtx.fill();
+                minimapCtx.shadowBlur = 0;
+            }
+
+            // --- ИГРОК на миникарте (всегда в центре) ---
+            minimapCtx.shadowColor = CONFIG.MINIMAP.PLAYER_COLOR;
+            minimapCtx.shadowBlur = 8;
+            minimapCtx.fillStyle = CONFIG.MINIMAP.PLAYER_COLOR;
+            minimapCtx.beginPath();
+            minimapCtx.arc(cx, cy, 4, 0, Math.PI * 2);
+            minimapCtx.fill();
+
+            // Направление игрока (всегда вверх)
+            //minimapCtx.shadowBlur = 0;
+            //minimapCtx.strokeStyle = CONFIG.MINIMAP.DIRECTION_LINE;
+            //minimapCtx.lineWidth = 2;
+            //minimapCtx.beginPath();
+            //minimapCtx.moveTo(cx, cy);
+            //minimapCtx.lineTo(cx, cy - 14);
+            //minimapCtx.stroke();
+
+            // --- КРУГ РАДИУСА (50 м) ---
+            minimapCtx.strokeStyle = 'rgba(255,255,255,0.05)';
+            minimapCtx.lineWidth = 1;
+            minimapCtx.beginPath();
+            minimapCtx.arc(cx, cy, w / 2 - 2, 0, Math.PI * 2);
+            minimapCtx.stroke();
+
+            // --- ЦЕНТРАЛЬНЫЙ КРЕСТ ---
+            minimapCtx.strokeStyle = 'rgba(255,255,255,0.03)';
+            minimapCtx.lineWidth = 0.5;
+            minimapCtx.beginPath();
+            minimapCtx.moveTo(cx - 8, cy);
+            minimapCtx.lineTo(cx + 8, cy);
+            minimapCtx.moveTo(cx, cy - 8);
+            minimapCtx.lineTo(cx, cy + 8);
+            minimapCtx.stroke();
+
+            minimapCtx.restore();
+
+            // --- РАМКА (поверх) ---
+            minimapCtx.beginPath();
+            minimapCtx.arc(cx, cy, w / 2 - 1, 0, Math.PI * 2);
+            minimapCtx.strokeStyle = CONFIG.MINIMAP.BORDER_COLOR;
+            minimapCtx.lineWidth = 2;
+            minimapCtx.stroke();
+
+            // --- НАДПИСЬ "50 м" ---
+            minimapCtx.fillStyle = 'rgba(255,255,255,0.15)';
+            minimapCtx.font = '10px monospace';
+            minimapCtx.textAlign = 'center';
+            minimapCtx.textBaseline = 'bottom';
+            minimapCtx.fillText('50 м', cx, h - 4);
+
+            // --- СТРЕЛКА НАПРАВЛЕНИЯ "N" (север) ---
+            // Север теперь вращается вместе с картой в обратную сторону
+            const northAngle = player.angle;
+            const nx = cx + Math.sin(northAngle) * 30;
+            const ny = cy - Math.cos(northAngle) * 30;
+            minimapCtx.fillStyle = 'rgba(255,255,255,0.2)';
+            minimapCtx.font = '10px monospace';
+            minimapCtx.textAlign = 'center';
+            minimapCtx.textBaseline = 'middle';
+            minimapCtx.fillText('N', nx, ny);
+        }
+
+        // ================================================================
+        //  УПРАВЛЕНИЕ
+        // ================================================================
+
+        const keys = { w: false, a: false, s: false, d: false };
+        let locked = false;
+        let fireEnabled = false;
+
+        document.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            if (['w', 'a', 's', 'd'].includes(k)) keys[k] = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            const k = e.key.toLowerCase();
+            if (['w', 'a', 's', 'd'].includes(k)) keys[k] = false;
+        });
+
+        renderer.domElement.addEventListener('click', () => {
+            renderer.domElement.requestPointerLock();
+            initAudio();
+        });
+        document.addEventListener('pointerlockchange', () => { locked = document.pointerLockElement === renderer
+                .domElement; });
+        document.addEventListener('mousemove', (e) => {
+            if (!locked) return;
+            player.angle -= e.movementX * 0.002;
+            player.pitch -= e.movementY * 0.002;
+            player.pitch = Math.max(-0.8, Math.min(0.8, player.pitch));
+        });
+
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            if (e.button === 0) {
+                fireEnabled = !fireEnabled;
+                document.getElementById('fireStatus').textContent = fireEnabled ? 'ОГОНЬ!' : 'ВЫКЛ';
+                document.getElementById('fireStatus').style.color = fireEnabled ? '#ff4422' : '#ffffff';
+            }
+        });
+        renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // ================================================================
+        //  UI
+        // ================================================================
+
+        document.getElementById('enemyCount').textContent = activeMonsters;
+        document.getElementById('scoreDisplay').textContent = score;
+        document.getElementById('killsDisplay').textContent = kills;
+        document.getElementById('healthDisplay').textContent = player.health;
+
+        let frameCount = 0,
+            lastFps = 0;
+
+        // ================================================================
+        //  ОСНОВНОЙ ЦИКЛ
+        // ================================================================
+
+        function update(delta) {
+            animTime += delta * 1000;
+
+            // --- Движение игрока ---
+            let dx = 0,
+                dz = 0;
+            if (keys.s) { dx += Math.sin(player.angle);
+                dz += Math.cos(player.angle); }
+            if (keys.w) { dx -= Math.sin(player.angle);
+                dz -= Math.cos(player.angle); }
+            if (keys.a) { dx -= Math.cos(player.angle);
+                dz += Math.sin(player.angle); }
+            if (keys.d) { dx += Math.cos(player.angle);
+                dz -= Math.sin(player.angle); }
+
+            const len = Math.sqrt(dx * dx + dz * dz);
+            if (len > 0) {
+                const sp = player.speed * delta;
+                const sx = (dx / len) * sp,
+                    sz = (dz / len) * sp;
+                if (!isInsideBuilding(player.x + sx, player.z, 0.5)) player.x += sx;
+                if (!isInsideBuilding(player.x, player.z + sz, 0.5)) player.z += sz;
+                const m = 1;
+                if (player.x < WORLD_MIN + m) player.x = WORLD_MIN + m;
+                if (player.x > WORLD_MAX - m) player.x = WORLD_MAX - m;
+                if (player.z < WORLD_MIN + m) player.z = WORLD_MIN + m;
+                if (player.z > WORLD_MAX - m) player.z = WORLD_MAX - m;
+            }
+
+            // --- Камера ---
+            camera.position.set(player.x, player.height, player.z);
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = player.angle;
+            camera.rotation.x = player.pitch;
+
+            // --- Оружие ---
+            weaponGroup.position.copy(camera.position);
+            weaponGroup.position.y -= 0.2;
+            weaponGroup.quaternion.copy(camera.quaternion);
+            const right = new THREE.Vector3(1, 0, 0);
+            right.applyQuaternion(camera.quaternion);
+            weaponGroup.position.add(right.multiplyScalar(0.3));
+
+            if (fireEnabled) {
+                indicator.material.opacity = 0.5 + Math.sin(animTime * 0.02) * 0.3;
+                indicator.material.color.setHex(0xff4400);
+                glowMesh.material.opacity = 0.1 + Math.sin(animTime * 0.03) * 0.05;
+            } else {
+                indicator.material.opacity = 0.2;
+                indicator.material.color.setHex(0xff2200);
+                glowMesh.material.opacity = 0;
+            }
+
+            // --- Стрельба ---
+            if (fireEnabled) {
+                shootTimer += delta;
+                if (shootTimer >= CONFIG.WEAPON.SHOOT_INTERVAL) {
+                    shootTimer = 0;
+
+                    const dir = new THREE.Vector3(0, 0, -1);
+                    dir.applyQuaternion(camera.quaternion);
+
+                    const origin = new THREE.Vector3();
+                    weaponGroup.getWorldPosition(origin);
+                    const fwd = new THREE.Vector3(0, 0, -1);
+                    fwd.applyQuaternion(camera.quaternion);
+                    origin.add(fwd.multiplyScalar(0.55));
+
+                    const bullet = createBullet(origin, dir);
+                    bullets.push(bullet);
+                    playShootSound();
+
+                    const flash = new THREE.Mesh(new THREE.SphereGeometry(0.06, 4, 4),
+                        new THREE.MeshBasicMaterial({ color: 0xff8833, transparent: true, opacity: 0.5 }));
+                    flash.position.copy(origin);
+                    flash.userData = { life: 0.04, maxLife: 0.04 };
+                    scene.add(flash);
+                    if (!window.mFlashes) window.mFlashes = [];
+                    window.mFlashes.push(flash);
+
+                    glowMesh.material.opacity = 0.3;
+                    setTimeout(() => { glowMesh.material.opacity = 0; }, 80);
+                }
+            }
+
+            // --- Обновление монстров ---
+            updateMonsterTexture(animTime);
+
+            for (const m of monsters) {
+                if (!m.alive) continue;
+
+                if (m.hurtTimer > 0) m.hurtTimer--;
+
+                const dx2 = player.x - m.x;
+                const dz2 = player.z - m.z;
+                const dist = Math.sqrt(dx2 * dx2 + dz2 * dz2);
+
+                if (dist > CONFIG.MONSTERS.ATTACK_DIST && dist < 200) {
+                    const moveSpeed = m.speed * delta;
+                    const newX = m.x + (dx2 / dist) * moveSpeed;
+                    const newZ = m.z + (dz2 / dist) * moveSpeed;
+                    if (!isInsideBuilding(newX, newZ, 0.3)) {
+                        m.x = newX;
+                        m.z = newZ;
+                    }
+                }
+
+                if (dist < CONFIG.MONSTERS.ATTACK_DIST) {
+                    if (m.attackCooldown <= 0) {
+                        m.attackCooldown = 30;
+                        player.health -= 5;
+                        if (player.health < 0) player.health = 0;
+                        document.getElementById('healthDisplay').textContent = player.health;
+                        if (player.health <= 0) {
+                            const overlay = document.createElement('div');
+                            overlay.style.cssText = `
+                                    position: fixed;
+                                    top: 0;
+                                    left: 0;
+                                    width: 100%;
+                                    height: 100%;
+                                    background: rgba(0,0,0,0.7);
+                                    display: flex;
+                                    justify-content: center;
+                                    align-items: center;
+                                    z-index: 100;
+                                    color: #ff4444;
+                                    font-size: 48px;
+                                    font-family: Arial, sans-serif;
+                                    flex-direction: column;
+                                    gap: 20px;
+                                `;
+                            overlay.innerHTML = `
+                                    <div>💀 ВЫ УМЕРЛИ</div>
+                                    <div style="font-size:20px;color:#888;">Счёт: ${score} | Убито: ${kills}</div>
+                                    <div style="font-size:18px;color:#666;">Нажмите R для рестарта</div>
+                                `;
+                            document.body.appendChild(overlay);
+                            document.addEventListener('keydown', restartHandler);
+                        }
+                    }
+                }
+                if (m.attackCooldown > 0) m.attackCooldown--;
+            }
+
+            // --- Обновление снарядов ---
+            updateBullets(delta);
+
+            // --- Вспышки выстрелов ---
+            if (window.mFlashes) {
+                for (let i = window.mFlashes.length - 1; i >= 0; i--) {
+                    const f = window.mFlashes[i];
+                    f.userData.life -= delta;
+                    f.material.opacity = (f.userData.life / f.userData.maxLife) * 0.5;
+                    f.scale.setScalar(1 + (1 - f.userData.life / f.userData.maxLife) * 2);
+                    if (f.userData.life <= 0) { scene.remove(f);
+                        window.mFlashes.splice(i, 1); }
+                }
+            }
+
+            // --- Обновление матриц ---
+            updateAllMatrices();
+
+            // --- Рисуем мини-карту (обратное вращение) ---
+            drawMinimap();
+
+            // --- UI ---
+            document.getElementById('enemyCount').textContent = activeMonsters;
+            frameCount++;
+        }
+
+        // --- Рестарт ---
+        function restartHandler(e) {
+            if (e.key.toLowerCase() === 'r') {
+                location.reload();
+            }
+        }
+
+        let lastTime = 0;
+
+        function animate(time) {
+            const delta = Math.min((time - lastTime) / 1000, 0.05);
+            lastTime = time;
+            update(delta);
+            renderer.render(scene, camera);
+            if (time - lastFps > 1000) {
+                document.getElementById('fpsDisplay') && (document.getElementById('fpsDisplay').textContent = frameCount);
+                frameCount = 0;
+                lastFps = time;
+            }
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // ================================================================
+        //  ЗАПУСК
+        // ================================================================
+
+        for (let i = 0; i < CONFIG.MONSTERS.INITIAL_COUNT; i++) {
+            spawnMonster();
+        }
+
+        console.log('👹 Охота на демонов началась!');
+        console.log('🗺️ Мини-карта вращается ПРОТИВ часовой стрелки при повороте игрока');
+        console.log('🎮 S — вперёд, W — назад, A/D — влево/вправо, ЛКМ — огонь');
+
+        animate(0);
+    </script>
+</body>
+</html>
