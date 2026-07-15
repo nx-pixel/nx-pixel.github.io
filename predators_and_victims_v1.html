@@ -1,0 +1,2639 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Эволюционная симуляция</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0f0f1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            color: #ddd;
+            padding: 20px;
+        }
+        .main-container {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1400px;
+            width: 100%;
+        }
+        .sim-wrapper {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+            flex: 1;
+            min-width: 600px;
+            position: relative;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 12px;
+            background-color: #0a1a2e;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 4/3;
+            cursor: crosshair;
+            user-select: none;
+        }
+        .controls-top {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 14px 24px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 16px;
+            background: #1a1a3e;
+            padding: 12px 20px;
+            border-radius: 40px;
+            border: 1px solid #2a3a6a;
+            overflow-x: auto;
+        }
+        .controls-top > * { flex-shrink: 0; }
+        .stats {
+            display: flex;
+            gap: 22px;
+            font-size: 15px;
+            font-weight: 600;
+            flex-wrap: wrap;
+            justify-content: center;
+            flex-shrink: 0;
+            min-width: 320px;
+        }
+        .stats span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            min-width: 40px;
+        }
+        .stat-val {
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            font-family: 'Courier New', monospace;
+            min-width: 20px;
+            display: inline-block;
+        }
+        .stat-food { color: #2ed573; }
+        .stat-prey { color: #f7d44a; }
+        .stat-pred { color: #ff4757; }
+        .stat-gen { color: #8899bb; }
+        .stat-epoch { color: #4af; }
+        
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .btn {
+            border: none;
+            color: white;
+            padding: 6px 18px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-reset {
+            background: #e94560;
+            box-shadow: 0 4px 0 #8a1a2e;
+        }
+        .btn-reset:hover { background: #ff6b81; transform: translateY(-2px); }
+        .btn-reset:active { transform: translateY(4px); box-shadow: none; }
+        
+        .btn-pause {
+            background: #4a8af4;
+            box-shadow: 0 4px 0 #1a4a8a;
+            min-width: 80px;
+        }
+        .btn-pause:hover { background: #6aaaff; transform: translateY(-2px); }
+        .btn-pause:active { transform: translateY(4px); box-shadow: none; }
+        .btn-pause.paused {
+            background: #f4a84a;
+            box-shadow: 0 4px 0 #8a6a1a;
+        }
+        .btn-pause.paused:hover { background: #ffcc6a; }
+        
+        .btn-species {
+            background: #8a5ac0;
+            box-shadow: 0 4px 0 #5a2a8a;
+        }
+        .btn-species:hover { background: #aa7ae0; transform: translateY(-2px); }
+        .btn-species:active { transform: translateY(4px); box-shadow: none; }
+
+        .btn-graph {
+            background: #2a6a4a;
+            box-shadow: 0 4px 0 #1a3a2a;
+        }
+        .btn-graph:hover { background: #4a8a6a; transform: translateY(-2px); }
+        .btn-graph:active { transform: translateY(4px); box-shadow: none; }
+
+        .btn-help {
+            background: #2a4a6a;
+            box-shadow: 0 4px 0 #1a2a4a;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            padding: 0;
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-help:hover { background: #4a7aaa; transform: translateY(-2px); }
+        .btn-help:active { transform: translateY(4px); box-shadow: none; }
+        
+        .legend {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot {
+            display: inline-block;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+        }
+        .dot-green { background: #2ed573; }
+        .dot-yellow { background: #f7d44a; }
+        .dot-red { background: #ff4757; }
+        .click-hint {
+            font-size: 12px;
+            color: #556;
+            background: #0a0a1a;
+            padding: 4px 14px;
+            border-radius: 20px;
+            border: 1px solid #1a2a4a;
+            flex-shrink: 0;
+        }
+        .click-hint span { display: inline-block; margin: 0 4px; }
+        .click-hint .lmb { color: #ff4757; font-weight: 700; }
+        .click-hint .rmb { color: #f7d44a; font-weight: 700; }
+        .pause-indicator {
+            font-size: 13px;
+            color: #f4a84a;
+            font-weight: 700;
+            display: none;
+            animation: blink 1s ease-in-out infinite;
+            flex-shrink: 0;
+        }
+        .pause-indicator.active { display: inline; }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .pause-badge {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: rgba(244, 168, 74, 0.9);
+            color: #1a1a2e;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 2px;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 4px 20px rgba(244, 168, 74, 0.3);
+            pointer-events: none;
+        }
+        .pause-badge.active { display: block; animation: blink 1s ease-in-out infinite; }
+
+        .settings-panel {
+            background: #16213e;
+            padding: 20px 24px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+            width: 340px;
+            min-width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            max-height: 750px;
+            overflow-y: auto;
+        }
+        .settings-panel::-webkit-scrollbar { width: 5px; }
+        .settings-panel::-webkit-scrollbar-track { background: #0a0a1a; border-radius: 10px; }
+        .settings-panel::-webkit-scrollbar-thumb { background: #2a4a7a; border-radius: 10px; }
+
+        .settings-panel h3 {
+            color: #7a8aaa;
+            font-size: 15px;
+            font-weight: 400;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #2a3a5a;
+            padding-bottom: 8px;
+            margin-bottom: 4px;
+        }
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .setting-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #b0c0dd;
+        }
+        .setting-group label span:first-child { color: #8a9abb; }
+        .setting-group label span:last-child {
+            color: #fff;
+            font-weight: 600;
+            min-width: 30px;
+            text-align: right;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: #2a3a6a;
+            border-radius: 10px;
+            outline: none;
+            transition: 0.2s;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #4a8af4;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(74, 138, 244, 0.4);
+            transition: 0.15s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #4a8af4;
+            cursor: pointer;
+            border: none;
+        }
+
+        .setting-group.speed-group {
+            background: #1a1a3e;
+            border-radius: 12px;
+            padding: 10px 14px;
+            border: 1px solid #2a4a6a;
+            margin-top: 4px;
+        }
+        .setting-group.speed-group label { font-size: 14px; }
+        .speed-value { color: #4af; font-weight: 700; }
+
+        .setting-group.mutation-group {
+            background: #1a1a3e;
+            border-radius: 12px;
+            padding: 10px 14px;
+            border: 1px solid #6a4a2a;
+            margin-top: 4px;
+        }
+        .setting-group.mutation-group label { font-size: 14px; }
+        .mutation-value { color: #f4a84a; font-weight: 700; }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #1a1a3e;
+            border-radius: 12px;
+            padding: 8px 14px;
+            border: 1px solid #2a4a6a;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #4a8af4;
+            cursor: pointer;
+        }
+        .checkbox-group label {
+            color: #b0c0dd;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .badge {
+            font-size: 11px;
+            background: #1a2a4a;
+            padding: 2px 10px;
+            border-radius: 20px;
+            color: #6a8aba;
+            margin-left: 4px;
+        }
+        .badge.mutation-badge {
+            background: #3a2a1a;
+            color: #f4a84a;
+        }
+
+        .click-feedback {
+            position: fixed;
+            pointer-events: none;
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5);
+            animation: floatUp 1s ease-out forwards;
+            z-index: 1000;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-60px) scale(1.3); }
+        }
+
+        .evolution-legend {
+            font-size: 11px;
+            color: #556;
+            background: #0a0a1a;
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 1px solid #1a2a4a;
+            line-height: 1.6;
+        }
+        .evolution-legend .prey-evo { color: #f7d44a; }
+        .evolution-legend .pred-evo { color: #ff4757; }
+
+        /* ===== МОДАЛЬНОЕ ОКНО ГРАФИКА ===== */
+        .graph-modal {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 95%;
+            max-width: 1400px;
+            height: 250px;
+            background: #0f0f1a;
+            border-radius: 16px;
+            border: 1px solid #2a4a6a;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+            z-index: 3000;
+            padding: 16px 20px 10px 20px;
+            flex-direction: column;
+        }
+        .graph-modal.active { display: flex; }
+
+        .graph-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+        .graph-modal-header h3 {
+            color: #7a8aaa;
+            font-size: 16px;
+            font-weight: 400;
+            letter-spacing: 1px;
+        }
+        .graph-modal-header .close-btn {
+            background: none;
+            border: none;
+            color: #556;
+            font-size: 24px;
+            cursor: pointer;
+            transition: 0.2s;
+            padding: 0 6px;
+        }
+        .graph-modal-header .close-btn:hover { color: #ff4757; transform: scale(1.1); }
+
+        .graph-legend-row {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+        .graph-legend-row .item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #8a9abb;
+        }
+        .graph-legend-row .line {
+            display: inline-block;
+            width: 24px;
+            height: 3px;
+            border-radius: 2px;
+        }
+        .line-prey { background: #f7d44a; }
+        .line-pred { background: #ff4757; }
+        .line-food { background: #2ed573; }
+
+        .graph-scroll-wrap {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+            background: #0a1a2e;
+            border-radius: 8px;
+            border: 1px solid #1a2a4a;
+            min-height: 100px;
+        }
+        .graph-scroll-wrap::-webkit-scrollbar { height: 8px; }
+        .graph-scroll-wrap::-webkit-scrollbar-track { background: #0a0a1a; border-radius: 4px; }
+        .graph-scroll-wrap::-webkit-scrollbar-thumb { background: #2a4a7a; border-radius: 4px; }
+        .graph-scroll-wrap::-webkit-scrollbar-thumb:hover { background: #4a6a9a; }
+
+        .graph-scroll-inner {
+            position: relative;
+            height: 100%;
+            min-height: 120px;
+        }
+        .graph-scroll-inner canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: default;
+        }
+
+        /* ===== МОДАЛЬНОЕ ОКНО СПИСКА ВИДОВ ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+        }
+        .modal-overlay.active { display: flex; }
+        
+        .modal-content {
+            background: #1a1a3e;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 1200px;
+            width: 100%;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #2a4a7a;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .modal-header h2 {
+            color: #7a8aaa;
+            font-weight: 300;
+            font-size: 22px;
+            letter-spacing: 1px;
+        }
+        .modal-header .close-btn {
+            background: none;
+            border: none;
+            color: #556;
+            font-size: 28px;
+            cursor: pointer;
+            transition: 0.2s;
+            padding: 0 8px;
+        }
+        .modal-header .close-btn:hover { color: #ff4757; transform: scale(1.1); }
+        
+        .modal-controls {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+            align-items: center;
+        }
+        .modal-controls select, .modal-controls input {
+            background: #0a1a2e;
+            border: 1px solid #2a3a6a;
+            color: #ddd;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            outline: none;
+        }
+        .modal-controls select:focus, .modal-controls input:focus {
+            border-color: #4a8af4;
+        }
+        .modal-controls input::placeholder { color: #556; }
+        
+        .modal-table-wrap {
+            overflow-y: auto;
+            flex: 1;
+            border-radius: 12px;
+            border: 1px solid #1a2a4a;
+        }
+        .modal-table-wrap::-webkit-scrollbar { width: 6px; }
+        .modal-table-wrap::-webkit-scrollbar-track { background: #0a0a1a; border-radius: 10px; }
+        .modal-table-wrap::-webkit-scrollbar-thumb { background: #2a4a7a; border-radius: 10px; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 750px;
+        }
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        th {
+            background: #0a1a2e;
+            color: #6a8aba;
+            font-weight: 600;
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 2px solid #2a3a6a;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+        }
+        th:hover { color: #aac0ee; }
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #1a2a4a;
+            vertical-align: middle;
+        }
+        tr:hover td { background: #1a2a4a; }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-alive { background: #1a4a2a; color: #2ed573; }
+        .status-extinct { background: #4a1a1a; color: #ff4757; }
+        
+        .type-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .type-prey { background: #3a3a1a; color: #f7d44a; }
+        .type-pred { background: #3a1a1a; color: #ff4757; }
+        
+        .param-cell {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #aabbdd;
+        }
+        .children-cell {
+            font-size: 11px;
+            color: #6a8aba;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .name-cell {
+            font-weight: 600;
+            color: #e0e8ff;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            font-size: 12px;
+            color: #556;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .modal-footer .count { color: #6a8aba; }
+        .btn-export {
+            background: #1a2a4a;
+            border: none;
+            color: #6a8aba;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-export:hover { background: #2a4a6a; color: #aac0ee; }
+
+        /* ===== МОДАЛЬНОЕ ОКНО ПОМОЩИ ===== */
+        .help-content {
+            max-width: 600px;
+            padding: 20px;
+        }
+        .help-content h3 {
+            color: #7a8aaa;
+            font-size: 18px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #2a3a5a;
+            padding-bottom: 10px;
+        }
+        .help-content p {
+            color: #b0c0dd;
+            font-size: 14px;
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+        .help-content ul {
+            color: #b0c0dd;
+            font-size: 14px;
+            line-height: 1.8;
+            padding-left: 20px;
+            margin-bottom: 10px;
+        }
+        .help-content ul li { margin-bottom: 4px; }
+        .help-content .key {
+            display: inline-block;
+            background: #1a2a4a;
+            padding: 0 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #6a8aba;
+            font-weight: 600;
+        }
+        .help-content .hotkey-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            background: #0a1a2e;
+            padding: 8px 14px;
+            border-radius: 8px;
+            margin: 4px 0 8px 0;
+        }
+
+        @media (max-width: 960px) {
+            .sim-wrapper { min-width: 100%; }
+            .settings-panel { width: 100%; max-height: 400px; }
+            .modal-content { padding: 16px; }
+            table { font-size: 11px; min-width: 500px; }
+            th, td { padding: 5px 8px; }
+            .controls-top { flex-wrap: wrap; }
+            .stats { min-width: auto; }
+            .graph-modal { top: 10px; height: 200px; padding: 10px 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="main-container">
+    <div class="sim-wrapper">
+        <canvas id="ecosystemCanvas" width="800" height="600"></canvas>
+        <div class="pause-badge" id="pauseBadge">⏸ ПАУЗА</div>
+        <div class="controls-top">
+            <div class="legend">
+                <span class="legend-item"><span class="dot dot-green"></span> Еда</span>
+                <span class="legend-item"><span class="dot dot-yellow"></span> Жертвы</span>
+                <span class="legend-item"><span class="dot dot-red"></span> Хищники</span>
+            </div>
+            <div class="stats">
+                <span>🍃 <span class="stat-val stat-food" id="foodCount">0</span></span>
+                <span>🐇 <span class="stat-val stat-prey" id="preyCount">0</span></span>
+                <span>🐺 <span class="stat-val stat-pred" id="predCount">0</span></span>
+                <span class="stat-gen">⏳ <span id="generationCount">0</span></span>
+                <span class="stat-epoch">🗺️ ЭПОХА <span id="epochCount">1</span></span>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-pause" id="pauseBtn">▶ Старт</button>
+                <button class="btn btn-graph" id="graphBtn">📊 График</button>
+                <button class="btn btn-species" id="speciesBtn">📋 Виды</button>
+                <button class="btn btn-help" id="helpBtn">?</button>
+                <button class="btn btn-reset" id="resetBtn">⟳ Сброс</button>
+            </div>
+            <div class="click-hint">
+                <span class="lmb">ЛКМ</span> + 🐺 <span style="color:#666;">|</span>
+                <span class="rmb">ПКМ</span> + 🐇
+            </div>
+            <span class="pause-indicator active" id="pauseIndicator">⏸ ПАУЗА</span>
+        </div>
+    </div>
+
+    <div class="settings-panel" id="settingsPanel">
+        <h3>⚙️ Параметры симуляции</h3>
+
+        <div class="setting-group speed-group">
+            <label>
+                <span>🚀 Скорость симуляции</span>
+                <span class="speed-value" id="speedLabel">1.0x</span>
+            </label>
+            <input type="range" id="speedSlider" min="0.1" max="5" step="0.1" value="1.0">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#556;padding:0 2px;">
+                <span>0.1x</span>
+                <span>1.0x</span>
+                <span>5.0x</span>
+            </div>
+        </div>
+
+        <div class="checkbox-group">
+            <input type="checkbox" id="autoPauseCheckbox" checked>
+            <label for="autoPauseCheckbox">⏸ Автопауза при вымирании</label>
+        </div>
+
+        <div class="setting-group mutation-group">
+            <label>
+                <span>🧬 Вероятность мутации</span>
+                <span class="mutation-value" id="mutationLabel">3%</span>
+            </label>
+            <input type="range" id="mutationRate" min="0" max="30" step="1" value="3">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#556;padding:0 2px;">
+                <span>0%</span>
+                <span>15%</span>
+                <span>30%</span>
+            </div>
+        </div>
+
+        <div class="setting-group mutation-group" style="border-color:#8a5a2a;">
+            <label>
+                <span>💪 Сила мутаций</span>
+                <span class="mutation-value" id="mutationStrengthLabel">15%</span>
+            </label>
+            <input type="range" id="mutationStrength" min="0" max="100" step="1" value="15">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#556;padding:0 2px;">
+                <span>0%</span>
+                <span>50%</span>
+                <span>100%</span>
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="setting-group">
+                <label><span>Нач. жертв</span><span id="valInitialPrey">100</span></label>
+                <input type="range" id="initialPrey" min="10" max="300" step="5" value="100">
+            </div>
+            <div class="setting-group">
+                <label><span>Нач. хищников</span><span id="valInitialPred">25</span></label>
+                <input type="range" id="initialPredators" min="5" max="100" step="2" value="25">
+            </div>
+            <div class="setting-group">
+                <label><span>Нач. еды</span><span id="valInitialFood">250</span></label>
+                <input type="range" id="initialFood" min="50" max="600" step="10" value="250">
+            </div>
+            <div class="setting-group">
+                <label><span>Макс. еды</span><span id="valMaxFood">450</span></label>
+                <input type="range" id="maxFood" min="100" max="800" step="10" value="450">
+            </div>
+
+            <div class="setting-group">
+                <label><span>Мобильность жертв</span><span id="valPreySpeed">4.0</span></label>
+                <input type="range" id="preySpeed" min="0.5" max="4" step="0.1" value="4.0">
+            </div>
+            <div class="setting-group">
+                <label><span>Мобильность хищников</span><span id="valPredSpeed">1.9</span></label>
+                <input type="range" id="predatorSpeed" min="0.5" max="5" step="0.1" value="1.9">
+            </div>
+            <div class="setting-group">
+                <label><span>Радиус жертв</span><span id="valPreyVision">80</span></label>
+                <input type="range" id="preyVision" min="20" max="200" step="5" value="80">
+            </div>
+            <div class="setting-group">
+                <label><span>Радиус хищников</span><span id="valPredVision">90</span></label>
+                <input type="range" id="predatorVision" min="20" max="200" step="5" value="90">
+            </div>
+
+            <div class="setting-group">
+                <label><span>Осторожность жертв</span><span id="valPreyCaution">10</span></label>
+                <input type="range" id="preyCaution" min="0" max="100" step="1" value="10">
+            </div>
+
+            <div class="setting-group">
+                <label><span>Энергия от еды</span><span id="valFoodEnergy">20</span></label>
+                <input type="range" id="preyEnergyFromFood" min="5" max="60" step="1" value="20">
+            </div>
+            <div class="setting-group">
+                <label><span>Энергия от жертвы</span><span id="valPredEnergy">35</span></label>
+                <input type="range" id="predatorEnergyFromPrey" min="10" max="80" step="1" value="35">
+            </div>
+            <div class="setting-group">
+                <label><span>Трата жертв</span><span id="valPreyCost">1.0</span></label>
+                <input type="range" id="preyEnergyCost" min="0.2" max="3" step="0.1" value="1.0">
+            </div>
+            <div class="setting-group">
+                <label><span>Трата хищников</span><span id="valPredCost">1.3</span></label>
+                <input type="range" id="predatorEnergyCost" min="0.2" max="4" step="0.1" value="1.3">
+            </div>
+
+            <div class="setting-group">
+                <label><span>Размнож. жертв</span><span id="valPreyRepr">0.025</span></label>
+                <input type="range" id="preyReproduceRate" min="0.005" max="0.08" step="0.001" value="0.025">
+            </div>
+            <div class="setting-group">
+                <label><span>Размнож. хищников</span><span id="valPredRepr">0.020</span></label>
+                <input type="range" id="predatorReproduceRate" min="0.005" max="0.06" step="0.001" value="0.020">
+            </div>
+
+            <div class="setting-group" style="grid-column:1/3;">
+                <label><span>Скорость роста еды</span><span id="valFoodRegrow">0.06</span></label>
+                <input type="range" id="foodRegrowRate" min="0.01" max="0.15" step="0.002" value="0.06">
+            </div>
+            <div class="setting-group" style="grid-column:1/3;">
+                <label><span>Сила голода</span><span id="valStarvation">1.5</span></label>
+                <input type="range" id="starvationMultiplier" min="0.5" max="3" step="0.1" value="1.5">
+            </div>
+        </div>
+
+        <div class="evolution-legend">
+            <div><span class="prey-evo">Жертвы:</span> 🐇→🐑→🐐→🐄→🐏→🦌→🦒→🐘</div>
+            <div><span class="pred-evo">Хищники:</span> 🐊→🐍→🦅→🦉→🐆→🐺→🦁→🐯</div>
+            <div style="color:#556;font-size:10px;margin-top:4px;">🧬 Мутация → следующий символ в цепи</div>
+        </div>
+
+        <div style="margin-top:6px;font-size:12px;color:#556;text-align:center;border-top:1px solid #1a2a4a;padding-top:10px;">
+            <span class="badge">🔄 Изменения применяются после перезапуска</span>
+            <span class="badge mutation-badge" style="margin-left:6px;">🧬 Мутации наследуются</span>
+        </div>
+    </div>
+</div>
+
+<!-- ===== МОДАЛЬНОЕ ОКНО ГРАФИКА ===== -->
+<div class="graph-modal" id="graphModal">
+    <div class="graph-modal-header">
+        <h3>📊 ПОПУЛЯЦИИ ВО ВРЕМЕНИ</h3>
+        <button class="close-btn" id="graphCloseBtn">✕</button>
+    </div>
+    <div class="graph-legend-row">
+        <span class="item"><span class="line line-prey"></span> Жертвы</span>
+        <span class="item"><span class="line line-pred"></span> Хищники</span>
+        <span class="item"><span class="line line-food"></span> Еда</span>
+        <span style="color:#556;font-size:11px;margin-left:auto;">↔ Прокрутка для просмотра истории</span>
+    </div>
+    <div class="graph-scroll-wrap" id="graphScrollWrap">
+        <div class="graph-scroll-inner" id="graphInner">
+            <canvas id="graphCanvas"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ===== МОДАЛЬНОЕ ОКНО СПИСКА ВИДОВ ===== -->
+<div class="modal-overlay" id="speciesModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>📋 СПИСОК ВИДОВ</h2>
+            <button class="close-btn" id="modalCloseBtn">✕</button>
+        </div>
+        <div class="modal-controls">
+            <select id="filterType">
+                <option value="all">Все виды</option>
+                <option value="prey">Травоядные</option>
+                <option value="predator">Хищники</option>
+            </select>
+            <select id="filterStatus">
+                <option value="all">Все</option>
+                <option value="alive">Живые</option>
+                <option value="extinct">Вымершие</option>
+            </select>
+            <input type="text" id="searchInput" placeholder="🔍 Поиск по названию...">
+            <button class="btn-export" id="exportBtn">📥 Экспорт CSV</button>
+        </div>
+        <div class="modal-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th data-sort="name">Название</th>
+                        <th data-sort="type">Тип</th>
+                        <th data-sort="status">Статус</th>
+                        <th data-sort="appeared">Появился</th>
+                        <th data-sort="extinct">Исчез</th>
+                        <th data-sort="lifetime">Время жизни</th>
+                        <th data-sort="maxPop">Пик</th>
+                        <th data-sort="currentPop">Живых</th>
+                        <th data-sort="mobility">Мобильн.</th>
+                        <th data-sort="caution">Осторож.</th>
+                        <th data-sort="vision">Радиус</th>
+                        <th data-sort="generations">Покол.</th>
+                        <th data-sort="children">Потомки</th>
+                    </tr>
+                </thead>
+                <tbody id="speciesTableBody">
+                </tbody>
+            </table>
+        </div>
+        <div class="modal-footer">
+            <span class="count" id="speciesCount">Всего видов: 0</span>
+            <span style="color:#556;">🔄 Обновляется автоматически</span>
+        </div>
+    </div>
+</div>
+
+<!-- ===== МОДАЛЬНОЕ ОКНО ПОМОЩИ ===== -->
+<div class="modal-overlay" id="helpModal">
+    <div class="modal-content help-content">
+        <div class="modal-header">
+            <h2>❓ ПОМОЩЬ</h2>
+            <button class="close-btn" id="helpCloseBtn">✕</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;">
+            <h3>📖 О симуляции</h3>
+            <p>
+                Это эволюционная модель «Хищник-Жертва». 
+                <strong>Жертвы</strong> (жёлтые) ищут еду (зелёные точки) и размножаются. 
+                <strong>Хищники</strong> (красные) охотятся на жертв.
+            </p>
+            <p>
+                При размножении есть шанс <strong>мутации</strong> — параметры потомка меняются, 
+                и он получает новый символ в эволюционной цепи.
+            </p>
+
+            <h3>🖱️ Управление</h3>
+            <ul>
+                <li><span class="key">ЛКМ</span> по карте — добавить хищника</li>
+                <li><span class="key">ПКМ</span> по карте — добавить жертву</li>
+                <li><span class="key">⏸ Пауза / ▶ Старт</span> — остановить/запустить симуляцию</li>
+                <li><span class="key">⟳ Сброс</span> — перезапустить симуляцию</li>
+                <li><span class="key">📊 График</span> — открыть график популяций</li>
+                <li><span class="key">📋 Виды</span> — открыть таблицу всех видов</li>
+                <li><span class="key">?</span> — открыть эту справку</li>
+            </ul>
+
+            <h3>⚙️ Параметры</h3>
+            <ul>
+                <li><strong>Скорость симуляции</strong> — ускорение/замедление времени</li>
+                <li><strong>Вероятность мутации</strong> — шанс мутации при размножении</li>
+                <li><strong>Сила мутаций</strong> — насколько сильно меняются параметры</li>
+                <li><strong>Мобильность</strong> — скорость перемещения</li>
+                <li><strong>Осторожность</strong> — вероятность убегать от хищника</li>
+                <li><strong>Автопауза</strong> — автоматическая пауза при вымирании</li>
+            </ul>
+
+            <h3>🧬 Эволюционные цепи</h3>
+            <div class="hotkey-row">
+                <span style="color:#f7d44a;">Жертвы:</span> 🐇→🐑→🐐→🐄→🐏→🦌→🦒→🐘
+            </div>
+            <div class="hotkey-row">
+                <span style="color:#ff4757;">Хищники:</span> 🐊→🐍→🦅→🦉→🐆→🐺→🦁→🐯
+            </div>
+            <p style="font-size:12px;color:#556;">
+                При мутации существо получает следующий символ в цепи. 
+                При достижении конца цепи — возвращается к первому символу.
+            </p>
+
+            <h3>📊 Виды</h3>
+            <p>
+                Каждый уникальный вид (название + номер мутации) регистрируется в базе видов.
+                В таблице можно увидеть историю каждого вида: время жизни, пик численности,
+                параметры и потомков.
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // ============================================================
+    //  НАСТРОЙКИ
+    // ============================================================
+    const LABEL_CONFIG = {
+        size: 14,
+        offsetTop: 14,
+        offsetBottom: 14,
+        color: 'rgba(255, 255, 255, 0.9)',
+        genColor: 'rgba(200, 200, 200, 0.7)',
+        fontFamily: 'Arial',
+    };
+
+    const EPOCH_LEN = 1000;
+    const STATS_UPDATE_INTERVAL = 0.1;
+    const STATS_UPDATE_STEPS = Math.floor(STATS_UPDATE_INTERVAL * EPOCH_LEN);
+
+    // Сколько эпох отображать на графике
+    const GRAPH_EPOCHS = 5;
+
+    // ============================================================
+    //  ЭВОЛЮЦИОННЫЕ ЦЕПИ
+    // ============================================================
+    const PREY_EVOLUTION = ['🐇', '🐑', '🐐', '🐄', '🐏', '🦌', '🦒', '🐘'];
+    const PREDATOR_EVOLUTION = ['🐊', '🐍', '🦅', '🦉', '🐆', '🐺', '🦁', '🐯'];
+
+    const PREY_NAMES = {
+        '🐇': 'ЗАЯЦ',
+        '🐑': 'ОВЦА',
+        '🐐': 'КОЗА',
+        '🐄': 'КОРОВА',
+        '🐏': 'БАРАН',
+        '🦌': 'ОЛЕНЬ',
+        '🦒': 'ЖИРАФ',
+        '🐘': 'СЛОН'
+    };
+
+    const PREDATOR_NAMES = {
+        '🐊': 'КРОКОДИЛ',
+        '🐍': 'ЗМЕЯ',
+        '🦅': 'ОРЁЛ',
+        '🦉': 'СОВА',
+        '🐆': 'ЛЕОПАРД',
+        '🐺': 'ВОЛК',
+        '🦁': 'ЛЕВ',
+        '🐯': 'ТИГР'
+    };
+
+    function getNextSymbol(currentSymbol, chain) {
+        const index = chain.indexOf(currentSymbol);
+        if (index === -1 || index === chain.length - 1) return chain[0];
+        return chain[index + 1];
+    }
+
+    function getSpeciesName(symbol, isPredator) {
+        const names = isPredator ? PREDATOR_NAMES : PREY_NAMES;
+        return names[symbol] || 'НЕИЗВЕСТНЫЙ';
+    }
+
+    // ============================================================
+    //  КОНФИГ
+    // ============================================================
+    let C = {
+        width: 800,
+        height: 600,
+        initialPrey: 100,
+        initialPredators: 25,
+        initialFood: 250,
+        preyMobility: 4.0,
+        predatorMobility: 1.9,
+        preyVision: 80,
+        predatorVision: 90,
+        preyCaution: 0.10,
+        preyEnergyCost: 1.0,
+        predatorEnergyCost: 1.3,
+        preyEnergyFromFood: 20,
+        predatorEnergyFromPrey: 35,
+        preyEnergyMax: 80,
+        predatorEnergyMax: 100,
+        preyReproduceRate: 0.025,
+        predatorReproduceRate: 0.020,
+        foodRegrowRate: 0.06,
+        maxFood: 450,
+        starvationMultiplier: 1.5,
+        mutationRate: 0.03,
+        mutationStrength: 0.15,
+    };
+
+    // ============================================================
+    //  DOM
+    // ============================================================
+    const canvas = document.getElementById('ecosystemCanvas');
+    const ctx = canvas.getContext('2d');
+    const pauseBadge = document.getElementById('pauseBadge');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const pauseIndicator = document.getElementById('pauseIndicator');
+
+    const foodSpan = document.getElementById('foodCount');
+    const preySpan = document.getElementById('preyCount');
+    const predSpan = document.getElementById('predCount');
+    const genSpan = document.getElementById('generationCount');
+    const epochSpan = document.getElementById('epochCount');
+
+    // График
+    const graphModal = document.getElementById('graphModal');
+    const graphCloseBtn = document.getElementById('graphCloseBtn');
+    const graphBtn = document.getElementById('graphBtn');
+    const graphCanvas = document.getElementById('graphCanvas');
+    const graphCtx = graphCanvas.getContext('2d');
+    const graphScrollWrap = document.getElementById('graphScrollWrap');
+    const graphInner = document.getElementById('graphInner');
+
+    // ============================================================
+    //  СОСТОЯНИЕ
+    // ============================================================
+    let foods = [];
+    let preys = [];
+    let predators = [];
+    let generation = 0;
+    let simulationRunning = true;
+    let isPaused = true;
+    let animationFrame = null;
+    let isExtinct = false;
+
+    let speedMultiplier = 1.0;
+    let stepInterval = 16;
+    let lastStepTime = 0;
+    let accumulatedTime = 0;
+
+    let iterationCounter = 0;
+    let epochCounter = 0;
+
+    let preyMutationCounter = 0;
+    let predatorMutationCounter = 0;
+
+    let cloneMutationCounters = {};
+    let gmoMutationCounters = {};
+
+    let settingsVersion = 1;
+    let previousSettings = {};
+
+    let autoPauseEnabled = true;
+    let statsUpdateCounter = 0;
+
+    // ============================================================
+    //  ДАННЫЕ ГРАФИКА
+    // ============================================================
+    const graphData = {
+        time: [],
+        prey: [],
+        predator: [],
+        food: [],
+    };
+
+    function addGraphPoint() {
+        const time = getCurrentTime();
+        graphData.time.push(time);
+        graphData.prey.push(preys.length);
+        graphData.predator.push(predators.length);
+        graphData.food.push(foods.length);
+    }
+
+    // ============================================================
+    //  СИСТЕМА УЧЁТА ВИДОВ
+    // ============================================================
+    const SPECIES_DB = {};
+    let speciesIdCounter = 0;
+
+    function getCurrentTime() {
+        return epochCounter + iterationCounter / EPOCH_LEN;
+    }
+
+    function getSpeciesKey(name, isPredator) {
+        return `${isPredator ? 'PRED' : 'PREY'}_${name}`;
+    }
+
+    function getStatusBadge(record) {
+        if (record.extinctAt === null) return '<span class="status-badge status-alive">ЖИВОЙ</span>';
+        return '<span class="status-badge status-extinct">ВЫМЕРШИЙ</span>';
+    }
+
+    function getTypeBadge(isPredator) {
+        const cls = isPredator ? 'type-pred' : 'type-prey';
+        const label = isPredator ? 'ХИЩНИК' : 'ТРАВОЯДНЫЙ';
+        return `<span class="type-badge ${cls}">${label}</span>`;
+    }
+
+    function getLifetime(record) {
+        const appeared = record.appearedAt;
+        if (record.extinctAt === null) {
+            const now = getCurrentTime();
+            return (now - appeared).toFixed(1);
+        } else {
+            return (record.extinctAt - appeared).toFixed(1);
+        }
+    }
+
+    function registerSpecies(creature, parentName = null) {
+        const key = getSpeciesKey(creature.displayName, creature.isPredator);
+        const currentTime = getCurrentTime();
+        
+        if (SPECIES_DB[key]) {
+            const record = SPECIES_DB[key];
+            record.mobility = creature.mobility;
+            record.vision = creature.vision;
+            if (!creature.isPredator) {
+                record.caution = creature.caution || 0;
+                record.energyFromFood = creature.energyFromFood;
+            } else {
+                record.energyFromPrey = creature.energyFromPrey;
+            }
+            record.energyCost = creature.energyCost;
+            record.energyMax = creature.energyMax;
+            record.reproduceRate = creature.reproduceRate;
+            return record;
+        }
+        
+        const record = {
+            id: ++speciesIdCounter,
+            name: creature.displayName,
+            type: creature.isPredator ? 'predator' : 'prey',
+            appearedAt: currentTime,
+            extinctAt: null,
+            maxPopulation: 0,
+            currentPopulation: 0,
+            totalIndividuals: 0,
+            mobility: creature.mobility,
+            caution: creature.isPredator ? null : (creature.caution || 0),
+            vision: creature.vision,
+            energyCost: creature.energyCost,
+            energyFromFood: creature.isPredator ? null : creature.energyFromFood,
+            energyFromPrey: creature.isPredator ? creature.energyFromPrey : null,
+            energyMax: creature.energyMax,
+            reproduceRate: creature.reproduceRate,
+            generations: creature.generation || 0,
+            parent: parentName,
+            children: [],
+            totalIndividuals: 0,
+        };
+        
+        SPECIES_DB[key] = record;
+        
+        if (parentName) {
+            const parentKey = getSpeciesKey(parentName, creature.isPredator);
+            if (SPECIES_DB[parentKey] && !SPECIES_DB[parentKey].children.includes(creature.displayName)) {
+                SPECIES_DB[parentKey].children.push(creature.displayName);
+            }
+        }
+        
+        return record;
+    }
+
+    function updateSpeciesStats() {
+        const groups = {};
+        const allCreatures = [...preys, ...predators];
+        const currentTime = getCurrentTime();
+        
+        for (let creature of allCreatures) {
+            const key = getSpeciesKey(creature.displayName, creature.isPredator);
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(creature);
+        }
+        
+        const activeKeys = new Set();
+        for (let key in groups) {
+            const creatures = groups[key];
+            if (!SPECIES_DB[key]) {
+                const sample = creatures[0];
+                registerSpecies(sample);
+            }
+            activeKeys.add(key);
+            
+            const record = SPECIES_DB[key];
+            const count = creatures.length;
+            record.currentPopulation = count;
+            record.maxPopulation = Math.max(record.maxPopulation, count);
+            record.totalIndividuals += count;
+            
+            let maxGen = 0;
+            let totalMobility = 0, totalVision = 0, totalCaution = 0;
+            let cautionCount = 0;
+            for (let c of creatures) {
+                if (c.generation > maxGen) maxGen = c.generation;
+                totalMobility += c.mobility;
+                totalVision += c.vision;
+                if (!c.isPredator && c.caution !== undefined) {
+                    totalCaution += c.caution;
+                    cautionCount++;
+                }
+            }
+            record.generations = maxGen;
+            record.mobility = totalMobility / count;
+            record.vision = totalVision / count;
+            if (cautionCount > 0) {
+                record.caution = totalCaution / cautionCount;
+            }
+        }
+        
+        for (let key in SPECIES_DB) {
+            const record = SPECIES_DB[key];
+            if (record.extinctAt === null && !activeKeys.has(key)) {
+                record.extinctAt = currentTime;
+                record.currentPopulation = 0;
+            }
+            if (record.extinctAt !== null && activeKeys.has(key)) {
+                record.extinctAt = null;
+            }
+        }
+    }
+
+    function forceUpdateSpeciesStats() {
+        updateSpeciesStats();
+    }
+
+    // ============================================================
+    //  ПРОВЕРКА АВТОПАУЗЫ
+    // ============================================================
+    function checkAutoPause() {
+        if (!autoPauseEnabled) return;
+        if (!isPaused && simulationRunning) {
+            const preyCount = preys.length;
+            const predCount = predators.length;
+            
+            if ((predCount === 0 && preyCount > 0) || (preyCount === 0 && predCount === 0)) {
+                isPaused = true;
+                pauseBtn.textContent = '▶ Старт';
+                pauseBtn.classList.add('paused');
+                pauseBadge.classList.add('active');
+                pauseIndicator.classList.add('active');
+                simulationRunning = false;
+                forceUpdateSpeciesStats();
+                if (animationFrame) {
+                    cancelAnimationFrame(animationFrame);
+                    animationFrame = null;
+                }
+            }
+        }
+    }
+
+    // ============================================================
+    //  ВСПОМОГАТЕЛЬНЫЕ
+    // ============================================================
+    function random(min, max) { return Math.random() * (max - min) + min; }
+    function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+    function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
+
+    function mutateParam(value, minVal, maxVal, strength) {
+        const delta = value * strength * (random(-1, 1));
+        return clamp(value + delta, minVal, maxVal);
+    }
+
+    function findClosestPredator(prey) {
+        let closest = null;
+        let minDist = Infinity;
+        for (let predator of predators) {
+            const d = distance(prey, predator);
+            if (d < minDist && d < prey.vision) {
+                minDist = d;
+                closest = predator;
+            }
+        }
+        return closest;
+    }
+
+    // ============================================================
+    //  СОЗДАНИЕ ИМЕНИ
+    // ============================================================
+    function createCreatureName(creature, isInitial) {
+        const isPredator = creature.isPredator;
+        
+        if (isInitial) {
+            const name = getSpeciesName(creature.symbol, isPredator);
+            return `${name}-${creature.mutationNumber}`;
+        }
+        
+        if (creature.cloneId) {
+            const prefix = isPredator ? 'КЛОН' : 'ГМО';
+            return `${prefix}${creature.cloneId}-${creature.mutationNumber || 0}`;
+        }
+        
+        const name = getSpeciesName(creature.symbol, isPredator);
+        return `${name}-${creature.mutationNumber || 0}`;
+    }
+
+    // ============================================================
+    //  ГЕНЕРАЦИЯ СУЩЕСТВ
+    // ============================================================
+    function createPrey(x, y, parent = null, isInitial = false, cloneId = null) {
+        let params = {
+            symbol: parent ? parent.symbol : '🐇',
+            mobility: parent ? parent.mobility : C.preyMobility,
+            vision: parent ? parent.vision : C.preyVision,
+            caution: parent ? parent.caution : C.preyCaution,
+            energyCost: parent ? parent.energyCost : C.preyEnergyCost,
+            energyFromFood: parent ? parent.energyFromFood : C.preyEnergyFromFood,
+            energyMax: parent ? parent.energyMax : C.preyEnergyMax,
+            reproduceRate: parent ? parent.reproduceRate : C.preyReproduceRate,
+            mutationNumber: parent ? parent.mutationNumber : 0,
+            generation: parent ? parent.generation + 1 : 0,
+            isPredator: false,
+            cloneId: cloneId || (parent ? parent.cloneId : null),
+            isInitial: isInitial,
+        };
+
+        let isMutant = false;
+        let newMutationNumber = params.mutationNumber;
+        let parentName = parent ? parent.displayName : null;
+
+        if (parent && Math.random() < C.mutationRate) {
+            isMutant = true;
+            
+            const strength = C.mutationStrength;
+            
+            if (params.cloneId) {
+                const prefix = parent.isPredator ? 'КЛОН' : 'ГМО';
+                const key = `${prefix}${params.cloneId}`;
+                const counters = parent.isPredator ? cloneMutationCounters : gmoMutationCounters;
+                if (!counters[key]) counters[key] = 0;
+                counters[key]++;
+                newMutationNumber = counters[key];
+            } else {
+                if (parent.isPredator) {
+                    predatorMutationCounter++;
+                    newMutationNumber = predatorMutationCounter;
+                } else {
+                    preyMutationCounter++;
+                    newMutationNumber = preyMutationCounter;
+                }
+            }
+            
+            params.mutationNumber = newMutationNumber;
+            params.symbol = getNextSymbol(params.symbol, parent.isPredator ? PREDATOR_EVOLUTION : PREY_EVOLUTION);
+            
+            const isPred = parent.isPredator;
+            params.mobility = mutateParam(params.mobility, 0.3, isPred ? 7 : 6, strength);
+            params.vision = mutateParam(params.vision, 20, 300, strength);
+            params.caution = mutateParam(params.caution, 0, 1, strength);
+            params.energyCost = mutateParam(params.energyCost, 0.1, isPred ? 6 : 5, strength);
+            if (isPred) {
+                params.energyFromPrey = mutateParam(params.energyFromPrey, 2, 120, strength);
+            } else {
+                params.energyFromFood = mutateParam(params.energyFromFood, 2, 100, strength);
+            }
+            params.energyMax = mutateParam(params.energyMax, 20, isPred ? 250 : 200, strength);
+            params.reproduceRate = mutateParam(params.reproduceRate, 0.001, isPred ? 0.10 : 0.12, strength);
+        }
+
+        const creature = {
+            x: x || random(0, C.width),
+            y: y || random(0, C.height),
+            energy: random(params.energyMax * 0.4, params.energyMax * 0.8),
+            symbol: params.symbol,
+            mobility: params.mobility,
+            vision: params.vision,
+            caution: params.caution,
+            energyCost: params.energyCost,
+            energyFromFood: params.energyFromFood,
+            energyFromPrey: params.energyFromPrey,
+            energyMax: params.energyMax,
+            reproduceRate: params.reproduceRate,
+            mutationNumber: params.mutationNumber,
+            generation: params.generation,
+            isPredator: false,
+            cloneId: params.cloneId,
+            isInitial: isInitial,
+            dead: false,
+            isMutant: isMutant,
+        };
+        
+        creature.displayName = createCreatureName(creature, isInitial);
+        
+        if (isMutant && parent) {
+            registerSpecies(creature, parent.displayName);
+        } else if (isInitial) {
+            registerSpecies(creature);
+        } else if (!parent) {
+            registerSpecies(creature);
+        }
+        
+        return creature;
+    }
+
+    function createPredator(x, y, parent = null, isInitial = false, cloneId = null) {
+        let params = {
+            symbol: parent ? parent.symbol : '🐊',
+            mobility: parent ? parent.mobility : C.predatorMobility,
+            vision: parent ? parent.vision : C.predatorVision,
+            energyCost: parent ? parent.energyCost : C.predatorEnergyCost,
+            energyFromPrey: parent ? parent.energyFromPrey : C.predatorEnergyFromPrey,
+            energyMax: parent ? parent.energyMax : C.predatorEnergyMax,
+            reproduceRate: parent ? parent.reproduceRate : C.predatorReproduceRate,
+            mutationNumber: parent ? parent.mutationNumber : 0,
+            generation: parent ? parent.generation + 1 : 0,
+            isPredator: true,
+            cloneId: cloneId || (parent ? parent.cloneId : null),
+            isInitial: isInitial,
+        };
+
+        let isMutant = false;
+        let newMutationNumber = params.mutationNumber;
+        let parentName = parent ? parent.displayName : null;
+
+        if (parent && Math.random() < C.mutationRate) {
+            isMutant = true;
+            
+            const strength = C.mutationStrength;
+            
+            if (params.cloneId) {
+                const prefix = 'КЛОН';
+                const key = `${prefix}${params.cloneId}`;
+                if (!cloneMutationCounters[key]) cloneMutationCounters[key] = 0;
+                cloneMutationCounters[key]++;
+                newMutationNumber = cloneMutationCounters[key];
+            } else {
+                predatorMutationCounter++;
+                newMutationNumber = predatorMutationCounter;
+            }
+            
+            params.mutationNumber = newMutationNumber;
+            params.symbol = getNextSymbol(params.symbol, PREDATOR_EVOLUTION);
+            
+            params.mobility = mutateParam(params.mobility, 0.3, 7, strength);
+            params.vision = mutateParam(params.vision, 20, 300, strength);
+            params.energyCost = mutateParam(params.energyCost, 0.1, 6, strength);
+            params.energyFromPrey = mutateParam(params.energyFromPrey, 2, 120, strength);
+            params.energyMax = mutateParam(params.energyMax, 20, 250, strength);
+            params.reproduceRate = mutateParam(params.reproduceRate, 0.001, 0.10, strength);
+        }
+
+        const creature = {
+            x: x || random(0, C.width),
+            y: y || random(0, C.height),
+            energy: random(params.energyMax * 0.4, params.energyMax * 0.8),
+            symbol: params.symbol,
+            mobility: params.mobility,
+            vision: params.vision,
+            energyCost: params.energyCost,
+            energyFromPrey: params.energyFromPrey,
+            energyMax: params.energyMax,
+            reproduceRate: params.reproduceRate,
+            mutationNumber: params.mutationNumber,
+            generation: params.generation,
+            isPredator: true,
+            cloneId: params.cloneId,
+            isInitial: isInitial,
+            dead: false,
+            isMutant: isMutant,
+        };
+        
+        creature.displayName = createCreatureName(creature, isInitial);
+        
+        if (isMutant && parent) {
+            registerSpecies(creature, parent.displayName);
+        } else if (isInitial) {
+            registerSpecies(creature);
+        } else if (!parent) {
+            registerSpecies(creature);
+        }
+        
+        return creature;
+    }
+
+    // ============================================================
+    //  ДОБАВЛЕНИЕ ОСОБЕЙ (КЛОНЫ/ГМО)
+    // ============================================================
+    function addPreyAt(x, y) {
+        if (preys.length > 800) return;
+        const prey = createPrey(x, y, null, false, settingsVersion);
+        const key = `ГМО${settingsVersion}`;
+        if (!gmoMutationCounters[key]) gmoMutationCounters[key] = 0;
+        prey.mutationNumber = 0;
+        prey.displayName = `ГМО${settingsVersion}-0`;
+        preys.push(prey);
+        registerSpecies(prey);
+        showClickFeedback(x, y, '🐇', '#f7d44a');
+        updateStats();
+        checkExtinction();
+        draw();
+    }
+
+    function addPredatorAt(x, y) {
+        if (predators.length > 300) return;
+        const predator = createPredator(x, y, null, false, settingsVersion);
+        const key = `КЛОН${settingsVersion}`;
+        if (!cloneMutationCounters[key]) cloneMutationCounters[key] = 0;
+        predator.mutationNumber = 0;
+        predator.displayName = `КЛОН${settingsVersion}-0`;
+        predators.push(predator);
+        registerSpecies(predator);
+        showClickFeedback(x, y, '🐺', '#ff4757');
+        updateStats();
+        checkExtinction();
+        draw();
+    }
+
+    // ============================================================
+    //  ПОЛУЧЕНИЕ КООРДИНАТ КЛИКА
+    // ============================================================
+    function getCanvasCoords(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY
+        };
+    }
+
+    // ============================================================
+    //  ПРОВЕРКА НА ВЫМИРАНИЕ
+    // ============================================================
+    function checkExtinction() {
+        isExtinct = (preys.length === 0 && predators.length === 0);
+    }
+
+    // ============================================================
+    //  ВИЗУАЛЬНАЯ ОБРАТНАЯ СВЯЗЬ
+    // ============================================================
+    function showClickFeedback(x, y, emoji, color) {
+        const el = document.createElement('div');
+        el.className = 'click-feedback';
+        el.textContent = emoji;
+        const rect = canvas.getBoundingClientRect();
+        el.style.left = (x * (rect.width / canvas.width) + rect.left) + 'px';
+        el.style.top = (y * (rect.height / canvas.height) + rect.top - 20) + 'px';
+        el.style.color = color;
+        el.style.textShadow = `0 0 30px ${color}44, 0 0 60px ${color}22`;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
+
+    // ============================================================
+    //  ОБРАБОТЧИКИ КЛИКОВ
+    // ============================================================
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    canvas.addEventListener('mousedown', (e) => {
+        const pos = getCanvasCoords(e);
+        if (e.button === 2) {
+            addPreyAt(pos.x, pos.y);
+        } else if (e.button === 0) {
+            addPredatorAt(pos.x, pos.y);
+        }
+    });
+
+    // ============================================================
+    //  УПРАВЛЕНИЕ ПАУЗОЙ
+    // ============================================================
+    function togglePause() {
+        isPaused = !isPaused;
+        
+        if (isPaused) {
+            pauseBtn.textContent = '▶ Старт';
+            pauseBtn.classList.add('paused');
+            pauseBadge.classList.add('active');
+            pauseIndicator.classList.add('active');
+            simulationRunning = false;
+            forceUpdateSpeciesStats();
+            if (animationFrame) {
+                cancelAnimationFrame(animationFrame);
+                animationFrame = null;
+            }
+        } else {
+            pauseBtn.textContent = '⏸ Пауза';
+            pauseBtn.classList.remove('paused');
+            pauseBadge.classList.remove('active');
+            pauseIndicator.classList.remove('active');
+            simulationRunning = true;
+            lastStepTime = 0;
+            accumulatedTime = 0;
+            if (!animationFrame) {
+                animationFrame = requestAnimationFrame(loop);
+            }
+        }
+    }
+
+    pauseBtn.addEventListener('click', togglePause);
+
+    // ============================================================
+    //  АВТОПАУЗА (галочка)
+    // ============================================================
+    const autoPauseCheckbox = document.getElementById('autoPauseCheckbox');
+    autoPauseCheckbox.addEventListener('change', function() {
+        autoPauseEnabled = this.checked;
+    });
+
+    // ============================================================
+    //  ОТСЛЕЖИВАНИЕ ИЗМЕНЕНИЙ ПОЛЗУНКОВ
+    // ============================================================
+    function checkSettingsChange() {
+        const current = {
+            preyMobility: parseFloat(document.getElementById('preySpeed').value),
+            predatorMobility: parseFloat(document.getElementById('predatorSpeed').value),
+            preyVision: parseInt(document.getElementById('preyVision').value),
+            predatorVision: parseInt(document.getElementById('predatorVision').value),
+            preyCaution: parseFloat(document.getElementById('preyCaution').value) / 100,
+            preyEnergyFromFood: parseFloat(document.getElementById('preyEnergyFromFood').value),
+            predatorEnergyFromPrey: parseFloat(document.getElementById('predatorEnergyFromPrey').value),
+            preyEnergyCost: parseFloat(document.getElementById('preyEnergyCost').value),
+            predatorEnergyCost: parseFloat(document.getElementById('predatorEnergyCost').value),
+            preyReproduceRate: parseFloat(document.getElementById('preyReproduceRate').value),
+            predatorReproduceRate: parseFloat(document.getElementById('predatorReproduceRate').value),
+            foodRegrowRate: parseFloat(document.getElementById('foodRegrowRate').value),
+            maxFood: parseInt(document.getElementById('maxFood').value),
+            starvationMultiplier: parseFloat(document.getElementById('starvationMultiplier').value),
+            mutationStrength: parseFloat(document.getElementById('mutationStrength').value) / 100,
+        };
+
+        let changed = false;
+        for (let key in current) {
+            if (previousSettings[key] !== undefined && previousSettings[key] !== current[key]) {
+                changed = true;
+                break;
+            }
+        }
+
+        if (changed) {
+            settingsVersion++;
+            previousSettings = {...current};
+        }
+    }
+
+    // ============================================================
+    //  ЧТЕНИЕ НАСТРОЕК
+    // ============================================================
+    function readSettings() {
+        checkSettingsChange();
+        
+        C.initialPrey = parseInt(document.getElementById('initialPrey').value);
+        C.initialPredators = parseInt(document.getElementById('initialPredators').value);
+        C.initialFood = parseInt(document.getElementById('initialFood').value);
+        C.maxFood = parseInt(document.getElementById('maxFood').value);
+        C.preyMobility = parseFloat(document.getElementById('preySpeed').value);
+        C.predatorMobility = parseFloat(document.getElementById('predatorSpeed').value);
+        C.preyVision = parseInt(document.getElementById('preyVision').value);
+        C.predatorVision = parseInt(document.getElementById('predatorVision').value);
+        C.preyCaution = parseFloat(document.getElementById('preyCaution').value) / 100;
+        C.preyEnergyFromFood = parseFloat(document.getElementById('preyEnergyFromFood').value);
+        C.predatorEnergyFromPrey = parseFloat(document.getElementById('predatorEnergyFromPrey').value);
+        C.preyEnergyCost = parseFloat(document.getElementById('preyEnergyCost').value);
+        C.predatorEnergyCost = parseFloat(document.getElementById('predatorEnergyCost').value);
+        C.preyReproduceRate = parseFloat(document.getElementById('preyReproduceRate').value);
+        C.predatorReproduceRate = parseFloat(document.getElementById('predatorReproduceRate').value);
+        C.foodRegrowRate = parseFloat(document.getElementById('foodRegrowRate').value);
+        C.starvationMultiplier = parseFloat(document.getElementById('starvationMultiplier').value);
+        
+        const strengthPercent = parseInt(document.getElementById('mutationStrength').value);
+        C.mutationStrength = strengthPercent / 100;
+        document.getElementById('mutationStrengthLabel').textContent = strengthPercent + '%';
+
+        const mutationPercent = parseInt(document.getElementById('mutationRate').value);
+        C.mutationRate = mutationPercent / 100;
+        document.getElementById('mutationLabel').textContent = mutationPercent + '%';
+
+        document.getElementById('valInitialPrey').textContent = C.initialPrey;
+        document.getElementById('valInitialPred').textContent = C.initialPredators;
+        document.getElementById('valInitialFood').textContent = C.initialFood;
+        document.getElementById('valMaxFood').textContent = C.maxFood;
+        document.getElementById('valPreySpeed').textContent = C.preyMobility.toFixed(1);
+        document.getElementById('valPredSpeed').textContent = C.predatorMobility.toFixed(1);
+        document.getElementById('valPreyVision').textContent = C.preyVision;
+        document.getElementById('valPredVision').textContent = C.predatorVision;
+        document.getElementById('valPreyCaution').textContent = Math.round(C.preyCaution * 100);
+        document.getElementById('valFoodEnergy').textContent = C.preyEnergyFromFood;
+        document.getElementById('valPredEnergy').textContent = C.predatorEnergyFromPrey;
+        document.getElementById('valPreyCost').textContent = C.preyEnergyCost.toFixed(1);
+        document.getElementById('valPredCost').textContent = C.predatorEnergyCost.toFixed(1);
+        document.getElementById('valPreyRepr').textContent = C.preyReproduceRate.toFixed(3);
+        document.getElementById('valPredRepr').textContent = C.predatorReproduceRate.toFixed(3);
+        document.getElementById('valFoodRegrow').textContent = C.foodRegrowRate.toFixed(2);
+        document.getElementById('valStarvation').textContent = C.starvationMultiplier.toFixed(1);
+    }
+
+    // ============================================================
+    //  СКОРОСТЬ
+    // ============================================================
+    const speedSlider = document.getElementById('speedSlider');
+    speedSlider.addEventListener('input', function() {
+        speedMultiplier = parseFloat(this.value);
+        document.getElementById('speedLabel').textContent = speedMultiplier.toFixed(1) + 'x';
+        stepInterval = Math.max(2, 16 / speedMultiplier);
+    });
+
+    const mutationSlider = document.getElementById('mutationRate');
+    mutationSlider.addEventListener('input', function() {
+        const val = parseInt(this.value);
+        document.getElementById('mutationLabel').textContent = val + '%';
+        C.mutationRate = val / 100;
+    });
+
+    const strengthSlider = document.getElementById('mutationStrength');
+    strengthSlider.addEventListener('input', function() {
+        const val = parseInt(this.value);
+        document.getElementById('mutationStrengthLabel').textContent = val + '%';
+        C.mutationStrength = val / 100;
+    });
+
+    // ============================================================
+    //  МОДАЛЬНОЕ ОКНО ВИДОВ
+    // ============================================================
+    const speciesModal = document.getElementById('speciesModal');
+    const speciesModalCloseBtn = document.getElementById('modalCloseBtn');
+    const speciesBtn = document.getElementById('speciesBtn');
+    const tableBody = document.getElementById('speciesTableBody');
+    const speciesCountEl = document.getElementById('speciesCount');
+    const filterType = document.getElementById('filterType');
+    const filterStatus = document.getElementById('filterStatus');
+    const searchInput = document.getElementById('searchInput');
+    const exportBtn = document.getElementById('exportBtn');
+
+    let sortField = 'name';
+    let sortAsc = true;
+
+    function openSpeciesModal() {
+        forceUpdateSpeciesStats();
+        speciesModal.classList.add('active');
+        renderTable();
+    }
+
+    function closeSpeciesModal() {
+        speciesModal.classList.remove('active');
+    }
+
+    speciesBtn.addEventListener('click', openSpeciesModal);
+    speciesModalCloseBtn.addEventListener('click', closeSpeciesModal);
+    speciesModal.addEventListener('click', (e) => {
+        if (e.target === speciesModal) closeSpeciesModal();
+    });
+
+    filterType.addEventListener('change', renderTable);
+    filterStatus.addEventListener('change', renderTable);
+    searchInput.addEventListener('input', renderTable);
+
+    function renderTable() {
+        const typeFilter = filterType.value;
+        const statusFilter = filterStatus.value;
+        const search = searchInput.value.toLowerCase();
+
+        let records = Object.values(SPECIES_DB);
+
+        if (typeFilter !== 'all') {
+            records = records.filter(r => r.type === typeFilter);
+        }
+
+        if (statusFilter === 'alive') {
+            records = records.filter(r => r.extinctAt === null);
+        } else if (statusFilter === 'extinct') {
+            records = records.filter(r => r.extinctAt !== null);
+        }
+
+        if (search) {
+            records = records.filter(r => r.name.toLowerCase().includes(search));
+        }
+
+        records.sort((a, b) => {
+            let valA, valB;
+            switch (sortField) {
+                case 'name': valA = a.name; valB = b.name; break;
+                case 'type': valA = a.type; valB = b.type; break;
+                case 'status': valA = a.extinctAt === null ? 0 : 1; valB = b.extinctAt === null ? 0 : 1; break;
+                case 'appeared': valA = a.appearedAt; valB = b.appearedAt; break;
+                case 'extinct': valA = a.extinctAt ?? Infinity; valB = b.extinctAt ?? Infinity; break;
+                case 'lifetime': valA = parseFloat(getLifetime(a)); valB = parseFloat(getLifetime(b)); break;
+                case 'maxPop': valA = a.maxPopulation; valB = b.maxPopulation; break;
+                case 'currentPop': valA = a.currentPopulation; valB = b.currentPopulation; break;
+                case 'mobility': valA = a.mobility; valB = b.mobility; break;
+                case 'caution': valA = a.caution ?? -1; valB = b.caution ?? -1; break;
+                case 'vision': valA = a.vision; valB = b.vision; break;
+                case 'generations': valA = a.generations; valB = b.generations; break;
+                case 'children': valA = a.children.length; valB = b.children.length; break;
+                default: valA = a.name; valB = b.name;
+            }
+            if (typeof valA === 'string') {
+                return sortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            }
+            return sortAsc ? valA - valB : valB - valA;
+        });
+
+        let html = '';
+        for (let record of records) {
+            const isPredator = record.type === 'predator';
+            const statusBadge = getStatusBadge(record);
+            const typeBadge = getTypeBadge(isPredator);
+            const cautionVal = record.caution !== null ? (record.caution * 100).toFixed(0) + '%' : '—';
+            const childrenStr = record.children.length > 0 ? record.children.join(', ') : '—';
+            const extinctStr = record.extinctAt !== null ? record.extinctAt.toFixed(1) : '—';
+            const appearedStr = record.appearedAt.toFixed(1);
+            const lifetime = getLifetime(record);
+            
+            html += `<tr>
+                <td class="name-cell">${record.name}</td>
+                <td>${typeBadge}</td>
+                <td>${statusBadge}</td>
+                <td>${appearedStr}</td>
+                <td>${extinctStr}</td>
+                <td>${lifetime}</td>
+                <td>${record.maxPopulation}</td>
+                <td>${record.currentPopulation}</td>
+                <td class="param-cell">${record.mobility.toFixed(2)}</td>
+                <td class="param-cell">${cautionVal}</td>
+                <td class="param-cell">${record.vision}</td>
+                <td>${record.generations}</td>
+                <td class="children-cell" title="${childrenStr}">${childrenStr}</td>
+            </tr>`;
+        }
+
+        tableBody.innerHTML = html;
+        speciesCountEl.textContent = `Всего видов: ${records.length}`;
+    }
+
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', function() {
+            const field = this.dataset.sort;
+            if (sortField === field) {
+                sortAsc = !sortAsc;
+            } else {
+                sortField = field;
+                sortAsc = true;
+            }
+            renderTable();
+        });
+    });
+
+    exportBtn.addEventListener('click', function() {
+        const records = Object.values(SPECIES_DB);
+        if (records.length === 0) return;
+
+        const headers = [
+            'Название', 'Тип', 'Статус', 'Эпоха появления', 'Эпоха исчезновения',
+            'Время жизни', 'Пик численности', 'Текущая численность', 'Мобильность',
+            'Осторожность', 'Радиус', 'Поколений', 'Потомки'
+        ];
+
+        let csv = headers.join(';') + '\n';
+        for (let r of records) {
+            const status = r.extinctAt === null ? 'ЖИВОЙ' : 'ВЫМЕРШИЙ';
+            const cautionVal = r.caution !== null ? (r.caution * 100).toFixed(0) + '%' : '—';
+            const childrenStr = r.children.join(', ');
+            const extinctStr = r.extinctAt !== null ? r.extinctAt.toFixed(1) : '—';
+            const appearedStr = r.appearedAt.toFixed(1);
+            const lifetime = getLifetime(r);
+            
+            const row = [
+                r.name,
+                r.type === 'predator' ? 'ХИЩНИК' : 'ТРАВОЯДНЫЙ',
+                status,
+                appearedStr,
+                extinctStr,
+                lifetime,
+                r.maxPopulation,
+                r.currentPopulation,
+                r.mobility.toFixed(2),
+                cautionVal,
+                r.vision,
+                r.generations,
+                childrenStr
+            ];
+            csv += row.join(';') + '\n';
+        }
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `species_epoch_${epochCounter}.csv`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+    });
+
+    // ============================================================
+    //  МОДАЛЬНОЕ ОКНО ПОМОЩИ
+    // ============================================================
+    const helpModal = document.getElementById('helpModal');
+    const helpBtn = document.getElementById('helpBtn');
+    const helpCloseBtn = document.getElementById('helpCloseBtn');
+
+    function openHelpModal() {
+        helpModal.classList.add('active');
+    }
+
+    function closeHelpModal() {
+        helpModal.classList.remove('active');
+    }
+
+    helpBtn.addEventListener('click', openHelpModal);
+    helpCloseBtn.addEventListener('click', closeHelpModal);
+    helpModal.addEventListener('click', (e) => {
+        if (e.target === helpModal) closeHelpModal();
+    });
+
+    // ============================================================
+    //  ГРАФИК
+    // ============================================================
+    function drawGraph() {
+        const container = graphScrollWrap;
+        const rect = container.getBoundingClientRect();
+        const w = rect.width - 4;
+        const h = rect.height - 4;
+        
+        if (w <= 0 || h <= 0) {
+            setTimeout(drawGraph, 100);
+            return;
+        }
+        
+        graphCanvas.width = w;
+        graphCanvas.height = h;
+        graphCanvas.style.width = w + 'px';
+        graphCanvas.style.height = h + 'px';
+        
+        const ctxG = graphCtx;
+        ctxG.clearRect(0, 0, w, h);
+        
+        if (graphData.time.length < 2) {
+            ctxG.fillStyle = '#556';
+            ctxG.font = '14px Arial';
+            ctxG.textAlign = 'center';
+            ctxG.textBaseline = 'middle';
+            ctxG.fillText('Нет данных', w/2, h/2);
+            return;
+        }
+        
+        // Определяем диапазон времени для отображения (последние 5 эпох)
+        const currentTime = getCurrentTime();
+        const minTime = Math.max(0, currentTime - GRAPH_EPOCHS);
+        const maxTime = currentTime + 0.1;
+        
+        // Находим индексы точек в диапазоне
+        let startIdx = 0;
+        for (let i = 0; i < graphData.time.length; i++) {
+            if (graphData.time[i] >= minTime) {
+                startIdx = i;
+                break;
+            }
+        }
+        // Если все точки старые — показываем все
+        if (startIdx >= graphData.time.length - 1) startIdx = 0;
+        
+        const displayTime = graphData.time.slice(startIdx);
+        const displayPrey = graphData.prey.slice(startIdx);
+        const displayPred = graphData.predator.slice(startIdx);
+        const displayFood = graphData.food.slice(startIdx);
+        
+        if (displayTime.length < 2) {
+            ctxG.fillStyle = '#556';
+            ctxG.font = '14px Arial';
+            ctxG.textAlign = 'center';
+            ctxG.textBaseline = 'middle';
+            ctxG.fillText('Нет данных', w/2, h/2);
+            return;
+        }
+        
+        // Находим максимумы для масштабирования
+        let maxVal = 10;
+        for (let i = 0; i < displayPrey.length; i++) {
+            maxVal = Math.max(maxVal, displayPrey[i], displayPred[i], displayFood[i]);
+        }
+        maxVal = Math.ceil(maxVal / 10) * 10 + 10;
+        
+        const pad = { top: 8, bottom: 18, left: 30, right: 30 };
+        const graphW = w - pad.left - pad.right;
+        const graphH = h - pad.top - pad.bottom;
+        
+        // Фон
+        ctxG.fillStyle = '#0a1a2e';
+        ctxG.fillRect(0, 0, w, h);
+        
+        // Сетка
+        ctxG.strokeStyle = '#1a2a3a';
+        ctxG.lineWidth = 0.5;
+        const gridLines = 5;
+        for (let i = 0; i <= gridLines; i++) {
+            const y = pad.top + (graphH / gridLines) * i;
+            ctxG.beginPath();
+            ctxG.moveTo(pad.left, y);
+            ctxG.lineTo(pad.left + graphW, y);
+            ctxG.stroke();
+        }
+        
+        // Оси
+        ctxG.strokeStyle = '#2a3a5a';
+        ctxG.lineWidth = 1;
+        ctxG.beginPath();
+        ctxG.moveTo(pad.left, pad.top);
+        ctxG.lineTo(pad.left, pad.top + graphH);
+        ctxG.lineTo(pad.left + graphW, pad.top + graphH);
+        ctxG.stroke();
+        
+        // Подписи оси Y
+        ctxG.fillStyle = '#556';
+        ctxG.font = '9px Arial';
+        ctxG.textAlign = 'right';
+        ctxG.textBaseline = 'middle';
+        for (let i = 0; i <= gridLines; i++) {
+            const val = (maxVal / gridLines) * (gridLines - i);
+            const y = pad.top + (graphH / gridLines) * i;
+            ctxG.fillText(Math.round(val), pad.left - 4, y);
+        }
+        
+        // Подписи оси X
+        ctxG.fillStyle = '#556';
+        ctxG.font = '8px Arial';
+        ctxG.textAlign = 'center';
+        ctxG.textBaseline = 'top';
+        const timeRange = maxTime - minTime;
+        const xLabels = 6;
+        for (let i = 0; i <= xLabels; i++) {
+            const t = minTime + (timeRange / xLabels) * i;
+            const x = pad.left + (t - minTime) / timeRange * graphW;
+            ctxG.fillText(t.toFixed(1), x, pad.top + graphH + 2);
+        }
+        
+        // Функция рисования линии
+        function drawLine(data, color) {
+            if (data.length < 2) return;
+            ctxG.strokeStyle = color;
+            ctxG.lineWidth = 2;
+            ctxG.beginPath();
+            for (let i = 0; i < data.length; i++) {
+                const t = displayTime[i];
+                const x = pad.left + (t - minTime) / timeRange * graphW;
+                const y = pad.top + graphH - (data[i] / maxVal) * graphH;
+                if (i === 0) ctxG.moveTo(x, y);
+                else ctxG.lineTo(x, y);
+            }
+            ctxG.stroke();
+        }
+        
+        // Рисуем линии
+        drawLine(displayPrey, '#f7d44a');
+        drawLine(displayPred, '#ff4757');
+        drawLine(displayFood, '#2ed573');
+        
+        // Текущие значения
+        function drawLastValue(data, color, label) {
+            if (data.length === 0) return;
+            const last = data[data.length - 1];
+            const t = displayTime[displayTime.length - 1];
+            const x = pad.left + (t - minTime) / timeRange * graphW;
+            const y = pad.top + graphH - (last / maxVal) * graphH;
+            
+            // Кружок на конце линии
+            ctxG.fillStyle = color;
+            ctxG.beginPath();
+            ctxG.arc(x, y, 4, 0, Math.PI * 2);
+            ctxG.fill();
+            
+            ctxG.fillStyle = color;
+            ctxG.font = 'bold 10px Arial';
+            ctxG.textAlign = 'left';
+            ctxG.textBaseline = 'bottom';
+            ctxG.fillText(`${label}: ${last}`, x + 6, y);
+        }
+        
+        drawLastValue(displayPrey, '#f7d44a', 'Жертвы');
+        drawLastValue(displayPred, '#ff4757', 'Хищники');
+        drawLastValue(displayFood, '#2ed573', 'Еда');
+        
+        // Автопрокрутка в конец
+        graphScrollWrap.scrollLeft = graphScrollWrap.scrollWidth;
+    }
+
+    // ============================================================
+    //  УПРАВЛЕНИЕ ГРАФИКОМ
+    // ============================================================
+    function openGraph() {
+        graphModal.classList.add('active');
+        setTimeout(drawGraph, 50);
+        setTimeout(drawGraph, 200);
+    }
+
+    function closeGraph() {
+        graphModal.classList.remove('active');
+    }
+
+    graphBtn.addEventListener('click', openGraph);
+    graphCloseBtn.addEventListener('click', closeGraph);
+    window.addEventListener('resize', () => {
+        if (graphModal.classList.contains('active')) {
+            setTimeout(drawGraph, 100);
+        }
+    });
+
+    // Перерисовка графика при открытии
+    const observer = new MutationObserver(() => {
+        if (graphModal.classList.contains('active')) {
+            setTimeout(drawGraph, 50);
+        }
+    });
+    observer.observe(graphModal, { attributes: true, attributeFilter: ['class'] });
+
+    // ============================================================
+    //  ИНИЦИАЛИЗАЦИЯ
+    // ============================================================
+    function initSimulation() {
+        preyMutationCounter = 0;
+        predatorMutationCounter = 0;
+        cloneMutationCounters = {};
+        gmoMutationCounters = {};
+        settingsVersion = 1;
+        previousSettings = {};
+        iterationCounter = 0;
+        epochCounter = 0;
+        statsUpdateCounter = 0;
+        
+        graphData.time = [];
+        graphData.prey = [];
+        graphData.predator = [];
+        graphData.food = [];
+        
+        for (let key in SPECIES_DB) delete SPECIES_DB[key];
+        speciesIdCounter = 0;
+        
+        previousSettings = {
+            preyMobility: parseFloat(document.getElementById('preySpeed').value),
+            predatorMobility: parseFloat(document.getElementById('predatorSpeed').value),
+            preyVision: parseInt(document.getElementById('preyVision').value),
+            predatorVision: parseInt(document.getElementById('predatorVision').value),
+            preyCaution: parseFloat(document.getElementById('preyCaution').value) / 100,
+            preyEnergyFromFood: parseFloat(document.getElementById('preyEnergyFromFood').value),
+            predatorEnergyFromPrey: parseFloat(document.getElementById('predatorEnergyFromPrey').value),
+            preyEnergyCost: parseFloat(document.getElementById('preyEnergyCost').value),
+            predatorEnergyCost: parseFloat(document.getElementById('predatorEnergyCost').value),
+            preyReproduceRate: parseFloat(document.getElementById('preyReproduceRate').value),
+            predatorReproduceRate: parseFloat(document.getElementById('predatorReproduceRate').value),
+            foodRegrowRate: parseFloat(document.getElementById('foodRegrowRate').value),
+            maxFood: parseInt(document.getElementById('maxFood').value),
+            starvationMultiplier: parseFloat(document.getElementById('starvationMultiplier').value),
+            mutationStrength: parseFloat(document.getElementById('mutationStrength').value) / 100,
+        };
+        
+        readSettings();
+        foods = [];
+        preys = [];
+        predators = [];
+        generation++;
+        genSpan.textContent = generation;
+
+        for (let i = 0; i < C.initialFood; i++) {
+            foods.push({ x: random(0, C.width), y: random(0, C.height) });
+        }
+        
+        for (let i = 0; i < C.initialPrey; i++) {
+            const prey = createPrey(null, null, null, true);
+            preys.push(prey);
+        }
+        for (let i = 0; i < C.initialPredators; i++) {
+            const predator = createPredator(null, null, null, true);
+            predators.push(predator);
+        }
+
+        isExtinct = false;
+        
+        simulationRunning = false;
+        isPaused = true;
+        pauseBtn.textContent = '▶ Старт';
+        pauseBtn.classList.add('paused');
+        pauseBadge.classList.add('active');
+        pauseIndicator.classList.add('active');
+        
+        accumulatedTime = 0;
+        updateStats();
+        checkExtinction();
+        forceUpdateSpeciesStats();
+        addGraphPoint();
+    }
+
+    // ============================================================
+    //  ОБНОВЛЕНИЕ СТАТИСТИКИ
+    // ============================================================
+    function updateStats() {
+        foodSpan.textContent = foods.length;
+        preySpan.textContent = preys.length;
+        predSpan.textContent = predators.length;
+        epochSpan.textContent = epochCounter + 1;
+    }
+
+    function updateEpoch() {
+        iterationCounter++;
+        statsUpdateCounter++;
+        if (statsUpdateCounter >= STATS_UPDATE_STEPS) {
+            statsUpdateCounter = 0;
+            updateSpeciesStats();
+            addGraphPoint();
+            if (graphModal.classList.contains('active')) {
+                drawGraph();
+            }
+        }
+        
+        if (iterationCounter >= EPOCH_LEN) {
+            iterationCounter = 0;
+            epochCounter++;
+            epochSpan.textContent = epochCounter + 1;
+            updateSpeciesStats();
+            addGraphPoint();
+            if (graphModal.classList.contains('active')) {
+                drawGraph();
+            }
+        }
+        checkAutoPause();
+    }
+
+    // ============================================================
+    //  ОТРИСОВКА
+    // ============================================================
+    function drawCreature(ctx, creature) {
+        const x = creature.x;
+        const y = creature.y;
+        const symbol = creature.symbol;
+        const isPredator = creature.isPredator;
+        const color = isPredator ? '#ff4757' : '#f7d44a';
+        const size = isPredator ? 22 : 18;
+        const isMutant = creature.isMutant;
+        const generation = creature.generation;
+        const displayName = creature.displayName || 'НЕИЗВЕСТНЫЙ';
+
+        const s = size * 1.3;
+        
+        ctx.shadowColor = color;
+        ctx.shadowBlur = isMutant ? 25 : 15;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        const r = 4;
+        ctx.moveTo(x - s/2 + r, y - s/2);
+        ctx.lineTo(x + s/2 - r, y - s/2);
+        ctx.quadraticCurveTo(x + s/2, y - s/2, x + s/2, y - s/2 + r);
+        ctx.lineTo(x + s/2, y + s/2 - r);
+        ctx.quadraticCurveTo(x + s/2, y + s/2, x + s/2 - r, y + s/2);
+        ctx.lineTo(x - s/2 + r, y + s/2);
+        ctx.quadraticCurveTo(x - s/2, y + s/2, x - s/2, y + s/2 - r);
+        ctx.lineTo(x - s/2, y - s/2 + r);
+        ctx.quadraticCurveTo(x - s/2, y - s/2, x - s/2 + r, y - s/2);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.shadowBlur = 0;
+        const isLight = color === '#f7d44a';
+        ctx.fillStyle = isLight ? '#000000' : '#ffffff';
+        ctx.font = `${size * 0.7}px ${LABEL_CONFIG.fontFamily}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(symbol, x, y);
+        
+        if (isMutant) {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '10px Arial';
+            ctx.fillText('✦', x + size * 0.6, y - size * 0.6);
+        }
+
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = LABEL_CONFIG.color;
+        ctx.font = `bold ${LABEL_CONFIG.size}px ${LABEL_CONFIG.fontFamily}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(displayName, x, y - LABEL_CONFIG.offsetTop);
+        
+        ctx.fillStyle = LABEL_CONFIG.genColor;
+        ctx.font = `${LABEL_CONFIG.size - 2}px ${LABEL_CONFIG.fontFamily}`;
+        ctx.textBaseline = 'top';
+        ctx.fillText(`П=${generation}`, x, y + LABEL_CONFIG.offsetBottom);
+        
+        ctx.shadowBlur = 0;
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, C.width, C.height);
+
+        for (let food of foods) {
+            ctx.beginPath();
+            ctx.arc(food.x, food.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#2ed573';
+            ctx.shadowColor = '#2ed573';
+            ctx.shadowBlur = 8;
+            ctx.fill();
+        }
+
+        for (let prey of preys) {
+            drawCreature(ctx, prey);
+        }
+
+        for (let predator of predators) {
+            drawCreature(ctx, predator);
+        }
+
+        ctx.shadowBlur = 0;
+        updateStats();
+    }
+
+    // ============================================================
+    //  ШАГ СИМУЛЯЦИИ
+    // ============================================================
+    function simulationStep() {
+        if (!simulationRunning || isPaused) return;
+
+        // ---- ЖЕРТВЫ ----
+        for (let prey of preys) {
+            const closestPredator = findClosestPredator(prey);
+            let shouldFlee = false;
+            
+            if (closestPredator && Math.random() < prey.caution) {
+                shouldFlee = true;
+            }
+
+            let dx = 0, dy = 0;
+
+            if (shouldFlee) {
+                const angle = Math.atan2(prey.y - closestPredator.y, prey.x - closestPredator.x);
+                dx = Math.cos(angle) * prey.mobility;
+                dy = Math.sin(angle) * prey.mobility;
+            } else {
+                let closestFood = null;
+                let minDist = Infinity;
+                for (let food of foods) {
+                    const d = distance(prey, food);
+                    if (d < minDist && d < prey.vision) {
+                        minDist = d;
+                        closestFood = food;
+                    }
+                }
+
+                if (closestFood) {
+                    const angle = Math.atan2(closestFood.y - prey.y, closestFood.x - prey.x);
+                    dx = Math.cos(angle) * prey.mobility;
+                    dy = Math.sin(angle) * prey.mobility;
+                } else {
+                    dx = random(-prey.mobility, prey.mobility);
+                    dy = random(-prey.mobility, prey.mobility);
+                }
+            }
+
+            prey.x += dx;
+            prey.y += dy;
+
+            prey.x = clamp(prey.x, 0, C.width);
+            prey.y = clamp(prey.y, 0, C.height);
+            prey.energy -= prey.energyCost;
+
+            if (foods.length < 50 && prey.energy < 30) {
+                prey.energy -= C.starvationMultiplier * 0.5;
+            }
+
+            if (prey.energy <= 0) {
+                prey.dead = true;
+                continue;
+            }
+
+            for (let i = foods.length - 1; i >= 0; i--) {
+                const food = foods[i];
+                if (distance(prey, food) < 12) {
+                    prey.energy = Math.min(prey.energy + prey.energyFromFood, prey.energyMax);
+                    foods.splice(i, 1);
+                    break;
+                }
+            }
+
+            if (Math.random() < prey.reproduceRate && prey.energy > prey.energyMax * 0.7) {
+                const child = createPrey(
+                    prey.x + random(-15, 15),
+                    prey.y + random(-15, 15),
+                    prey
+                );
+                child.energy = prey.energy * 0.5;
+                preys.push(child);
+                prey.energy *= 0.5;
+            }
+        }
+        preys = preys.filter(p => !p.dead);
+
+        // ---- ХИЩНИКИ ----
+        for (let predator of predators) {
+            let closestPrey = null;
+            let minDist = Infinity;
+            for (let prey of preys) {
+                const d = distance(predator, prey);
+                if (d < minDist && d < predator.vision) {
+                    minDist = d;
+                    closestPrey = prey;
+                }
+            }
+
+            if (closestPrey) {
+                const angle = Math.atan2(closestPrey.y - predator.y, closestPrey.x - predator.x);
+                predator.x += Math.cos(angle) * predator.mobility;
+                predator.y += Math.sin(angle) * predator.mobility;
+            } else {
+                predator.x += random(-predator.mobility, predator.mobility);
+                predator.y += random(-predator.mobility, predator.mobility);
+            }
+
+            predator.x = clamp(predator.x, 0, C.width);
+            predator.y = clamp(predator.y, 0, C.height);
+            predator.energy -= predator.energyCost;
+
+            if (preys.length < 20 && predator.energy < 40) {
+                predator.energy -= C.starvationMultiplier * 0.3;
+            }
+
+            if (predator.energy <= 0) {
+                predator.dead = true;
+                continue;
+            }
+
+            for (let i = preys.length - 1; i >= 0; i--) {
+                const prey = preys[i];
+                if (distance(predator, prey) < 15) {
+                    predator.energy = Math.min(predator.energy + predator.energyFromPrey, predator.energyMax);
+                    preys.splice(i, 1);
+                    break;
+                }
+            }
+
+            if (Math.random() < predator.reproduceRate && predator.energy > predator.energyMax * 0.6) {
+                const child = createPredator(
+                    predator.x + random(-12, 12),
+                    predator.y + random(-12, 12),
+                    predator
+                );
+                child.energy = predator.energy * 0.5;
+                predators.push(child);
+                predator.energy *= 0.5;
+            }
+        }
+        predators = predators.filter(p => !p.dead);
+
+        // ---- ЕДА ----
+        if (foods.length < C.maxFood) {
+            const toAdd = Math.floor(C.foodRegrowRate * C.maxFood);
+            for (let i = 0; i < toAdd; i++) {
+                if (foods.length >= C.maxFood) break;
+                foods.push({ x: random(0, C.width), y: random(0, C.height) });
+            }
+        }
+
+        checkExtinction();
+        updateEpoch();
+        updateStats();
+    }
+
+    // ============================================================
+    //  ЦИКЛ
+    // ============================================================
+    function loop(timestamp) {
+        if (!simulationRunning || isPaused) {
+            animationFrame = requestAnimationFrame(loop);
+            return;
+        }
+
+        if (!lastStepTime) lastStepTime = timestamp;
+        const delta = timestamp - lastStepTime;
+        lastStepTime = timestamp;
+        accumulatedTime += delta;
+
+        let steps = 0;
+        while (accumulatedTime >= stepInterval && steps < 10) {
+            simulationStep();
+            accumulatedTime -= stepInterval;
+            steps++;
+        }
+
+        draw();
+        animationFrame = requestAnimationFrame(loop);
+    }
+
+    // ============================================================
+    //  СБРОС
+    // ============================================================
+    function resetSimulation() {
+        if (animationFrame) {
+            cancelAnimationFrame(animationFrame);
+            animationFrame = null;
+        }
+        lastStepTime = 0;
+        accumulatedTime = 0;
+        
+        if (!isPaused) {
+            isPaused = true;
+            pauseBtn.textContent = '▶ Старт';
+            pauseBtn.classList.add('paused');
+            pauseBadge.classList.add('active');
+            pauseIndicator.classList.add('active');
+            simulationRunning = false;
+        }
+        
+        initSimulation();
+        draw();
+        if (!animationFrame) {
+            animationFrame = requestAnimationFrame(loop);
+        }
+    }
+
+    // ============================================================
+    //  СОБЫТИЯ
+    // ============================================================
+    document.getElementById('resetBtn').addEventListener('click', resetSimulation);
+
+    const sliders = document.querySelectorAll('#settingsPanel input[type="range"]');
+    sliders.forEach(slider => {
+        slider.addEventListener('input', function() {
+            readSettings();
+        });
+    });
+
+    // ============================================================
+    //  СТАРТ
+    // ============================================================
+    genSpan.textContent = 0;
+    initSimulation();
+    draw();
+    animationFrame = requestAnimationFrame(loop);
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            if (!isPaused && simulationRunning) {
+                simulationRunning = false;
+                if (animationFrame) {
+                    cancelAnimationFrame(animationFrame);
+                    animationFrame = null;
+                }
+            }
+        } else {
+            if (!isPaused) {
+                simulationRunning = true;
+                lastStepTime = 0;
+                if (!animationFrame) {
+                    animationFrame = requestAnimationFrame(loop);
+                }
+            }
+        }
+    });
+
+})();
+</script>
+</body>
+</html>
