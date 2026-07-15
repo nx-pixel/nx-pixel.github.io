@@ -61,7 +61,9 @@
             border: 1px solid #2a3a6a;
             overflow-x: auto;
         }
-        .controls-top > * { flex-shrink: 0; }
+        .controls-top > * {
+            flex-shrink: 0;
+        }
         .stats {
             display: flex;
             gap: 22px;
@@ -926,7 +928,7 @@
                         <th data-sort="mobility">Мобильн.</th>
                         <th data-sort="caution">Осторож.</th>
                         <th data-sort="vision">Радиус</th>
-                        <th data-sort="generations">Покол.</th>
+                        <th data-sort="firstGen">Покол.</th>
                         <th data-sort="children">Потомки</th>
                     </tr>
                 </thead>
@@ -1020,8 +1022,6 @@
     const EPOCH_LEN = 1000;
     const STATS_UPDATE_INTERVAL = 0.1;
     const STATS_UPDATE_STEPS = Math.floor(STATS_UPDATE_INTERVAL * EPOCH_LEN);
-
-    // Сколько эпох отображать на графике
     const GRAPH_EPOCHS = 5;
 
     // ============================================================
@@ -1107,7 +1107,6 @@
     const genSpan = document.getElementById('generationCount');
     const epochSpan = document.getElementById('epochCount');
 
-    // График
     const graphModal = document.getElementById('graphModal');
     const graphCloseBtn = document.getElementById('graphCloseBtn');
     const graphBtn = document.getElementById('graphBtn');
@@ -1238,6 +1237,7 @@
             energyFromPrey: creature.isPredator ? creature.energyFromPrey : null,
             energyMax: creature.energyMax,
             reproduceRate: creature.reproduceRate,
+            firstGeneration: creature.generation || 0,
             generations: creature.generation || 0,
             parent: parentName,
             children: [],
@@ -1872,7 +1872,7 @@
                 case 'mobility': valA = a.mobility; valB = b.mobility; break;
                 case 'caution': valA = a.caution ?? -1; valB = b.caution ?? -1; break;
                 case 'vision': valA = a.vision; valB = b.vision; break;
-                case 'generations': valA = a.generations; valB = b.generations; break;
+                case 'firstGen': valA = a.firstGeneration; valB = b.firstGeneration; break;
                 case 'children': valA = a.children.length; valB = b.children.length; break;
                 default: valA = a.name; valB = b.name;
             }
@@ -1905,7 +1905,7 @@
                 <td class="param-cell">${record.mobility.toFixed(2)}</td>
                 <td class="param-cell">${cautionVal}</td>
                 <td class="param-cell">${record.vision}</td>
-                <td>${record.generations}</td>
+                <td>${record.firstGeneration}</td>
                 <td class="children-cell" title="${childrenStr}">${childrenStr}</td>
             </tr>`;
         }
@@ -1934,7 +1934,7 @@
         const headers = [
             'Название', 'Тип', 'Статус', 'Эпоха появления', 'Эпоха исчезновения',
             'Время жизни', 'Пик численности', 'Текущая численность', 'Мобильность',
-            'Осторожность', 'Радиус', 'Поколений', 'Потомки'
+            'Осторожность', 'Радиус', 'Поколение появления', 'Потомки'
         ];
 
         let csv = headers.join(';') + '\n';
@@ -1958,7 +1958,7 @@
                 r.mobility.toFixed(2),
                 cautionVal,
                 r.vision,
-                r.generations,
+                r.firstGeneration,
                 childrenStr
             ];
             csv += row.join(';') + '\n';
@@ -2024,12 +2024,10 @@
             return;
         }
         
-        // Определяем диапазон времени для отображения (последние 5 эпох)
         const currentTime = getCurrentTime();
         const minTime = Math.max(0, currentTime - GRAPH_EPOCHS);
         const maxTime = currentTime + 0.1;
         
-        // Находим индексы точек в диапазоне
         let startIdx = 0;
         for (let i = 0; i < graphData.time.length; i++) {
             if (graphData.time[i] >= minTime) {
@@ -2037,7 +2035,6 @@
                 break;
             }
         }
-        // Если все точки старые — показываем все
         if (startIdx >= graphData.time.length - 1) startIdx = 0;
         
         const displayTime = graphData.time.slice(startIdx);
@@ -2054,7 +2051,6 @@
             return;
         }
         
-        // Находим максимумы для масштабирования
         let maxVal = 10;
         for (let i = 0; i < displayPrey.length; i++) {
             maxVal = Math.max(maxVal, displayPrey[i], displayPred[i], displayFood[i]);
@@ -2065,11 +2061,9 @@
         const graphW = w - pad.left - pad.right;
         const graphH = h - pad.top - pad.bottom;
         
-        // Фон
         ctxG.fillStyle = '#0a1a2e';
         ctxG.fillRect(0, 0, w, h);
         
-        // Сетка
         ctxG.strokeStyle = '#1a2a3a';
         ctxG.lineWidth = 0.5;
         const gridLines = 5;
@@ -2081,7 +2075,6 @@
             ctxG.stroke();
         }
         
-        // Оси
         ctxG.strokeStyle = '#2a3a5a';
         ctxG.lineWidth = 1;
         ctxG.beginPath();
@@ -2090,7 +2083,6 @@
         ctxG.lineTo(pad.left + graphW, pad.top + graphH);
         ctxG.stroke();
         
-        // Подписи оси Y
         ctxG.fillStyle = '#556';
         ctxG.font = '9px Arial';
         ctxG.textAlign = 'right';
@@ -2101,7 +2093,6 @@
             ctxG.fillText(Math.round(val), pad.left - 4, y);
         }
         
-        // Подписи оси X
         ctxG.fillStyle = '#556';
         ctxG.font = '8px Arial';
         ctxG.textAlign = 'center';
@@ -2114,7 +2105,6 @@
             ctxG.fillText(t.toFixed(1), x, pad.top + graphH + 2);
         }
         
-        // Функция рисования линии
         function drawLine(data, color) {
             if (data.length < 2) return;
             ctxG.strokeStyle = color;
@@ -2130,12 +2120,10 @@
             ctxG.stroke();
         }
         
-        // Рисуем линии
         drawLine(displayPrey, '#f7d44a');
         drawLine(displayPred, '#ff4757');
         drawLine(displayFood, '#2ed573');
         
-        // Текущие значения
         function drawLastValue(data, color, label) {
             if (data.length === 0) return;
             const last = data[data.length - 1];
@@ -2143,7 +2131,6 @@
             const x = pad.left + (t - minTime) / timeRange * graphW;
             const y = pad.top + graphH - (last / maxVal) * graphH;
             
-            // Кружок на конце линии
             ctxG.fillStyle = color;
             ctxG.beginPath();
             ctxG.arc(x, y, 4, 0, Math.PI * 2);
@@ -2160,7 +2147,6 @@
         drawLastValue(displayPred, '#ff4757', 'Хищники');
         drawLastValue(displayFood, '#2ed573', 'Еда');
         
-        // Автопрокрутка в конец
         graphScrollWrap.scrollLeft = graphScrollWrap.scrollWidth;
     }
 
@@ -2185,7 +2171,6 @@
         }
     });
 
-    // Перерисовка графика при открытии
     const observer = new MutationObserver(() => {
         if (graphModal.classList.contains('active')) {
             setTimeout(drawGraph, 50);
