@@ -180,6 +180,13 @@
             text-align: center;
             font-size: 0.85rem;
         }
+        .restart-hint {
+            background: #1f2e1b;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            color: #8a9a80;
+        }
     </style>
 </head>
 <body>
@@ -199,6 +206,7 @@
         <div class="controls-hint">🖱️ движение · <i>ЛКМ</i> бросок</div>
         <button id="autoPlayBtn">🤖 автоигра</button>
         <button id="restartBtn">🔄 новая игра</button>
+        <div class="restart-hint">ПКМ · новая игра</div>
         <div class="hint">🖱️ <i>ЛКМ</i> · прицел</div>
     </div>
 </div>
@@ -471,8 +479,6 @@
     let mouseX = player.x;
     let mouseY = player.y;
     let isAiming = false;        // зажата ЛКМ
-    let aimStartX = 0;
-    let aimStartY = 0;
     let mouseInside = true;
 
     // ------ АНИМАЦИЯ РУК ------
@@ -1591,6 +1597,34 @@
         // Выходим из режима прицеливания и бросаем нож
         isAiming = false;
         playerThrow();
+    });
+
+    // ★★★ ПКМ: начало новой игры ★★★
+    canvas.addEventListener('contextmenu', (e) => {
+        e.preventDefault(); // отключаем контекстное меню
+        
+        // Выполняем те же действия, что и кнопка "Новая игра"
+        if (autoPlayMode) {
+            autoPlayMode = false;
+            autoPlayBtn.textContent = '🤖 автоигра';
+            autoPlayBtn.classList.remove('active');
+            isAutoRestarting = false;
+        }
+        resetGame();
+        resetKnife(playerKnife, 'player');
+        resetKnife(enemyKnife, 'enemy');
+        playerThrowTimer.value = 0;
+        enemyThrowTimer.value = 0;
+        playerCooldown = 0;
+        enemyCooldown = 0;
+        playerAIState = AI_STATE.PATROL;
+        enemyAIState = AI_STATE.PATROL;
+        statusSpan.innerText = 'дуэль';
+        gameActive = true;
+        resolutionPending = false;
+        roundFinished = false;
+        isAiming = false;
+        stopKnifeSound();
     });
 
     // Отмена прицеливания при выходе мыши с канваса
