@@ -1,0 +1,3482 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗳️ Симулятор выборов — скрытая механика</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            background: linear-gradient(145deg, #1a2a3a, #2c4a5e);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            padding: 16px;
+        }
+        .game-container {
+            max-width: 1050px;
+            width: 100%;
+            background: #eef2f7;
+            border-radius: 48px;
+            padding: 28px 30px 32px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.7);
+            border: 1px solid #b8c9db;
+            position: relative;
+        }
+        h1 {
+            font-size: 2.4rem;
+            font-weight: 800;
+            color: #132734;
+            text-shadow: 2px 2px 0 #b8c9db;
+            text-align: center;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #2f5265;
+            font-weight: 600;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+        }
+
+        .candidates {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .candidate-card {
+            background: #1f3f4e;
+            border-radius: 32px;
+            padding: 18px 16px 20px;
+            color: white;
+            text-align: center;
+            box-shadow: 0 6px 0 #0a1a24, 0 8px 16px rgba(0,0,0,0.3);
+            transition: 0.2s;
+            position: relative;
+            border: 2px solid transparent;
+        }
+        .candidate-card.player {
+            border-color: #f5c542;
+            background: #1f3f4e;
+        }
+        .candidate-card .name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .candidate-card .party {
+            font-size: 0.75rem;
+            opacity: 0.8;
+            margin-bottom: 8px;
+        }
+        .rating-bar {
+            background: #2d4d5e;
+            height: 20px;
+            border-radius: 30px;
+            overflow: hidden;
+            margin: 8px 0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .rating-fill {
+            height: 100%;
+            border-radius: 30px;
+            transition: 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+        }
+        .rating-fill.low {
+            background: linear-gradient(90deg, #f44336, #ff5722);
+        }
+        .rating-fill.mid {
+            background: linear-gradient(90deg, #ff9800, #ffc107);
+        }
+        .rating-fill.high {
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+        }
+        .rating-text {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .candidate-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #f5c542;
+            color: #1f2f3a;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .game-status {
+            background: #1c3645;
+            border-radius: 40px;
+            padding: 12px 22px;
+            margin-bottom: 18px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            color: #b8d4e3;
+            font-weight: 500;
+            font-size: 0.95rem;
+            align-items: center;
+        }
+        .game-status .day {
+            color: #f5e56b;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        .game-status .winner {
+            color: #f5c542;
+            font-weight: 700;
+        }
+
+        .slogans-area {
+            background: #eef3f9;
+            border-radius: 40px;
+            padding: 18px 16px 16px;
+            margin: 10px 0 16px;
+            box-shadow: inset 0 -4px 0 #a1b7c9, 0 10px 18px rgba(0,0,0,0.15);
+        }
+        .slogans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .slogan-btn {
+            background: #fafcfd;
+            border: none;
+            border-radius: 40px;
+            padding: 14px 16px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #002b44;
+            box-shadow: 0 4px 0 #8fa3b5, 0 4px 10px rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: 0.04s linear;
+            text-align: left;
+            border: 1px solid #b7ccdd;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .slogan-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #6b7f91;
+        }
+        .slogan-btn:hover {
+            background: #ffffff;
+            border-color: #7fa3c0;
+        }
+        .slogan-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: 0 4px 0 #8fa3b5 !important;
+        }
+        .slogan-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding-right: 50px;
+        }
+        .slogan-effects {
+            font-size: 0.75rem;
+            color: #3d5a6b;
+            margin-top: 3px;
+            opacity: 0.8;
+        }
+        .slogan-tag {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        .bottom-panel {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .message-box {
+            background: #1b3543;
+            border-radius: 60px;
+            padding: 12px 22px;
+            color: #f2faff;
+            font-weight: 500;
+            font-size: 0.95rem;
+            min-height: 3.8rem;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            box-shadow: inset 0 2px 6px #0a1f29;
+            line-height: 1.4;
+        }
+        .btn {
+            border: none;
+            border-radius: 60px;
+            padding: 12px 28px;
+            font-weight: 700;
+            font-size: 1rem;
+            color: #f5f0e8;
+            box-shadow: 0 6px 0 #691f1f, 0 6px 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: 0.04s linear;
+        }
+        .btn:active {
+            transform: translateY(5px);
+            box-shadow: 0 1px 0 #4d1616;
+        }
+        .btn-primary {
+            background: #2e7d32;
+            box-shadow: 0 6px 0 #1b5e20;
+        }
+        .btn-primary:hover {
+            background: #388e3c;
+        }
+        .btn-danger {
+            background: #b33939;
+            box-shadow: 0 6px 0 #691f1f;
+        }
+        .btn-danger:hover {
+            background: #c62828;
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .log-panel {
+            background: #1a2f3b;
+            border-radius: 30px;
+            padding: 10px 16px;
+            margin-top: 12px;
+            max-height: 100px;
+            overflow-y: auto;
+            color: #b8d4e3;
+            font-size: 0.85rem;
+            border: 1px solid #3a5a6b;
+        }
+        .log-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+        .log-panel::-webkit-scrollbar-thumb {
+            background: #5a7a8b;
+            border-radius: 10px;
+        }
+        .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid #2a4a5a;
+        }
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        .log-entry.player {
+            color: #f5c542;
+        }
+        .log-entry.positive {
+            color: #81c784;
+        }
+        .log-entry.negative {
+            color: #ef9a9a;
+        }
+        .log-entry.neutral {
+            color: #b8d4e3;
+        }
+
+        .footer {
+            text-align: center;
+            color: #486b7e;
+            margin-top: 14px;
+            font-weight: 500;
+            font-size: 0.8rem;
+            border-top: 1px dashed #8aa3b5;
+            padding-top: 10px;
+        }
+
+        /* Модальное окно */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-box {
+            background: #eef2f7;
+            border-radius: 48px;
+            max-width: 600px;
+            width: 90%;
+            padding: 32px 36px 28px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+            border: 2px solid #b8c9db;
+            animation: modalIn 0.3s ease-out;
+        }
+        @keyframes modalIn {
+            from { transform: scale(0.9) translateY(20px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #132734;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal-body {
+            font-size: 1.05rem;
+            line-height: 1.6;
+            color: #1f3f4e;
+            padding: 8px 0 16px;
+            border-bottom: 2px dashed #b8c9db;
+        }
+        .modal-body .highlight {
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+        .modal-body .highlight.good {
+            color: #2e7d32;
+            background: #c8e6c9;
+        }
+        .modal-body .highlight.bad {
+            color: #c62828;
+            background: #ffcdd2;
+        }
+        .modal-body .highlight.neutral {
+            color: #e65100;
+            background: #ffe0b2;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 16px;
+        }
+        .modal-footer .btn {
+            font-size: 1rem;
+            padding: 10px 32px;
+        }
+        .modal-reaction {
+            background: #1c3645;
+            border-radius: 24px;
+            padding: 14px 18px;
+            margin: 8px 0 4px;
+            color: #e0edf5;
+            font-style: italic;
+            border-left: 4px solid #f5c542;
+        }
+        .modal-reaction .emoji {
+            font-size: 1.2rem;
+        }
+        .modal-reaction.positive {
+            border-left-color: #4caf50;
+        }
+        .modal-reaction.negative {
+            border-left-color: #f44336;
+        }
+        .modal-reaction.mixed {
+            border-left-color: #ff9800;
+        }
+
+        @media (max-width: 700px) {
+            .game-container { padding: 16px; }
+            .candidates { grid-template-columns: 1fr; gap: 12px; }
+            .log-panel { max-height: 120px; }
+            .modal-box { padding: 24px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Модальное окно -->
+<div class="modal-overlay" id="reactionModal">
+    <div class="modal-box">
+        <div class="modal-title">📢 Реакция общества</div>
+        <div class="modal-body" id="modalBody">
+            <div id="modalReaction" class="modal-reaction">Загрузка...</div>
+            <div id="modalSummary" style="margin-top: 14px; font-size: 0.95rem; font-weight: 600;"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" id="modalCloseBtn">➡️ Следующий день</button>
+        </div>
+    </div>
+</div>
+
+<div class="game-container" id="app">
+    <h1>🗳️ ВЫБОРЫ 2026</h1>
+    <div class="subtitle">Каждый лозунг вызывает реакцию. Результаты непредсказуемы</div>
+
+    <div class="candidates" id="candidatesContainer"></div>
+
+    <div class="game-status" id="gameStatus">
+        <span>📅 День: <span class="day" id="dayDisplay">0</span> / <span id="totalDaysDisplay">10</span></span>
+        <span>🏆 Лидер: <span class="winner" id="leaderDisplay">—</span></span>
+        <span>📊 Осталось лозунгов: <span id="remainingSlogans">0</span></span>
+    </div>
+
+    <div class="slogans-area">
+        <div style="font-weight:700; color:#1a3849; margin-bottom:6px;">📢 Ваш выбор (4 случайных лозунга):</div>
+        <div class="slogans-grid" id="slogansContainer"></div>
+    </div>
+
+    <div class="bottom-panel">
+        <div class="message-box" id="messageBox">Начните предвыборную кампанию!</div>
+        <button class="btn btn-primary" id="nextDayBtn">➡️ Следующий день</button>
+        <button class="btn btn-danger" id="resetBtn">🔄 Перезапуск</button>
+    </div>
+
+    <div class="log-panel" id="logPanel">
+        <div style="color:#8ab3c7; font-weight:600; margin-bottom:4px;">📋 Хроника кампании:</div>
+        <div id="logEntries"></div>
+    </div>
+    <div class="footer">Цифры скрыты. Случайность добавляет непредсказуемости каждому ходу</div>
+</div>
+
+<script>
+    (function() {
+        // ---- ЗВУКИ ----
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function ensureAudio() {
+            if (!audioCtx) audioCtx = new AudioCtx();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playTone(freq, dur, type = 'sine', vol = 0.2) {
+            try {
+                ensureAudio();
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                o.type = type;
+                o.frequency.value = freq;
+                g.gain.setValueAtTime(vol, audioCtx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+                o.connect(g);
+                g.connect(audioCtx.destination);
+                o.start();
+                o.stop(audioCtx.currentTime + dur);
+            } catch (e) {}
+        }
+
+        function playSuccess() {
+            playTone(523, 0.1);
+            setTimeout(() => playTone(659, 0.1), 120);
+            setTimeout(() => playTone(784, 0.18), 240);
+        }
+
+        function playFail() {
+            playTone(300, 0.25, 'sawtooth', 0.15);
+            setTimeout(() => playTone(220, 0.35, 'sawtooth', 0.15), 200);
+        }
+
+        function playWin() {
+            playTone(880, 0.1, 'square', 0.1);
+            setTimeout(() => playTone(1100, 0.15, 'square', 0.1), 120);
+            setTimeout(() => playTone(1320, 0.2, 'square', 0.1), 250);
+            setTimeout(() => playTone(1760, 0.3, 'square', 0.1), 400);
+        }
+
+        function playLose() {
+            playTone(200, 0.3, 'triangle', 0.2);
+            setTimeout(() => playTone(150, 0.4, 'triangle', 0.2), 250);
+        }
+
+        // ---- ИГРОКИ ----
+        const CANDIDATES = [
+            { id: 'player', name: 'Вы', party: 'Народная партия', emoji: '👤', isPlayer: true },
+            { id: 'ai1', name: 'Сергей Петров', party: 'Партия бизнеса', emoji: '🤵', isPlayer: false },
+            { id: 'ai2', name: 'Анна Смирнова', party: 'Зелёная партия', emoji: '👩‍💼', isPlayer: false }
+        ];
+
+        // ---- ЛОЗУНГИ (скрытые цифры, только текст реакций) ----
+        const SLOGANS = [
+            {
+                text: 'Снизим налоги для всех!',
+                people: 5,
+                oligarchs: 8,
+                reactionPeople: '💰 Народ ликует! Предприниматели готовятся к расширению бизнеса.',
+                reactionOligarchs: '🏛️ Олигархи одобряют инициативу и готовы финансировать кампанию.'
+            },
+            {
+                text: 'Повысим пенсии в 2 раза!',
+                people: 10,
+                oligarchs: -5,
+                reactionPeople: '👵 Пенсионеры выходят на улицы с плакатами поддержки! Это исторический день!',
+                reactionOligarchs: '🗞️ Финансовые круги запускают слухи о грядущем дефолте.'
+            },
+            {
+                text: 'Бесплатная медицина для каждого!',
+                people: 12,
+                oligarchs: -8,
+                reactionPeople: '🏥 Врачи и медсёстры аплодируют стоя! Это прорыв в здравоохранении!',
+                reactionOligarchs: '📰 Фармацевтические монополии запускают чёрный пиар: «Лекарства исчезнут!»'
+            },
+            {
+                text: 'Поддержим малый бизнес!',
+                people: 6,
+                oligarchs: 7,
+                reactionPeople: '🧑‍💼 Предприниматели в восторге! Новые рабочие места появятся уже через месяц.',
+                reactionOligarchs: '💰 Инвесторы видят потенциал и готовы вкладываться в стартапы.'
+            },
+            {
+                text: 'Национализируем крупные предприятия!',
+                people: 8,
+                oligarchs: -15,
+                reactionPeople: '🔧 Рабочие заводов ликуют: теперь прибыль пойдёт людям, а не олигархам!',
+                reactionOligarchs: '🚨 Бизнес-элита объявляет войну: «Это конец свободного рынка!»'
+            },
+            {
+                text: 'Увеличим зарплаты бюджетникам!',
+                people: 14,
+                oligarchs: -6,
+                reactionPeople: '👩‍🏫 Учителя и врачи выходят на митинг в вашу поддержку! Это триумф!',
+                reactionOligarchs: '🗞️ Олигархи запускают слухи о неизбежном повышении налогов.'
+            },
+            {
+                text: 'Снизим цены на ЖКХ!',
+                people: 10,
+                oligarchs: -3,
+                reactionPeople: '🏠 Люди радуются: счета за коммуналку станут меньше!',
+                reactionOligarchs: '📰 Энергетические монополии запускают чёрный пиар.'
+            },
+            {
+                text: 'Построим доступное жильё!',
+                people: 9,
+                oligarchs: 2,
+                reactionPeople: '🏗️ Молодые семьи готовятся к переезду! Это решение жилищного вопроса!',
+                reactionOligarchs: '🏢 Строительные магнаты готовы участвовать в госпрограмме.'
+            },
+            {
+                text: 'Бесплатное образование в вузах!',
+                people: 11,
+                oligarchs: -4,
+                reactionPeople: '🎓 Студенты и преподаватели поддерживают! Это будущее страны!',
+                reactionOligarchs: '🗞️ Бизнес-элита запускает слухи о падении качества образования.'
+            },
+            {
+                text: 'Поддержим IT-сектор!',
+                people: 4,
+                oligarchs: 10,
+                reactionPeople: '💻 Айтишники в восторге! Новые стартапы и рабочие места!',
+                reactionOligarchs: '🚀 Технологические инвесторы готовы вкладывать миллиарды!'
+            },
+            {
+                text: 'Ужесточим наказание за коррупцию!',
+                people: 13,
+                oligarchs: -10,
+                reactionPeople: '⚖️ Общество ликует! Чиновники дрожат. Это начало новой эры!',
+                reactionOligarchs: '🗞️ Финансовые круги запускают кампанию дискредитации: «Это политические репрессии!»'
+            },
+            {
+                text: 'Инвестируем в экологию!',
+                people: 7,
+                oligarchs: -2,
+                reactionPeople: '🌿 Экологи и активисты поддерживают! Это спасение планеты!',
+                reactionOligarchs: '🗞️ Заводчики запускают чёрный пиар: «Страна потеряет рабочие места!»'
+            },
+            {
+                text: 'Снизим налоги для крупного бизнеса!',
+                people: -8,
+                oligarchs: 15,
+                reactionPeople: '👥 Народ возмущён: богатые становятся ещё богаче за счёт бедных.',
+                reactionOligarchs: '💰 Бизнес-элита гарантирует полную медийную поддержку.'
+            },
+            {
+                text: 'Отменим транспортный налог!',
+                people: 8,
+                oligarchs: 3,
+                reactionPeople: '🚗 Автовладельцы ликуют! Это экономия для каждой семьи!',
+                reactionOligarchs: '⛽ Нефтяные магнаты видят рост продаж топлива.'
+            },
+            {
+                text: 'Строительство новых дорог!',
+                people: 6,
+                oligarchs: 5,
+                reactionPeople: '🛣️ Водители и предприниматели рады! Это новые возможности для бизнеса!',
+                reactionOligarchs: '🏗️ Строительные магнаты готовы к миллиардным контрактам.'
+            },
+            {
+                text: 'Субсидии для фермеров!',
+                people: 7,
+                oligarchs: 4,
+                reactionPeople: '🌾 Фермеры выходят на поля с плакатами поддержки! Урожай будет богатым!',
+                reactionOligarchs: '🌽 Олигархи видят перспективы в агросекторе.'
+            },
+            {
+                text: 'Увеличим финансирование науки!',
+                people: 5,
+                oligarchs: 6,
+                reactionPeople: '🔬 Учёные и инженеры вдохновлены! Это прорыв в будущее!',
+                reactionOligarchs: '🚀 Инвесторы готовы вкладываться в научные стартапы.'
+            },
+            {
+                text: 'Защитим права потребителей!',
+                people: 9,
+                oligarchs: -3,
+                reactionPeople: '🛡️ Общество поддерживает! Это защита от жадности бизнеса!',
+                reactionOligarchs: '🗞️ Бизнес-ассоциации запускают кампанию дискредитации.'
+            },
+            {
+                text: 'Борьба с безработицей!',
+                people: 12,
+                oligarchs: 2,
+                reactionPeople: '👨‍🔧 Безработные выходят на работу! Экономика оживает!',
+                reactionOligarchs: '🏭 Промышленники готовы расширять производство.'
+            },
+            {
+                text: 'Поддержим молодые семьи!',
+                people: 10,
+                oligarchs: 1,
+                reactionPeople: '👶 Молодые родители счастливы! Демографический бум начинается!',
+                reactionOligarchs: '🏗️ Застройщики видят рост спроса на жильё.'
+            },
+            {
+                text: 'Снизим цены на лекарства!',
+                people: 11,
+                oligarchs: -5,
+                reactionPeople: '💊 Пенсионеры и больные ликуют! Лекарства станут доступными!',
+                reactionOligarchs: '📰 Медицинские лоббисты запускают чёрный пиар: «Качество лекарств упадёт!»'
+            },
+            {
+                text: 'Развитие общественного транспорта!',
+                people: 6,
+                oligarchs: 4,
+                reactionPeople: '🚌 Горожане рады! Пробки уменьшатся, экология улучшится!',
+                reactionOligarchs: '🚋 Транспортные компании готовы к госзаказам.'
+            },
+            {
+                text: 'Увеличим пособия на детей!',
+                people: 13,
+                oligarchs: -7,
+                reactionPeople: '👨‍👩‍👧‍👦 Семьи с детьми выходят на улицы с благодарностями! Это счастье для каждого родителя!',
+                reactionOligarchs: '🗞️ Финансовые круги запускают кампанию против повышения социальных расходов.'
+            },
+            {
+                text: 'Приватизация государственного жилья!',
+                people: -5,
+                oligarchs: 12,
+                reactionPeople: '👥 Народ возмущён: государственное жильё уходит в частные руки.',
+                reactionOligarchs: '💰 Инвесторы готовы вложить миллиарды в недвижимость.'
+            },
+            {
+                text: 'Бесплатный интернет в сёлах!',
+                people: 7,
+                oligarchs: 1,
+                reactionPeople: '🌾 Сельские жители поддерживают! Это выход в большой мир!',
+                reactionOligarchs: '📱 Телеком-олигархи видят новый рынок.'
+            },
+            {
+                text: 'Строительство новых школ!',
+                people: 10,
+                oligarchs: 3,
+                reactionPeople: '🎒 Родители и учителя ликуют! Это будущее образования!',
+                reactionOligarchs: '📚 Олигархи видят возможности для господрядов.'
+            },
+            {
+                text: 'Защита отечественного производителя!',
+                people: 6,
+                oligarchs: 8,
+                reactionPeople: '🇷🇺 Производители поддерживают! Российские товары станут лидерами!',
+                reactionOligarchs: '🏛️ Олигархи видят возможности для захвата рынка.'
+            },
+            {
+                text: 'Улучшение экологии в городах!',
+                people: 8,
+                oligarchs: 2,
+                reactionPeople: '🌳 Горожане поддерживают! Воздух станет чище, жизнь лучше!',
+                reactionOligarchs: '♻️ Олигархи видят возможности в зелёных технологиях.'
+            },
+            {
+                text: 'Снижение цен на продукты!',
+                people: 12,
+                oligarchs: -4,
+                reactionPeople: '🍎 Люди ликуют! Продуктовые корзины становятся доступнее!',
+                reactionOligarchs: '📰 Пищевые монополии запускают кампанию против снижения цен.'
+            },
+            {
+                text: 'Развитие туризма!',
+                people: 5,
+                oligarchs: 7,
+                reactionPeople: '✈️ Туристы и отельеры поддерживают! Это новые рабочие места!',
+                reactionOligarchs: '🏨 Олигархи готовы инвестировать в отельный бизнес.'
+            },
+			// НОВЫЕ ЛОЗУНГИ ДЛЯ ДОБАВЛЕНИЯ В МАССИВ SLOGANS
+{
+    text: 'Вернём смертную казнь!',
+    people: -5,
+    oligarchs: 2,
+    reactionPeople: '😨 Общество разделилось: одни поддерживают, другие в ужасе от такой инициативы.',
+    reactionOligarchs: '🏛️ Олигархи видят в этом способ навести порядок в стране.'
+},
+{
+    text: 'Легализуем лёгкие наркотики!',
+    people: -8,
+    oligarchs: 5,
+    reactionPeople: '😱 Консервативная часть общества шокирована! Молодёжь поддерживает.',
+    reactionOligarchs: '💊 Фармацевтические магнаты готовятся к новому рынку.'
+},
+{
+    text: 'Запретим аборты!',
+    people: -6,
+    oligarchs: 3,
+    reactionPeople: '🙏 Религиозные общины ликуют! Феминистки протестуют.',
+    reactionOligarchs: '🏥 Частные клиники теряют прибыль и недовольны.'
+},
+{
+    text: 'Введём четырёхдневную рабочую неделю!',
+    people: 15,
+    oligarchs: -12,
+    reactionPeople: '🎉 Рабочий класс празднует! Это прорыв в трудовом законодательстве!',
+    reactionOligarchs: '🏭 Промышленники в панике: производство остановится!'
+},
+{
+    text: 'Отменим ЕГЭ!',
+    people: 9,
+    oligarchs: -2,
+    reactionPeople: '📚 Школьники и родители поддерживают! Это снизит стресс у детей.',
+    reactionOligarchs: '📊 Репетиторские центры теряют прибыль и недовольны.'
+},
+{
+    text: 'Вернём СССР!',
+    people: -3,
+    oligarchs: -10,
+    reactionPeople: '🕊️ Ностальгирующие пенсионеры поддерживают. Молодёжь в замешательстве.',
+    reactionOligarchs: '🚨 Олигархи в панике: это угроза их состоянию!'
+},
+{
+    text: 'Запретим пластиковые пакеты!',
+    people: 4,
+    oligarchs: -2,
+    reactionPeople: '🌿 Экологи и активисты поддерживают! Это шаг к чистой планете.',
+    reactionOligarchs: '🏭 Производители пластика недовольны новыми ограничениями.'
+},
+{
+    text: 'Введём налог на бездетность!',
+    people: -10,
+    oligarchs: 6,
+    reactionPeople: '😤 Молодые семьи возмущены! Это давление на личную жизнь.',
+    reactionOligarchs: '💰 Олигархи видят новый способ пополнения бюджета.'
+},
+{
+    text: 'Сделаем всё образование платным!',
+    people: -15,
+    oligarchs: 12,
+    reactionPeople: '📢 Студенты и преподаватели выходят на протесты! Это удар по будущему страны!',
+    reactionOligarchs: '🏛️ Олигархи и элитные вузы поддерживают: это повысит качество образования.'
+},
+{
+    text: 'Вернём призыв в армию на 2 года!',
+    people: -4,
+    oligarchs: 5,
+    reactionPeople: '🎖️ Патриоты поддерживают. Молодёжь недовольна.',
+    reactionOligarchs: '🏢 Оборонные предприятия ждут роста заказов.'
+},
+{
+    text: 'Отменим все льготы для чиновников!',
+    people: 12,
+    oligarchs: -6,
+    reactionPeople: '⚖️ Общество ликует! Это справедливость и борьба с привилегиями.',
+    reactionOligarchs: '🏛️ Бюрократический аппарат саботирует реформу.'
+},
+{
+    text: 'Создадим миллион рабочих мест!',
+    people: 10,
+    oligarchs: 3,
+    reactionPeople: '💪 Рабочие и безработные в восторге! Это спасение для миллионов семей.',
+    reactionOligarchs: '🏗️ Бизнес готовится к новым проектам.'
+},
+{
+    text: 'Запретим импортные товары!',
+    people: -2,
+    oligarchs: 8,
+    reactionPeople: '🇷🇺 Патриоты поддерживают. Потребители боятся роста цен.',
+    reactionOligarchs: '🏛️ Олигархи видят возможность захватить рынок.'
+},
+{
+    text: 'Введём бесплатный проезд в общественном транспорте!',
+    people: 9,
+    oligarchs: -4,
+    reactionPeople: '🚌 Горожане ликуют! Это экономия для каждой семьи.',
+    reactionOligarchs: '🚕 Таксисты и перевозчики недовольны потерей дохода.'
+},
+{
+    text: 'Запретим социальные сети для детей!',
+    people: -3,
+    oligarchs: 4,
+    reactionPeople: '👨‍👩‍👧‍👦 Родители поддерживают. Подростки протестуют.',
+    reactionOligarchs: '📱 IT-корпорации теряют аудиторию и недовольны.'
+},
+{
+    text: 'Введём прогрессивную шкалу налогообложения!',
+    people: 14,
+    oligarchs: -18,
+    reactionPeople: '⚖️ Народ ликует! Богатые заплатят справедливую долю!',
+    reactionOligarchs: '🚨 Олигархи в ярости! Это угроза их капиталу!'
+},
+{
+    text: 'Откроем границы для мигрантов!',
+    people: -10,
+    oligarchs: 7,
+    reactionPeople: '🌍 Либералы поддерживают. Националисты протестуют.',
+    reactionOligarchs: '🏭 Бизнес рад: дешёвая рабочая сила снова доступна.'
+},
+{
+    text: 'Закроем все казино и игровые клубы!',
+    people: 7,
+    oligarchs: -9,
+    reactionPeople: '🎰 Общество поддерживает: это борьба с игровой зависимостью.',
+    reactionOligarchs: '💸 Олигархи теряют прибыль и начинают чёрный пиар.'
+},
+{
+    text: 'Введём бесплатное питание в школах!',
+    people: 11,
+    oligarchs: -5,
+    reactionPeople: '🍎 Родители и дети в восторге! Это забота о будущем поколении.',
+    reactionOligarchs: '🍽️ Производители школьного питания недовольны новыми правилами.'
+},
+{
+    text: 'Разрешим многожёнство!',
+    people: -7,
+    oligarchs: 2,
+    reactionPeople: '🕌 Религиозные общины поддерживают. Феминистки в шоке.',
+    reactionOligarchs: '🏛️ Олигархи видят в этом способ легализации гаремов.'
+},
+{
+    text: 'Введём обязательный донорский взнос!',
+    people: -4,
+    oligarchs: -3,
+    reactionPeople: '🩸 Медики поддерживают. Граждане возмущены принуждением.',
+    reactionOligarchs: '🏥 Клиники теряют прибыль от платной крови.'
+},
+{
+    text: 'Отменим все штрафы для малого бизнеса!',
+    people: 8,
+    oligarchs: 6,
+    reactionPeople: '🧑‍💼 Предприниматели ликуют! Это спасение для малого бизнеса.',
+    reactionOligarchs: '📊 Олигархи видят возможности для новых стартапов.'
+},
+{
+    text: 'Введём кибер-паспорта для всех граждан!',
+    people: -6,
+    oligarchs: 9,
+    reactionPeople: '💻 Технократы поддерживают. Консерваторы боятся тотальной слежки.',
+    reactionOligarchs: '🔒 IT-корпорации готовы к миллиардным контрактам.'
+},
+{
+    text: 'Запретим одноразовую посуду!',
+    people: 5,
+    oligarchs: -3,
+    reactionPeople: '🌿 Экологи и активисты поддерживают! Это борьба с мусором.',
+    reactionOligarchs: '🏭 Производители пластика теряют прибыль.'
+},
+{
+    text: 'Введём бесплатные спортивные секции для детей!',
+    people: 10,
+    oligarchs: 2,
+    reactionPeople: '🏅 Родители и дети в восторге! Это здоровье нации!',
+    reactionOligarchs: '⚽ Спортивные клубы видят новые возможности.'
+},
+{
+    text: 'Отменим транспортный налог для пенсионеров!',
+    people: 8,
+    oligarchs: 1,
+    reactionPeople: '🚌 Пенсионеры ликуют! Это забота о старшем поколении.',
+    reactionOligarchs: '⛽ Нефтяные компании незначительно теряют прибыль.'
+},
+{
+    text: 'Введём налог на роскошь!',
+    people: 12,
+    oligarchs: -14,
+    reactionPeople: '💎 Народ поддерживает! Богатые заплатят больше!',
+    reactionOligarchs: '🚨 Олигархи объявляют войну: «Это грабёж среди бела дня!»'
+},
+{
+    text: 'Разрешим эвтаназию!',
+    people: -5,
+    oligarchs: 3,
+    reactionPeople: '⚖️ Либералы поддерживают. Религиозные общины протестуют.',
+    reactionOligarchs: '🏥 Клиники видят новый платный сервис.'
+},
+{
+    text: 'Запретим использование ГМО!',
+    people: 6,
+    oligarchs: -7,
+    reactionPeople: '🌾 Экологи и фермеры поддерживают! Это борьба за натуральные продукты.',
+    reactionOligarchs: '🌽 Агрокорпорации теряют прибыль и недовольны.'
+},
+{
+    text: 'Введём бесплатную юридическую помощь!',
+    people: 7,
+    oligarchs: -3,
+    reactionPeople: '⚖️ Граждане поддерживают! Это доступ к правосудию для всех.',
+    reactionOligarchs: '📜 Юридические фирмы теряют клиентов.'
+},
+{
+    text: 'Отменим все налоги для IT-стартапов!',
+    people: 3,
+    oligarchs: 8,
+    reactionPeople: '💻 Айтишники и предприниматели в восторге! Это инновационный рывок!',
+    reactionOligarchs: '📈 Инвесторы готовы вложить миллиарды в новые проекты.'
+},
+{
+    text: 'Введём пожизненное заключение для коррупционеров!',
+    people: 15,
+    oligarchs: -12,
+    reactionPeople: '⚖️ Общество ликует! Чиновники дрожат! Это справедливость!',
+    reactionOligarchs: '🚨 Олигархи в панике: их схемам придёт конец!'
+},
+{
+    text: 'Разрешим торговлю по воскресеньям!',
+    people: 4,
+    oligarchs: 6,
+    reactionPeople: '🛒 Потребители рады! Религиозные общины недовольны.',
+    reactionOligarchs: '💰 Бизнес ликует: рост продаж гарантирован!'
+},
+{
+    text: 'Запретим полиэтиленовые пакеты!',
+    people: 5,
+    oligarchs: -2,
+    reactionPeople: '🌿 Экологи поддерживают! Это спасение океанов!',
+    reactionOligarchs: '🏭 Производители пакетов теряют прибыль.'
+},
+{
+    text: 'Введём бесплатное молоко в школах!',
+    people: 7,
+    oligarchs: 0,
+    reactionPeople: '🥛 Родители и дети рады! Это забота о здоровье!',
+    reactionOligarchs: '🏭 Молочные комбинаты получают госзаказы.'
+},
+{
+    text: 'Отменим обязательную воинскую повинность!',
+    people: 6,
+    oligarchs: -4,
+    reactionPeople: '🕊️ Молодёжь ликует! Консерваторы возмущены.',
+    reactionOligarchs: '🏢 Оборонные предприятия теряют прибыль.'
+},
+{
+    text: 'Введём прогрессивный налог на наследство!',
+    people: 10,
+    oligarchs: -16,
+    reactionPeople: '⚖️ Народ поддерживает! Богатые не должны передавать всё детям!',
+    reactionOligarchs: '🚨 Олигархи в ярости: это угроза их империям!'
+},
+{
+    text: 'Разрешим однополые браки!',
+    people: -8,
+    oligarchs: 4,
+    reactionPeople: '🏳️‍🌈 ЛГБТ-сообщество ликует! Консерваторы протестуют.',
+    reactionOligarchs: '🎬 Олигархи видят новые рынки в кино и рекламе.'
+},
+{
+    text: 'Запретим курение в общественных местах!',
+    people: 6,
+    oligarchs: -3,
+    reactionPeople: '🚭 Не курящие поддерживают! Курильщики возмущены.',
+    reactionOligarchs: '🚬 Табачные компании теряют прибыль.'
+},
+{
+    text: 'Введём бесплатное подключение к интернету!',
+    people: 8,
+    oligarchs: -2,
+    reactionPeople: '🌐 Все граждане в восторге! Это доступ к знаниям для всех!',
+    reactionOligarchs: '📡 Телеком-монополии теряют прибыль.'
+},
+{
+    text: 'Отменим все праздники, кроме Нового года!',
+    people: -10,
+    oligarchs: 5,
+    reactionPeople: '😤 Народ возмущён: это атака на традиции и культуру!',
+    reactionOligarchs: '📈 Экономисты поддерживают: рост производительности!'
+},
+{
+    text: 'Введём налог на сладкие напитки!',
+    people: -3,
+    oligarchs: 4,
+    reactionPeople: '🩺 Врачи поддерживают. Потребители недовольны ростом цен.',
+    reactionOligarchs: '🥤 Производители газировки теряют прибыль.'
+},
+{
+    text: 'Создадим государственный фонд помощи бездомным!',
+    people: 7,
+    oligarchs: -2,
+    reactionPeople: '🏠 Общество поддерживает! Это человечность и забота о ближнем!',
+    reactionOligarchs: '📊 Благотворительные фонды теряют влияние.'
+},
+{
+    text: 'Запретим рекламу алкоголя!',
+    people: 5,
+    oligarchs: -6,
+    reactionPeople: '🍷 Общество поддерживает! Это борьба с пьянством!',
+    reactionOligarchs: '🍺 Алкогольные корпорации теряют рынок.'
+},
+{
+    text: 'Введём обязательную сдачу норм ГТО!',
+    people: -2,
+    oligarchs: 3,
+    reactionPeople: '🏋️ Спортсмены поддерживают. Молодёжь недовольна.',
+    reactionOligarchs: '🏢 Производители спортинвентаря ждут роста продаж.'
+},
+{
+    text: 'Отменим все пошлины на ввоз технологий!',
+    people: 2,
+    oligarchs: 10,
+    reactionPeople: '💻 Айтишники рады. Отечественные производители недовольны.',
+    reactionOligarchs: '📱 Технологические корпорации получают доступ к рынку.'
+},
+{
+    text: 'Введём квоты для женщин в правительстве!',
+    people: 4,
+    oligarchs: -4,
+    reactionPeople: '👩‍💼 Феминистки поддерживают. Мужчины-политики возмущены.',
+    reactionOligarchs: '🏛️ Олигархи боятся потери влияния.'
+},
+{
+    text: 'Запретим использование диких животных в цирках!',
+    people: 6,
+    oligarchs: -2,
+    reactionPeople: '🐘 Зоозащитники ликуют! Это гуманность и сострадание!',
+    reactionOligarchs: '🎪 Цирки теряют прибыль и недовольны.'
+},
+{
+    text: 'Введём бесплатную психологическую помощь!',
+    people: 8,
+    oligarchs: 1,
+    reactionPeople: '🧠 Общество поддерживает! Это забота о психическом здоровье!',
+    reactionOligarchs: '📊 Частные психологи теряют клиентов.'
+},
+{
+    text: 'Отменим все экзамены в школах!',
+    people: -6,
+    oligarchs: 5,
+    reactionPeople: '😤 Учителя возмущены: это падение качества образования!',
+    reactionOligarchs: '📚 Репетиторские центры теряют прибыль.'
+},
+{
+    text: 'Разрешим усыновление для однополых пар!',
+    people: -9,
+    oligarchs: 3,
+    reactionPeople: '🏳️‍🌈 ЛГБТ-сообщество поддерживает. Традиционалисты протестуют.',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для новых семейных проектов.'
+},
+{
+    text: 'Введём обязательный спорт в школах!',
+    people: 5,
+    oligarchs: 2,
+    reactionPeople: '🏅 Родители и врачи поддерживают! Это здоровье нации!',
+    reactionOligarchs: '🏢 Производители формы и инвентаря рады.'
+},
+{
+    text: 'Запретим строительство торговых центров!',
+    people: -3,
+    oligarchs: -6,
+    reactionPeople: '🏗️ Градостроители и жители недовольны. Девелоперы в шоке.',
+    reactionOligarchs: '🛍️ Девелоперы терпят убытки и устраивают чёрный пиар.'
+},
+{
+    text: 'Введём налог на вывоз капитала!',
+    people: 12,
+    oligarchs: -20,
+    reactionPeople: '💰 Народ поддерживает! Пусть деньги остаются в стране!',
+    reactionOligarchs: '🚨 Олигархи в панике: их сбережениям грозит конфискация!'
+},
+{
+    text: 'Отменим прививки для детей!',
+    people: -10,
+    oligarchs: 4,
+    reactionPeople: '😷 Антивакцинаторы ликуют. Врачи в ужасе от такой инициативы.',
+    reactionOligarchs: '💊 Фармацевтические компании теряют прибыль.'
+},
+{
+    text: 'Введём бесплатные кружки для детей!',
+    people: 8,
+    oligarchs: 1,
+    reactionPeople: '🎨 Родители в восторге! Это развитие детей вне зависимости от достатка!',
+    reactionOligarchs: '🏛️ Частные кружки теряют клиентов.'
+},
+{
+    text: 'Запретим использование мата в СМИ!',
+    people: 2,
+    oligarchs: -1,
+    reactionPeople: '📺 Консерваторы поддерживают. Журналисты возмущены цензурой.',
+    reactionOligarchs: '📰 Медиа-лоббисты недовольны новыми ограничениями.'
+},
+{
+    text: 'Введём бесплатный Wi-Fi в общественных местах!',
+    people: 6,
+    oligarchs: 2,
+    reactionPeople: '📱 Граждане в восторге! Это доступ к информации для всех!',
+    reactionOligarchs: '📡 Телеком-компании видят новые возможности.'
+},
+{
+    text: 'Отменим все льготы для олигархов!',
+    people: 14,
+    oligarchs: -22,
+    reactionPeople: '⚖️ Народ ликует! Справедливость восторжествовала!',
+    reactionOligarchs: '🚨 Олигархи объявляют тотальную войну! Это конец их эпохи!'
+},
+{
+    text: 'Создадим кибервойска!',
+    people: 4,
+    oligarchs: 7,
+    reactionPeople: '🖥️ Патриоты поддерживают. Мирные активисты боятся эскалации.',
+    reactionOligarchs: '🔒 IT-корпорации готовы к миллиардным контрактам.'
+},
+{
+    text: 'Запретим использование майнеров криптовалют!',
+    people: -2,
+    oligarchs: -4,
+    reactionPeople: '⚡ Энергетики поддерживают. Криптоэнтузиасты возмущены.',
+    reactionOligarchs: '💰 Майнинговые фермы теряют прибыль и недовольны.'
+},
+{
+    text: 'Введём бесплатные юридические консультации!',
+    people: 6,
+    oligarchs: -2,
+    reactionPeople: '⚖️ Граждане поддерживают! Это доступ к правосудию для всех!',
+    reactionOligarchs: '📜 Частные юристы теряют клиентов.'
+},
+{
+    text: 'Отменим комендантский час для молодёжи!',
+    people: 3,
+    oligarchs: 1,
+    reactionPeople: '🌃 Молодёжь ликует! Консерваторы недовольны.',
+    reactionOligarchs: '🏛️ Ночные клубы и рестораны рады.'
+},
+{
+    text: 'Введём уголовную ответственность за хамство!',
+    people: 2,
+    oligarchs: -1,
+    reactionPeople: '😤 Консерваторы поддерживают. Либералы возмущены цензурой.',
+    reactionOligarchs: '📰 СМИ недовольны новыми ограничениями.'
+},
+{
+    text: 'Создадим государственные пекарни для малоимущих!',
+    people: 7,
+    oligarchs: -3,
+    reactionPeople: '🍞 Общество поддерживает! Это забота о нуждающихся!',
+    reactionOligarchs: '🍞 Частные пекарни теряют прибыль.'
+},
+{
+    text: 'Запретим использование полиграфа в судах!',
+    people: -1,
+    oligarchs: 2,
+    reactionPeople: '⚖️ Защитники прав человека поддерживают. Судьи недовольны.',
+    reactionOligarchs: '🔍 Детективные агентства теряют прибыль.'
+},
+{
+    text: 'Введём налог на голубей!',
+    people: -4,
+    oligarchs: 3,
+    reactionPeople: '🐦 Жители городов возмущены. Орнитологи в шоке.',
+    reactionOligarchs: '🏛️ Олигархи видят новый способ пополнения бюджета.'
+},
+{
+    text: 'Отменим выходные для госслужащих!',
+    people: -6,
+    oligarchs: 8,
+    reactionPeople: '😤 Госслужащие возмущены. Предприниматели поддерживают.',
+    reactionOligarchs: '📈 Олигархи видят рост производительности.'
+},
+{
+    text: 'Введём бесплатную стерилизацию бездомных животных!',
+    people: 5,
+    oligarchs: 1,
+    reactionPeople: '🐕 Зоозащитники поддерживают! Это борьба с бездомностью!',
+    reactionOligarchs: '🏛️ Ветеринарные клиники получают госзаказы.'
+},
+{
+    text: 'Запретим веганство в общественных местах!',
+    people: -8,
+    oligarchs: 3,
+    reactionPeople: '🌱 Веганы возмущены. Мясоеды поддерживают.',
+    reactionOligarchs: '🥩 Мясные корпорации рады новому закону.'
+},
+{
+    text: 'Введём бесплатный проезд для студентов!',
+    people: 8,
+    oligarchs: -1,
+    reactionPeople: '🎓 Студенты ликуют! Это поддержка молодёжи!',
+    reactionOligarchs: '🚌 Транспортные компании теряют прибыль.'
+},
+{
+    text: 'Отменим все пошлины на книги!',
+    people: 6,
+    oligarchs: 2,
+    reactionPeople: '📚 Читатели и библиотекари поддерживают! Это распространение знаний!',
+    reactionOligarchs: '📖 Книжные издательства видят новый рынок.'
+},
+{
+    text: 'Введём обязательный час физкультуры в школах!',
+    people: 4,
+    oligarchs: 1,
+    reactionPeople: '🏃 Родители и врачи поддерживают! Это здоровье нации!',
+    reactionOligarchs: '🎽 Производители спортивной формы рады.'
+},
+{
+    text: 'Запретим использование животных в рекламе!',
+    people: 4,
+    oligarchs: -2,
+    reactionPeople: '🐱 Зоозащитники поддерживают! Рекламщики недовольны.',
+    reactionOligarchs: '📺 Рекламные агентства теряют креативные решения.'
+},
+{
+    text: 'Введём национальный QR-код для всех!',
+    people: -9,
+    oligarchs: 8,
+    reactionPeople: '📱 Технократы поддерживают. Консерваторы боятся тотальной слежки.',
+    reactionOligarchs: '🔒 IT-корпорации готовы к масштабным контрактам.'
+},
+{
+    text: 'Отменим все налоги для пенсионеров!',
+    people: 11,
+    oligarchs: -5,
+    reactionPeople: '👵 Пенсионеры ликуют! Это забота о старшем поколении!',
+    reactionOligarchs: '📉 Бюджет теряет доходы, олигархи недовольны.'
+},
+{
+    text: 'Создадим министерство счастья!',
+    people: 7,
+    oligarchs: 3,
+    reactionPeople: '😊 Общество поддерживает! Это забота о благополучии граждан!',
+    reactionOligarchs: '🏛️ Чиновники видят новые должности и бюджеты.'
+},
+{
+    text: 'Запретим использование фейков в СМИ!',
+    people: 6,
+    oligarchs: -4,
+    reactionPeople: '📰 Общество поддерживает! Это борьба с дезинформацией!',
+    reactionOligarchs: '🗞️ Медиа-холдинги теряют инструменты манипуляции.'
+},
+{
+    text: 'Введём бесплатную стоматологию!',
+    people: 8,
+    oligarchs: -6,
+    reactionPeople: '🦷 Граждане в восторге! Это доступ к здоровым зубам для всех!',
+    reactionOligarchs: '🏥 Частные стоматологии теряют прибыль.'
+},
+{
+    text: 'Отменим все запреты на уличную торговлю!',
+    people: 5,
+    oligarchs: 3,
+    reactionPeople: '🛍️ Продавцы и покупатели рады! Торговля оживает!',
+    reactionOligarchs: '🏬 Торговые сети теряют монополию.'
+},
+{
+    text: 'Введём обязательное изучение истории!',
+    people: 3,
+    oligarchs: 2,
+    reactionPeople: '📚 Историки поддерживают. Школьники недовольны нагрузкой.',
+    reactionOligarchs: '🏛️ Олигархи видят возможности влиять на учебники.'
+},
+{
+    text: 'Запретим пластиковые стаканчики в кофейнях!',
+    people: 4,
+    oligarchs: -2,
+    reactionPeople: '🌿 Экологи поддерживают! Кофейни недовольны.',
+    reactionOligarchs: '🥤 Производители одноразовой посуды теряют прибыль.'
+},
+{
+    text: 'Введём бесплатную доставку лекарств для пожилых!',
+    people: 9,
+    oligarchs: -3,
+    reactionPeople: '💊 Пенсионеры ликуют! Это забота о старшем поколении!',
+    reactionOligarchs: '🏥 Аптечные сети теряют курьерскую прибыль.'
+},
+{
+    text: 'Отменим все квоты для иностранцев!',
+    people: -4,
+    oligarchs: 6,
+    reactionPeople: '🌍 Либералы возмущены. Националисты поддерживают.',
+    reactionOligarchs: '🏢 Бизнес видит новые возможности найма.'
+},
+{
+    text: 'Введём государственный флаг на каждом доме!',
+    people: 3,
+    oligarchs: 2,
+    reactionPeople: '🇷🇺 Патриоты поддерживают. Лишние траты для жителей.',
+    reactionOligarchs: '🏛️ Производители флагов рады.'
+},
+{
+    text: 'Запретим продажу алкоголя после 21:00!',
+    people: 4,
+    oligarchs: -5,
+    reactionPeople: '🌙 Консерваторы поддерживают. Молодёжь возмущена.',
+    reactionOligarchs: '🍺 Алкогольные сети теряют вечернюю прибыль.'
+},
+{
+    text: 'Введём бесплатные курсы программирования!',
+    people: 8,
+    oligarchs: 5,
+    reactionPeople: '💻 Молодёжь и айтишники поддерживают! Это цифровое будущее!',
+    reactionOligarchs: '📈 IT-корпорации получают новые кадры.'
+},
+{
+    text: 'Отменим все возрастные ограничения в политике!',
+    people: 4,
+    oligarchs: 2,
+    reactionPeople: '👤 Молодые политики поддерживают. Опытные недовольны.',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для протеже.'
+},
+{
+    text: 'Создадим единый реестр чиновников!',
+    people: 7,
+    oligarchs: -4,
+    reactionPeople: '📋 Общество поддерживает! Это прозрачность и борьба с коррупцией!',
+    reactionOligarchs: '🗞️ Бюрократы и олигархи боятся разоблачений.'
+},
+{
+    text: 'Запретим использование одноразовых масок!',
+    people: -3,
+    oligarchs: 4,
+    reactionPeople: '😷 Врачи возмущены. Экологи поддерживают.',
+    reactionOligarchs: '🏭 Производители масок теряют прибыль.'
+},
+{
+    text: 'Введём обязательную смену погоды!',
+    people: -10,
+    oligarchs: 15,
+    reactionPeople: '🌤️ Народ в замешательстве. Учёные в шоке.',
+    reactionOligarchs: '🔬 Олигархи видят возможности в технологиях управления климатом.'
+},
+{
+    text: 'Отменим все запреты на смартфоны в школах!',
+    people: 2,
+    oligarchs: 3,
+    reactionPeople: '📱 Школьники рады. Учителя недовольны.',
+    reactionOligarchs: '📲 Производители гаджетов видят рост продаж.'
+},
+{
+    text: 'Введём бесплатные обеды для бездомных!',
+    people: 8,
+    oligarchs: -2,
+    reactionPeople: '🍲 Общество поддерживает! Это помощь нуждающимся!',
+    reactionOligarchs: '🏪 Рестораны и столовые теряют прибыль.'
+},
+{
+    text: 'Запретим курение в машинах с детьми!',
+    people: 6,
+    oligarchs: -1,
+    reactionPeople: '🚭 Родители поддерживают! Это забота о здоровье детей!',
+    reactionOligarchs: '🚬 Табачные компании недовольны.'
+},
+{
+    text: 'Создадим государственный хоспис!',
+    people: 7,
+    oligarchs: -3,
+    reactionPeople: '🏥 Общество поддерживает! Это достойная старость!',
+    reactionOligarchs: '🏢 Частные хосписы теряют прибыль.'
+},
+{
+    text: 'Отменим все налоги на наследство!',
+    people: -4,
+    oligarchs: 10,
+    reactionPeople: '👑 Наследники богатства рады. Народ возмущён.',
+    reactionOligarchs: '💰 Олигархи ликуют: их империи останутся в семье!'
+},
+{
+    text: 'Введём экологический налог на машины!',
+    people: -2,
+    oligarchs: 6,
+    reactionPeople: '🌿 Экологи поддерживают. Автомобилисты недовольны.',
+    reactionOligarchs: '🚗 Автоконцерны готовятся к переходу на электро.'
+},
+{
+    text: 'Запретим использование слова "кризис" в СМИ!',
+    people: -4,
+    oligarchs: 7,
+    reactionPeople: '📰 Журналисты возмущены. Политтехнологи поддерживают.',
+    reactionOligarchs: '🏛️ Олигархи видят способ управлять настроениями.'
+},
+{
+    text: 'Введём бесплатную подписку на журналы для пенсионеров!',
+    people: 5,
+    oligarchs: 0,
+    reactionPeople: '📖 Пенсионеры рады! Это доступ к знаниям и чтению!',
+    reactionOligarchs: '🏢 Издательства получают господдержку.'
+},
+{
+    text: 'Отменим все заборы в городах!',
+    people: 3,
+    oligarchs: -2,
+    reactionPeople: '🏙️ Горожане спорят. Дизайнеры поддерживают открытость.',
+    reactionOligarchs: '🏗️ Строительные компании теряют прибыль.'
+},
+{
+    text: 'Введём государственный интернет-магазин!',
+    people: -4,
+    oligarchs: 8,
+    reactionPeople: '🛒 Потребители боятся монополии. Бизнес недоволен.',
+    reactionOligarchs: '💰 Олигархи видят способ контролировать торговлю.'
+},
+{
+    text: 'Запретим использование голубей в городских парках!',
+    people: -2,
+    oligarchs: 2,
+    reactionPeople: '🐦 Жители возмущены. Орнитологи в шоке.',
+    reactionOligarchs: '🏛️ Олигархи видят способ заработать на отлове.'
+},
+{
+    text: 'Создадим министерство цифровой свободы!',
+    people: 6,
+    oligarchs: 5,
+    reactionPeople: '💻 Айтишники поддерживают! Это защита прав в интернете!',
+    reactionOligarchs: '📈 IT-корпорации видят новые возможности.'
+},
+{
+    text: 'Отменим все визы для дружественных стран!',
+    people: 4,
+    oligarchs: 6,
+    reactionPeople: '✈️ Путешественники рады. Мигранты получают новые возможности.',
+    reactionOligarchs: '🏢 Туристический бизнес ликует.'
+},
+{
+    text: 'Введём налог на криптовалюты!',
+    people: -3,
+    oligarchs: 7,
+    reactionPeople: '🪙 Криптоинвесторы недовольны. Экономисты поддерживают.',
+    reactionOligarchs: '💰 Олигархи видят способ легализовать доходы.'
+},
+{
+    text: 'Запретим использование звезд на флагах!',
+    people: -5,
+    oligarchs: 4,
+    reactionPeople: '⭐ Патриоты возмущены. Дизайнеры поддерживают.',
+    reactionOligarchs: '🏛️ Олигархи видят способ изменить символику.'
+},
+{
+    text: 'Введём бесплатное изучение китайского в школах!',
+    people: 2,
+    oligarchs: 8,
+    reactionPeople: '📚 Школьники недовольны. Экономисты поддерживают.',
+    reactionOligarchs: '🌏 Олигархи видят перспективы в сотрудничестве с Китаем.'
+},
+{
+    text: 'Отменим все штрафы за парковку!',
+    people: 6,
+    oligarchs: -3,
+    reactionPeople: '🚗 Автомобилисты ликуют! Городские власти недовольны.',
+    reactionOligarchs: '🚦 Штрафные компании теряют прибыль.'
+},
+{
+    text: 'Создадим государственную платформу для доноров!',
+    people: 4,
+    oligarchs: 1,
+    reactionPeople: '🩸 Медики поддерживают! Это спасение жизней!',
+    reactionOligarchs: '🏥 Клиники получают доступ к донорской базе.'
+},
+// ЕЩЁ 100 НОВЫХ ЛОЗУНГОВ ДЛЯ ДОБАВЛЕНИЯ В МАССИВ SLOGANS
+{
+    text: 'Введём бесплатные завтраки в школах!',
+    people: 8,
+    oligarchs: -2,
+    reactionPeople: '🥣 Дети и родители в восторге! Это забота о подрастающем поколении!',
+    reactionOligarchs: '🍞 Производители школьного питания теряют прибыль.'
+},
+{
+    text: 'Запретим использование диких животных в зоопарках!',
+    people: 6,
+    oligarchs: -3,
+    reactionPeople: '🐘 Зоозащитники ликуют! Это гуманное отношение к животным!',
+    reactionOligarchs: '🏛️ Зоопарки теряют прибыль и недовольны.'
+},
+{
+    text: 'Введём обязательную регистрацию блогеров!',
+    people: -5,
+    oligarchs: 6,
+    reactionPeople: '📱 Блогеры возмущены. Консерваторы поддерживают.',
+    reactionOligarchs: '📊 Олигархи видят способ контролировать инфлюенсеров.'
+},
+{
+    text: 'Отменим все пошлины на детские товары!',
+    people: 9,
+    oligarchs: -2,
+    reactionPeople: '👶 Родители в восторге! Это поддержка семей с детьми!',
+    reactionOligarchs: '🧸 Производители теряют часть прибыли.'
+},
+{
+    text: 'Создадим государственный фонд поддержки театров!',
+    people: 5,
+    oligarchs: 2,
+    reactionPeople: '🎭 Театралы и артисты поддерживают! Это культурное возрождение!',
+    reactionOligarchs: '🏛️ Меценаты видят новые возможности.'
+},
+{
+    text: 'Запретим использование пушнины в одежде!',
+    people: 4,
+    oligarchs: -4,
+    reactionPeople: '🐰 Зоозащитники поддерживают! Модные дома недовольны.',
+    reactionOligarchs: '🧥 Производители меха теряют прибыль.'
+},
+{
+    text: 'Введём бесплатное посещение музеев для студентов!',
+    people: 6,
+    oligarchs: 1,
+    reactionPeople: '🎨 Студенты и искусствоведы поддерживают! Это приобщение к культуре!',
+    reactionOligarchs: '🏛️ Музеи получают государственную поддержку.'
+},
+{
+    text: 'Отменим все налоги для фермеров!',
+    people: 7,
+    oligarchs: 4,
+    reactionPeople: '🌾 Фермеры ликуют! Это спасение сельского хозяйства!',
+    reactionOligarchs: '🌽 Агропромышленные холдинги получают преимущества.'
+},
+{
+    text: 'Введём уголовную ответственность за пропаганду курения!',
+    people: 4,
+    oligarchs: -5,
+    reactionPeople: '🚭 Общество поддерживает! Это забота о здоровье!',
+    reactionOligarchs: '🚬 Табачные корпорации теряют рынок.'
+},
+{
+    text: 'Создадим сеть бесплатных библиотек!',
+    people: 7,
+    oligarchs: 0,
+    reactionPeople: '📚 Читатели в восторге! Это доступ к знаниям для всех!',
+    reactionOligarchs: '📖 Книжные магазины теряют прибыль.'
+},
+{
+    text: 'Запретим использование пальмового масла в продуктах!',
+    people: 5,
+    oligarchs: -6,
+    reactionPeople: '🌴 Потребители поддерживают! Это борьба за качество!',
+    reactionOligarchs: '🛢️ Производители продуктов теряют прибыль.'
+},
+{
+    text: 'Введём обязательный урок финансовой грамотности!',
+    people: 6,
+    oligarchs: 3,
+    reactionPeople: '📊 Родители и учителя поддерживают! Это будущее детей!',
+    reactionOligarchs: '🏛️ Банки видят новых грамотных клиентов.'
+},
+{
+    text: 'Отменим все льготы для крупных корпораций!',
+    people: 10,
+    oligarchs: -15,
+    reactionPeople: '⚖️ Народ ликует! Это справедливое перераспределение!',
+    reactionOligarchs: '🚨 Корпорации в панике! Это удар по их прибыли!'
+},
+{
+    text: 'Введём бесплатную раздачу воды в жаркие дни!',
+    people: 5,
+    oligarchs: -1,
+    reactionPeople: '💧 Горожане рады! Это забота о здоровье в жару!',
+    reactionOligarchs: '🥤 Производители воды теряют прибыль.'
+},
+{
+    text: 'Запретим продажу вейпов!',
+    people: 5,
+    oligarchs: -6,
+    reactionPeople: '💨 Врачи поддерживают! Молодёжь возмущена.',
+    reactionOligarchs: '🚬 Производители электронных сигарет теряют рынок.'
+},
+{
+    text: 'Создадим государственный хор!',
+    people: 3,
+    oligarchs: 2,
+    reactionPeople: '🎤 Артисты и музыканты поддерживают! Это культурное возрождение!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для спонсорства.'
+},
+{
+    text: 'Введём бесплатные анализы для пенсионеров!',
+    people: 8,
+    oligarchs: -3,
+    reactionPeople: '🩺 Пенсионеры ликуют! Это забота о здоровье!',
+    reactionOligarchs: '🏥 Частные лаборатории теряют прибыль.'
+},
+{
+    text: 'Отменим все запреты на ношение хиджаба!',
+    people: -6,
+    oligarchs: 4,
+    reactionPeople: '🕌 Мусульмане поддерживают. Консерваторы возмущены.',
+    reactionOligarchs: '🧕 Олигархи видят новые рынки в исламской моде.'
+},
+{
+    text: 'Введём государственную доску почёта героев труда!',
+    people: 4,
+    oligarchs: 2,
+    reactionPeople: '🏆 Рабочие и пенсионеры поддерживают! Это уважение к труду!',
+    reactionOligarchs: '🏛️ Олигархи видят способ повысить лояльность.'
+},
+{
+    text: 'Запретим использование красителей в еде!',
+    people: 5,
+    oligarchs: -3,
+    reactionPeople: '🍎 Потребители поддерживают! Это борьба за качество!',
+    reactionOligarchs: '🎨 Производители продуктов теряют прибыль.'
+},
+{
+    text: 'Введём бесплатные курсы вождения для молодёжи!',
+    people: 6,
+    oligarchs: 2,
+    reactionPeople: '🚗 Молодёжь в восторге! Это доступ к мобильности!',
+    reactionOligarchs: '🚦 Автошколы видят новые возможности.'
+},
+{
+    text: 'Отменим все штрафы для пенсионеров!',
+    people: 8,
+    oligarchs: -2,
+    reactionPeople: '👵 Пенсионеры ликуют! Это забота о старшем поколении!',
+    reactionOligarchs: '📊 Штрафные службы теряют прибыль.'
+},
+{
+    text: 'Создадим государственный балет!',
+    people: 4,
+    oligarchs: 3,
+    reactionPeople: '🩰 Артисты балета поддерживают! Это культурное наследие!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для спонсорства.'
+},
+{
+    text: 'Введём обязательную проверку продуктов в школах!',
+    people: 6,
+    oligarchs: -3,
+    reactionPeople: '🥗 Родители поддерживают! Это забота о здоровье детей!',
+    reactionOligarchs: '🏭 Производители недовольны новыми проверками.'
+},
+{
+    text: 'Запретим использование фреонов в холодильниках!',
+    people: 4,
+    oligarchs: -3,
+    reactionPeople: '🌍 Экологи поддерживают! Это защита озонового слоя!',
+    reactionOligarchs: '❄️ Производители холодильников недовольны.'
+},
+{
+    text: 'Введём бесплатную доставку пенсий на дом!',
+    people: 7,
+    oligarchs: -1,
+    reactionPeople: '📮 Пенсионеры в восторге! Это удобство и забота!',
+    reactionOligarchs: '🏛️ Почтовые службы получают госзаказы.'
+},
+{
+    text: 'Отменим все ограничения на строительство частных домов!',
+    people: 5,
+    oligarchs: 4,
+    reactionPeople: '🏗️ Строители и владельцы рады! Это свобода планировки!',
+    reactionOligarchs: '📈 Девелоперы получают новые возможности.'
+},
+{
+    text: 'Введём государственный день семьи!',
+    people: 6,
+    oligarchs: 1,
+    reactionPeople: '👨‍👩‍👧‍👦 Семьи поддерживают! Это важный выходной для всех!',
+    reactionOligarchs: '🏛️ Олигархи видят способ повысить лояльность.'
+},
+{
+    text: 'Запретим использование жира в фастфуде!',
+    people: 5,
+    oligarchs: -5,
+    reactionPeople: '🍔 Потребители поддерживают. Рестораны недовольны.',
+    reactionOligarchs: '🍟 Сети фастфуда теряют прибыль.'
+},
+{
+    text: 'Создадим государственный зоопарк нового поколения!',
+    people: 4,
+    oligarchs: 3,
+    reactionPeople: '🐯 Зоозащитники и дети поддерживают! Это современный зоопарк!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для бизнеса.'
+},
+{
+    text: 'Введём бесплатные консультации психологов для жертв насилия!',
+    people: 7,
+    oligarchs: -2,
+    reactionPeople: '🧠 Общество поддерживает! Это защита слабых!',
+    reactionOligarchs: '🏛️ Частные психологи теряют клиентов.'
+},
+{
+    text: 'Отменим все налоги на инвестиции в экологию!',
+    people: 5,
+    oligarchs: 8,
+    reactionPeople: '🌿 Экологи и инвесторы поддерживают! Это зелёное будущее!',
+    reactionOligarchs: '💰 Олигархи видят новые возможности в эко-бизнесе.'
+},
+{
+    text: 'Введём обязательное обучение первой помощи!',
+    people: 6,
+    oligarchs: 1,
+    reactionPeople: '🩹 Врачи и общество поддерживают! Это спасение жизней!',
+    reactionOligarchs: '🏛️ Медицинские учреждения видят новые возможности.'
+},
+{
+    text: 'Запретим использование фольги в продуктах!',
+    people: 3,
+    oligarchs: -2,
+    reactionPeople: '🔬 Экологи поддерживают. Производители недовольны.',
+    reactionOligarchs: '🏭 Производители упаковки теряют прибыль.'
+},
+{
+    text: 'Создадим государственный театр кукол!',
+    people: 4,
+    oligarchs: 2,
+    reactionPeople: '🎭 Дети и родители поддерживают! Это радость для детей!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для спонсорства.'
+},
+{
+    text: 'Введём бесплатные экскурсии для школьников!',
+    people: 6,
+    oligarchs: 0,
+    reactionPeople: '🏛️ Школьники и учителя поддерживают! Это познание мира!',
+    reactionOligarchs: '📊 Туристические компании видят новые возможности.'
+},
+{
+    text: 'Отменим все ограничения на свадебные церемонии!',
+    people: 4,
+    oligarchs: 3,
+    reactionPeople: '💍 Молодожёны рады! Это свобода организации!',
+    reactionOligarchs: '🎉 Свадебные агентства видят рост спроса.'
+},
+{
+    text: 'Введём государственный праздник весны!',
+    people: 5,
+    oligarchs: 2,
+    reactionPeople: '🌸 Общество поддерживает! Это радость и обновление!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для бизнеса.'
+},
+{
+    text: 'Запретим использование латекса в медицине!',
+    people: -3,
+    oligarchs: -2,
+    reactionPeople: '🩺 Врачи возмущены. Аллергики поддерживают.',
+    reactionOligarchs: '🏥 Производители латекса теряют прибыль.'
+},
+{
+    text: 'Введём бесплатную раздачу семян для садоводов!',
+    people: 5,
+    oligarchs: 0,
+    reactionPeople: '🌱 Садоводы в восторге! Это развитие огородов!',
+    reactionOligarchs: '🌿 Сельскохозяйственные компании видят новые рынки.'
+},
+{
+    text: 'Отменим все пошлины на ввоз спортивного инвентаря!',
+    people: 4,
+    oligarchs: 5,
+    reactionPeople: '🏅 Спортсмены поддерживают! Это развитие спорта!',
+    reactionOligarchs: '📈 Производители спортинвентаря рады.'
+},
+{
+    text: 'Создадим государственный ансамбль народного танца!',
+    people: 4,
+    oligarchs: 2,
+    reactionPeople: '💃 Артисты поддерживают! Это сохранение культуры!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для спонсорства.'
+},
+{
+    text: 'Введём обязательную проверку воды в школах!',
+    people: 6,
+    oligarchs: -2,
+    reactionPeople: '💧 Родители поддерживают! Это забота о здоровье детей!',
+    reactionOligarchs: '🏭 Производители бутилированной воды недовольны.'
+},
+{
+    text: 'Запретим использование одноразовых приборов!',
+    people: 5,
+    oligarchs: -4,
+    reactionPeople: '🌿 Экологи поддерживают! Это борьба с мусором!',
+    reactionOligarchs: '🥄 Производители пластиковой посуды теряют прибыль.'
+},
+{
+    text: 'Введём бесплатные билеты в кино для пенсионеров!',
+    people: 6,
+    oligarchs: -1,
+    reactionPeople: '🎬 Пенсионеры рады! Это доступ к культуре!',
+    reactionOligarchs: '🎥 Кинотеатры теряют часть прибыли.'
+},
+{
+    text: 'Отменим все налоги на благотворительность!',
+    people: 6,
+    oligarchs: 5,
+    reactionPeople: '🤝 Благотворители поддерживают! Это поощрение добра!',
+    reactionOligarchs: '💰 Олигархи видят новые способы вложения средств.'
+},
+{
+    text: 'Введём государственный день защиты животных!',
+    people: 5,
+    oligarchs: 1,
+    reactionPeople: '🐾 Зоозащитники ликуют! Это важный день для всех!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Запретим использование формальдегида в мебели!',
+    people: 4,
+    oligarchs: -3,
+    reactionPeople: '🪑 Потребители поддерживают! Это борьба за качество!',
+    reactionOligarchs: '📦 Производители мебели теряют прибыль.'
+},
+{
+    text: 'Создадим государственный музей современного искусства!',
+    people: 4,
+    oligarchs: 3,
+    reactionPeople: '🎨 Художники и интеллигенция поддерживают! Это культурный прорыв!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для инвестиций.'
+},
+{
+    text: 'Введём бесплатную стрижку для бездомных!',
+    people: 6,
+    oligarchs: -2,
+    reactionPeople: '✂️ Общество поддерживает! Это забота о нуждающихся!',
+    reactionOligarchs: '💈 Парикмахерские теряют прибыль.'
+},
+{
+    text: 'Отменим все запреты на уличные концерты!',
+    people: 5,
+    oligarchs: 3,
+    reactionPeople: '🎵 Музыканты и молодёжь поддерживают! Это свобода творчества!',
+    reactionOligarchs: '🎤 Олигархи видят новые возможности для шоу-бизнеса.'
+},
+{
+    text: 'Введём обязательный урок толерантности в школах!',
+    people: 4,
+    oligarchs: 2,
+    reactionPeople: '🤝 Учителя и либералы поддерживают! Это воспитание уважения!',
+    reactionOligarchs: '📚 Книжные издательства видят новые рынки.'
+},
+{
+    text: 'Запретим использование фосфатов в моющих средствах!',
+    people: 5,
+    oligarchs: -3,
+    reactionPeople: '💧 Экологи поддерживают! Это защита водоёмов!',
+    reactionOligarchs: '🧪 Производители моющих средств теряют прибыль.'
+},
+{
+    text: 'Создадим государственный фонд помощи ветеранам!',
+    people: 8,
+    oligarchs: -4,
+    reactionPeople: '🎖️ Ветераны и общество поддерживают! Это благодарность героям!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Введём бесплатные обеды для пенсионеров в кафе!',
+    people: 7,
+    oligarchs: -3,
+    reactionPeople: '🍽️ Пенсионеры в восторге! Это забота и внимание!',
+    reactionOligarchs: '☕ Владельцы кафе теряют часть прибыли.'
+},
+{
+    text: 'Отменим все штрафы за мелкие правонарушения для молодёжи!',
+    people: 4,
+    oligarchs: 2,
+    reactionPeople: '👨‍🎓 Молодёжь рада. Консерваторы недовольны.',
+    reactionOligarchs: '📊 Штрафные службы теряют прибыль.'
+},
+{
+    text: 'Введём государственный день чтения!',
+    people: 5,
+    oligarchs: 1,
+    reactionPeople: '📚 Читатели и библиотекари поддерживают! Это продвижение чтения!',
+    reactionOligarchs: '📖 Олигархи видят возможности для спонсорства.'
+},
+{
+    text: 'Запретим использование свинца в игрушках!',
+    people: 6,
+    oligarchs: -4,
+    reactionPeople: '🧸 Родители поддерживают! Это забота о здоровье детей!',
+    reactionOligarchs: '🏭 Производители игрушек теряют прибыль.'
+},
+{
+    text: 'Введём бесплатные курсы английского для взрослых!',
+    people: 6,
+    oligarchs: 3,
+    reactionPeople: '📖 Общество поддерживает! Это доступ к образованию!',
+    reactionOligarchs: '📚 Языковые школы получают господдержку.'
+},
+{
+    text: 'Отменим все квоты на импорт для малого бизнеса!',
+    people: 4,
+    oligarchs: 5,
+    reactionPeople: '🧑‍💼 Предприниматели поддерживают! Это свобода торговли!',
+    reactionOligarchs: '📦 Олигархи видят новые возможности для импорта.'
+},
+{
+    text: 'Создадим государственный центр помощи с домашними животными!',
+    people: 5,
+    oligarchs: 1,
+    reactionPeople: '🐕 Зоозащитники поддерживают! Это помощь животным!',
+    reactionOligarchs: '🏛️ Ветеринарные клиники видят новые возможности.'
+},
+{
+    text: 'Введём бесплатную раздачу книг в больницах!',
+    people: 5,
+    oligarchs: -1,
+    reactionPeople: '📚 Пациенты поддерживают! Это скрашивание досуга!',
+    reactionOligarchs: '🏥 Книжные магазины теряют прибыль.'
+},
+{
+    text: 'Запретим использование ГМО в детском питании!',
+    people: 7,
+    oligarchs: -5,
+    reactionPeople: '🍼 Родители поддерживают! Это забота о здоровье!',
+    reactionOligarchs: '🍲 Производители детского питания теряют прибыль.'
+},
+{
+    text: 'Введём государственный день без автомобиля!',
+    people: 4,
+    oligarchs: -2,
+    reactionPeople: '🚲 Экологи и горожане поддерживают! Это чистота воздуха!',
+    reactionOligarchs: '🚗 Нефтяные компании теряют прибыль.'
+},
+{
+    text: 'Отменим все запреты на уличную музыку!',
+    people: 5,
+    oligarchs: 3,
+    reactionPeople: '🎵 Музыканты поддерживают! Это свобода творчества!',
+    reactionOligarchs: '🎸 Олигархи видят новые возможности для бизнеса.'
+},
+{
+    text: 'Создадим государственный фонд помощи молодым художникам!',
+    people: 5,
+    oligarchs: 3,
+    reactionPeople: '🎨 Художники поддерживают! Это развитие искусства!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для инвестиций.'
+},
+{
+    text: 'Введём бесплатные экскурсии в планетарий!',
+    people: 5,
+    oligarchs: 1,
+    reactionPeople: '🌌 Школьники и родители поддерживают! Это познание космоса!',
+    reactionOligarchs: '🚀 Научные центры видят новые возможности.'
+},
+{
+    text: 'Запретим использование ртути в термометрах!',
+    people: 4,
+    oligarchs: -2,
+    reactionPeople: '🔬 Экологи поддерживают! Это безопасность!',
+    reactionOligarchs: '🌡️ Производители термометров теряют прибыль.'
+},
+{
+    text: 'Введём государственный день без интернета!',
+    people: -4,
+    oligarchs: -1,
+    reactionPeople: '📱 Молодёжь возмущена. Психологи поддерживают.',
+    reactionOligarchs: '📡 IT-компании теряют прибыль.'
+},
+{
+    text: 'Отменим все налоги на книги и учебники!',
+    people: 7,
+    oligarchs: -2,
+    reactionPeople: '📚 Школьники и студенты поддерживают! Это доступ к знаниям!',
+    reactionOligarchs: '📖 Издательства теряют часть прибыли.'
+},
+{
+    text: 'Создадим государственный оркестр народных инструментов!',
+    people: 4,
+    oligarchs: 2,
+    reactionPeople: '🎵 Артисты поддерживают! Это сохранение культуры!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для спонсорства.'
+},
+{
+    text: 'Введём бесплатную раздачу молока в школах!',
+    people: 6,
+    oligarchs: -1,
+    reactionPeople: '🥛 Родители поддерживают! Это здоровое питание!',
+    reactionOligarchs: '🏭 Молочные комбинаты получают госзаказы.'
+},
+{
+    text: 'Запретим использование формалина в продуктах!',
+    people: 6,
+    oligarchs: -4,
+    reactionPeople: '🍖 Потребители поддерживают! Это борьба за качество!',
+    reactionOligarchs: '🏭 Производители продуктов теряют прибыль.'
+},
+{
+    text: 'Введём государственный день памяти животных!',
+    people: 4,
+    oligarchs: 1,
+    reactionPeople: '🐾 Зоозащитники поддерживают! Это уважение к братьям меньшим!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Отменим все штрафы за сбор грибов в лесу!',
+    people: 5,
+    oligarchs: -1,
+    reactionPeople: '🍄 Грибники рады! Лесники недовольны.',
+    reactionOligarchs: '🌲 Лесхозы теряют прибыль.'
+},
+{
+    text: 'Введём бесплатную раздачу витаминов для пенсионеров!',
+    people: 7,
+    oligarchs: -3,
+    reactionPeople: '💊 Пенсионеры в восторге! Это забота о здоровье!',
+    reactionOligarchs: '💉 Фармацевтические компании теряют прибыль.'
+},
+{
+    text: 'Создадим государственный театр для детей!',
+    people: 5,
+    oligarchs: 2,
+    reactionPeople: '🎭 Дети и родители поддерживают! Это радость и воспитание!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для спонсорства.'
+},
+{
+    text: 'Введём обязательный час музыки в школах!',
+    people: 4,
+    oligarchs: 1,
+    reactionPeople: '🎵 Учителя и дети поддерживают! Это развитие талантов!',
+    reactionOligarchs: '🎸 Производители инструментов рады.'
+},
+{
+    text: 'Запретим использование свинца в аккумуляторах!',
+    people: 4,
+    oligarchs: -3,
+    reactionPeople: '🔋 Экологи поддерживают! Это защита природы!',
+    reactionOligarchs: '⚡ Производители аккумуляторов теряют прибыль.'
+},
+{
+    text: 'Отменим все налоги на помощь животным!',
+    people: 5,
+    oligarchs: 3,
+    reactionPeople: '🐱 Зоозащитники поддерживают! Это поощрение помощи!',
+    reactionOligarchs: '💰 Олигархи видят новые способы вложения средств.'
+},
+{
+    text: 'Введём государственный день здоровья!',
+    people: 6,
+    oligarchs: 1,
+    reactionPeople: '🏥 Врачи и общество поддерживают! Это забота о здоровье!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Запретим использование антибиотиков в кормах для животных!',
+    people: 5,
+    oligarchs: -4,
+    reactionPeople: '🐄 Фермеры и потребители поддерживают! Это качество продуктов!',
+    reactionOligarchs: '🏭 Производители кормов теряют прибыль.'
+},
+{
+    text: 'Введём бесплатную раздачу масок в сезон эпидемий!',
+    people: 5,
+    oligarchs: -2,
+    reactionPeople: '😷 Граждане поддерживают! Это забота о здоровье!',
+    reactionOligarchs: '🏭 Производители масок теряют прибыль.'
+},
+{
+    text: 'Создадим государственный центр защиты прав потребителей!',
+    people: 7,
+    oligarchs: -5,
+    reactionPeople: '🛡️ Общество поддерживает! Это защита от обмана!',
+    reactionOligarchs: '🏛️ Бизнес-лоббисты недовольны новыми правилами.'
+},
+{
+    text: 'Введём обязательную проверку игрушек на безопасность!',
+    people: 6,
+    oligarchs: -3,
+    reactionPeople: '🧸 Родители поддерживают! Это забота о детях!',
+    reactionOligarchs: '🏭 Производители игрушек недовольны.'
+},
+{
+    text: 'Отменим все налоги на пожертвования в приюты для животных!',
+    people: 5,
+    oligarchs: 3,
+    reactionPeople: '🐕 Зоозащитники поддерживают! Это помощь животным!',
+    reactionOligarchs: '💰 Олигархи видят новые способы вложения средств.'
+},
+{
+    text: 'Введём государственный день доброты!',
+    people: 5,
+    oligarchs: 1,
+    reactionPeople: '🤝 Общество поддерживает! Это важный день для всех!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Запретим использование хлора в бассейнах!',
+    people: 4,
+    oligarchs: -2,
+    reactionPeople: '🏊 Пловцы и экологи поддерживают! Это безопасность!',
+    reactionOligarchs: '🧪 Производители хлора теряют прибыль.'
+},
+{
+    text: 'Введём бесплатную раздачу семян для городских садоводов!',
+    people: 4,
+    oligarchs: 0,
+    reactionPeople: '🌿 Горожане поддерживают! Это озеленение города!',
+    reactionOligarchs: '🌱 Сельскохозяйственные компании видят новые рынки.'
+},
+{
+    text: 'Создадим государственный музей науки!',
+    people: 5,
+    oligarchs: 3,
+    reactionPeople: '🔬 Учёные и студенты поддерживают! Это развитие науки!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для инвестиций.'
+},
+{
+    text: 'Введём обязательный урок рисования в школах!',
+    people: 4,
+    oligarchs: 1,
+    reactionPeople: '🎨 Дети и учителя поддерживают! Это развитие творчества!',
+    reactionOligarchs: '🖼️ Производители художественных товаров рады.'
+},
+{
+    text: 'Запретим использование токсичных материалов в строительстве!',
+    people: 5,
+    oligarchs: -4,
+    reactionPeople: '🏗️ Экологи и граждане поддерживают! Это безопасность!',
+    reactionOligarchs: '🧱 Строительные компании теряют прибыль.'
+},
+{
+    text: 'Отменим все запреты на уличные ярмарки!',
+    people: 5,
+    oligarchs: 3,
+    reactionPeople: '🛍️ Продавцы и покупатели поддерживают! Это торговля и праздник!',
+    reactionOligarchs: '📈 Олигархи видят новые возможности для бизнеса.'
+},
+{
+    text: 'Введём государственный день национальной кухни!',
+    people: 5,
+    oligarchs: 2,
+    reactionPeople: '🍲 Рестораторы и гурманы поддерживают! Это праздник вкуса!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для спонсорства.'
+},
+{
+    text: 'Запретим использование парабенов в косметике!',
+    people: 5,
+    oligarchs: -3,
+    reactionPeople: '💄 Потребители поддерживают! Это борьба за качество!',
+    reactionOligarchs: '🧴 Производители косметики теряют прибыль.'
+},
+{
+    text: 'Введём бесплатные курсы массажа для пенсионеров!',
+    people: 5,
+    oligarchs: -2,
+    reactionPeople: '💆 Пенсионеры в восторге! Это забота о здоровье!',
+    reactionOligarchs: '🏛️ Частные массажисты теряют прибыль.'
+},
+{
+    text: 'Создадим государственный хор ветеранов!',
+    people: 5,
+    oligarchs: 2,
+    reactionPeople: '🎤 Ветераны и общество поддерживают! Это уважение к героям!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Введём обязательное изучение экологии в школах!',
+    people: 6,
+    oligarchs: 2,
+    reactionPeople: '🌍 Учителя и ученики поддерживают! Это забота о планете!',
+    reactionOligarchs: '📚 Производители учебников рады.'
+},
+{
+    text: 'Запретим использование ртутных ламп!',
+    people: 4,
+    oligarchs: -2,
+    reactionPeople: '💡 Экологи поддерживают! Это безопасность!',
+    reactionOligarchs: '🏭 Производители ламп теряют прибыль.'
+},
+{
+    text: 'Отменим все налоги на уличных музыкантов!',
+    people: 5,
+    oligarchs: 3,
+    reactionPeople: '🎵 Музыканты поддерживают! Это свобода творчества!',
+    reactionOligarchs: '🎸 Олигархи видят новые возможности для бизнеса.'
+},
+{
+    text: 'Введём государственный день волонтёра!',
+    people: 6,
+    oligarchs: 2,
+    reactionPeople: '🤝 Волонтёры и общество поддерживают! Это важный день!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Запретим использование красителей в косметике!',
+    people: 5,
+    oligarchs: -3,
+    reactionPeople: '💄 Потребители поддерживают! Это борьба за натуральность!',
+    reactionOligarchs: '🧴 Производители косметики теряют прибыль.'
+},
+{
+    text: 'Введём бесплатную раздачу книг в парках!',
+    people: 5,
+    oligarchs: -1,
+    reactionPeople: '📚 Читатели поддерживают! Это доступ к чтению!',
+    reactionOligarchs: '📖 Книжные магазины теряют прибыль.'
+},
+{
+    text: 'Создадим государственный центр реабилитации животных!',
+    people: 5,
+    oligarchs: -2,
+    reactionPeople: '🐾 Зоозащитники поддерживают! Это помощь животным!',
+    reactionOligarchs: '🏛️ Ветеринарные клиники теряют прибыль.'
+},
+{
+    text: 'Введём обязательный урок садоводства в школах!',
+    people: 4,
+    oligarchs: 1,
+    reactionPeople: '🌱 Учителя и дети поддерживают! Это связь с природой!',
+    reactionOligarchs: '🌿 Садовые центры видят новые возможности.'
+},
+{
+    text: 'Запретим использование пластика в упаковке продуктов!',
+    people: 6,
+    oligarchs: -5,
+    reactionPeople: '🌍 Экологи поддерживают! Это борьба с мусором!',
+    reactionOligarchs: '🏭 Производители упаковки теряют прибыль.'
+},
+{
+    text: 'Отменим все пошлины на ввоз лекарств!',
+    people: 8,
+    oligarchs: -3,
+    reactionPeople: '💊 Потребители поддерживают! Это доступ к лекарствам!',
+    reactionOligarchs: '🏥 Фармацевтические монополии теряют прибыль.'
+},
+{
+    text: 'Введём государственный день творчества!',
+    people: 5,
+    oligarchs: 2,
+    reactionPeople: '🎨 Художники и артисты поддерживают! Это праздник вдохновения!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для спонсорства.'
+},
+{
+    text: 'Запретим использование ароматизаторов в продуктах!',
+    people: 4,
+    oligarchs: -3,
+    reactionPeople: '🍏 Потребители поддерживают! Это натуральность!',
+    reactionOligarchs: '🧪 Производители продуктов теряют прибыль.'
+},
+{
+    text: 'Введём бесплатную раздачу фруктов в школах!',
+    people: 7,
+    oligarchs: -2,
+    reactionPeople: '🍎 Дети и родители в восторге! Это здоровое питание!',
+    reactionOligarchs: '🍌 Плодоовощные компании получают госзаказы.'
+},// ЕЩЁ 100 НОВЫХ ЛОЗУНГОВ (ТРЕТЬЯ ПАРТИЯ)
+{
+    text: 'Введём бесплатные обеды для студентов!',
+    people: 7,
+    oligarchs: -3,
+    reactionPeople: '🍲 Студенты ликуют! Это поддержка образования!',
+    reactionOligarchs: '🏛️ Студенческие столовые теряют прибыль.'
+},
+{
+    text: 'Запретим использование нефти в косметике!',
+    people: 4,
+    oligarchs: -3,
+    reactionPeople: '🌿 Экологи и потребители поддерживают! Это натуральность!',
+    reactionOligarchs: '🧴 Нефтяные компании теряют рынок.'
+},
+{
+    text: 'Создадим государственный фонд поддержки бездомных!',
+    people: 7,
+    oligarchs: -4,
+    reactionPeople: '🏠 Общество поддерживает! Это забота о нуждающихся!',
+    reactionOligarchs: '📊 Благотворительные организации теряют влияние.'
+},
+{
+    text: 'Введём бесплатную доставку лекарств в деревни!',
+    people: 6,
+    oligarchs: -2,
+    reactionPeople: '💊 Сельские жители в восторге! Это доступ к медицине!',
+    reactionOligarchs: '🚚 Аптечные сети теряют прибыль.'
+},
+{
+    text: 'Отменим все налоги на велосипеды!',
+    people: 5,
+    oligarchs: 1,
+    reactionPeople: '🚲 Велосипедисты поддерживают! Это развитие экотранспорта!',
+    reactionOligarchs: '🏭 Производители велосипедов рады.'
+},
+{
+    text: 'Запретим использование хлорки в воде!',
+    people: 5,
+    oligarchs: -3,
+    reactionPeople: '💧 Экологи и жители поддерживают! Это забота о здоровье!',
+    reactionOligarchs: '🧪 Водоканалы теряют прибыль.'
+},
+{
+    text: 'Введём государственный день спорта!',
+    people: 6,
+    oligarchs: 2,
+    reactionPeople: '🏅 Спортсмены и болельщики поддерживают! Это праздник здоровья!',
+    reactionOligarchs: '📈 Олигархи видят новые возможности для бизнеса.'
+},
+{
+    text: 'Создадим государственный центр помощи инвалидам!',
+    people: 7,
+    oligarchs: -3,
+    reactionPeople: '♿ Общество поддерживает! Это забота о слабых!',
+    reactionOligarchs: '🏛️ Частные реабилитационные центры теряют прибыль.'
+},
+{
+    text: 'Введём бесплатные кружки для взрослых!',
+    people: 5,
+    oligarchs: 1,
+    reactionPeople: '🧑‍🎓 Взрослые поддерживают! Это возможность учиться!',
+    reactionOligarchs: '📚 Образовательные центры видят новые возможности.'
+},
+{
+    text: 'Запретим использование газа в домах!',
+    people: -6,
+    oligarchs: 4,
+    reactionPeople: '🔥 Газовики возмущены. Экологи поддерживают.',
+    reactionOligarchs: '⛽ Газовые монополии теряют прибыль.'
+},
+{
+    text: 'Отменим все пошлины на ввоз лекарств для детей!',
+    people: 8,
+    oligarchs: -4,
+    reactionPeople: '💊 Родители поддерживают! Это доступ к лечению!',
+    reactionOligarchs: '🏥 Фармацевтические компании теряют прибыль.'
+},
+{
+    text: 'Введём государственный день семьи и верности!',
+    people: 6,
+    oligarchs: 2,
+    reactionPeople: '👨‍👩‍👧‍👦 Семьи поддерживают! Это укрепление ценностей!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Создадим государственный фонд помощи детям-сиротам!',
+    people: 8,
+    oligarchs: -5,
+    reactionPeople: '👶 Общество поддерживает! Это забота о будущем!',
+    reactionOligarchs: '📊 Частные детские дома теряют финансирование.'
+},
+{
+    text: 'Введём бесплатную раздачу фруктов в больницах!',
+    people: 6,
+    oligarchs: -2,
+    reactionPeople: '🍎 Пациенты поддерживают! Это забота о здоровье!',
+    reactionOligarchs: '🥝 Поставщики теряют часть прибыли.'
+},
+{
+    text: 'Запретим использование феромонов в парфюмерии!',
+    people: 3,
+    oligarchs: -3,
+    reactionPeople: '🌹 Потребители разделились. Парфюмеры недовольны.',
+    reactionOligarchs: '🧴 Производители парфюма теряют рынок.'
+},
+{
+    text: 'Отменим все запреты на сбор урожая в лесах!',
+    people: 5,
+    oligarchs: 0,
+    reactionPeople: '🌲 Грибники и ягодники рады! Лесники недовольны.',
+    reactionOligarchs: '🌿 Лесхозы теряют прибыль.'
+},
+{
+    text: 'Введём государственный день музыки!',
+    people: 5,
+    oligarchs: 2,
+    reactionPeople: '🎵 Музыканты и слушатели поддерживают! Это праздник души!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для спонсорства.'
+},
+{
+    text: 'Создадим государственный центр помощи жертвам домашнего насилия!',
+    people: 7,
+    oligarchs: -3,
+    reactionPeople: '🛡️ Общество поддерживает! Это защита слабых!',
+    reactionOligarchs: '📊 Частные кризисные центры теряют прибыль.'
+},
+{
+    text: 'Введём бесплатные курсы для молодых мам!',
+    people: 6,
+    oligarchs: 1,
+    reactionPeople: '👩‍👦 Молодые мамы поддерживают! Это помощь и поддержка!',
+    reactionOligarchs: '📚 Образовательные центры видят новые возможности.'
+},
+{
+    text: 'Запретим использование мышьяка в продуктах!',
+    people: 6,
+    oligarchs: -5,
+    reactionPeople: '🍎 Потребители поддерживают! Это борьба за качество!',
+    reactionOligarchs: '🏭 Производители продуктов теряют прибыль.'
+},
+{
+    text: 'Отменим все налоги на семена для фермеров!',
+    people: 7,
+    oligarchs: 3,
+    reactionPeople: '🌾 Фермеры ликуют! Это поддержка сельского хозяйства!',
+    reactionOligarchs: '🌽 Агропромышленные компании видят новые возможности.'
+},
+{
+    text: 'Введём государственный день чтения вслух!',
+    people: 4,
+    oligarchs: 1,
+    reactionPeople: '📖 Читатели и библиотекари поддерживают! Это популяризация чтения!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для спонсорства.'
+},
+{
+    text: 'Создадим государственный фонд поддержки молодых учёных!',
+    people: 6,
+    oligarchs: 4,
+    reactionPeople: '🔬 Учёные и студенты поддерживают! Это развитие науки!',
+    reactionOligarchs: '📈 Олигархи видят возможности для инвестиций.'
+},
+{
+    text: 'Введём бесплатную раздачу воды в школах!',
+    people: 5,
+    oligarchs: -1,
+    reactionPeople: '💧 Дети и родители поддерживают! Это забота о здоровье!',
+    reactionOligarchs: '🥤 Производители бутилированной воды теряют прибыль.'
+},
+{
+    text: 'Запретим использование стиральных порошков с фосфатами!',
+    people: 5,
+    oligarchs: -3,
+    reactionPeople: '🌿 Экологи поддерживают! Это защита водоёмов!',
+    reactionOligarchs: '🧪 Производители порошков теряют прибыль.'
+},
+{
+    text: 'Отменим все штрафы за выгул собак без намордника!',
+    people: 3,
+    oligarchs: 0,
+    reactionPeople: '🐕 Собаководы рады! Городские власти недовольны.',
+    reactionOligarchs: '🏛️ Штрафные службы теряют прибыль.'
+},
+{
+    text: 'Введём государственный день чистоты!',
+    people: 4,
+    oligarchs: 1,
+    reactionPeople: '🧹 Экологи и горожане поддерживают! Это уборка планеты!',
+    reactionOligarchs: '🏛️ Коммунальные службы видят новые возможности.'
+},
+{
+    text: 'Создадим государственный центр помощи наркозависимым!',
+    people: 6,
+    oligarchs: -3,
+    reactionPeople: '❤️ Общество поддерживает! Это борьба с наркоманией!',
+    reactionOligarchs: '💉 Частные клиники теряют прибыль.'
+},
+{
+    text: 'Введём бесплатные экскурсии на заводы для школьников!',
+    people: 5,
+    oligarchs: 2,
+    reactionPeople: '🏭 Школьники поддерживают! Это профориентация!',
+    reactionOligarchs: '📊 Промышленники видят новые возможности.'
+},
+{
+    text: 'Запретим использование консервантов в детском питании!',
+    people: 7,
+    oligarchs: -5,
+    reactionPeople: '🍼 Родители поддерживают! Это забота о здоровье!',
+    reactionOligarchs: '🥫 Производители детского питания теряют прибыль.'
+},
+{
+    text: 'Отменим все налоги на покупку книг для школ!',
+    people: 6,
+    oligarchs: -1,
+    reactionPeople: '📚 Школы и ученики поддерживают! Это доступ к знаниям!',
+    reactionOligarchs: '📖 Издательства получают госзаказы.'
+},
+{
+    text: 'Введём государственный день добрых дел!',
+    people: 6,
+    oligarchs: 2,
+    reactionPeople: '🤝 Волонтёры и общество поддерживают! Это важный день!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Создадим государственный фонд помощи животным в зонах бедствия!',
+    people: 5,
+    oligarchs: -2,
+    reactionPeople: '🐾 Зоозащитники поддерживают! Это спасение животных!',
+    reactionOligarchs: '📊 Ветеринарные организации теряют влияние.'
+},
+{
+    text: 'Введём бесплатную раздачу овощей в детских садах!',
+    people: 6,
+    oligarchs: -2,
+    reactionPeople: '🥕 Дети и родители поддерживают! Это здоровое питание!',
+    reactionOligarchs: '🍅 Поставщики теряют часть прибыли.'
+},
+{
+    text: 'Запретим использование формальдегида в тканях!',
+    people: 5,
+    oligarchs: -3,
+    reactionPeople: '👕 Потребители поддерживают! Это борьба за качество!',
+    reactionOligarchs: '🧵 Производители тканей теряют прибыль.'
+},
+{
+    text: 'Отменим все пошлины на ввоз сельхозтехники!',
+    people: 5,
+    oligarchs: 6,
+    reactionPeople: '🌾 Фермеры поддерживают! Это развитие сельского хозяйства!',
+    reactionOligarchs: '🚜 Производители техники рады.'
+},
+{
+    text: 'Введём государственный день солидарности с врачами!',
+    people: 6,
+    oligarchs: 2,
+    reactionPeople: '🩺 Врачи и пациенты поддерживают! Это уважение к медикам!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Создадим государственный центр переработки отходов!',
+    people: 5,
+    oligarchs: -2,
+    reactionPeople: '♻️ Экологи и горожане поддерживают! Это чистота планеты!',
+    reactionOligarchs: '🏭 Мусорные монополии теряют прибыль.'
+},
+{
+    text: 'Введём бесплатные курсы по уходу за пожилыми!',
+    people: 6,
+    oligarchs: 1,
+    reactionPeople: '👵 Семьи с пожилыми поддерживают! Это забота о старших!',
+    reactionOligarchs: '📚 Образовательные центры видят новые возможности.'
+},
+{
+    text: 'Запретим использование искусственных подсластителей!',
+    people: 5,
+    oligarchs: -4,
+    reactionPeople: '🍬 Потребители поддерживают! Это натуральность!',
+    reactionOligarchs: '🧪 Производители сладостей теряют прибыль.'
+},
+{
+    text: 'Отменим все штрафы за посадку деревьев без разрешения!',
+    people: 5,
+    oligarchs: -1,
+    reactionPeople: '🌳 Экологи и горожане рады! Это озеленение!',
+    reactionOligarchs: '🏛️ Городские власти теряют контроль.'
+},
+{
+    text: 'Введём государственный день уважения к старшим!',
+    people: 6,
+    oligarchs: 2,
+    reactionPeople: '👴 Пенсионеры и общество поддерживают! Это уважение!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Создадим государственный фонд поддержки бездомных животных!',
+    people: 6,
+    oligarchs: -3,
+    reactionPeople: '🐕 Зоозащитники поддерживают! Это спасение животных!',
+    reactionOligarchs: '🏛️ Ветеринарные клиники теряют часть прибыли.'
+},
+{
+    text: 'Введём бесплатную раздачу хлеба для малоимущих!',
+    people: 7,
+    oligarchs: -4,
+    reactionPeople: '🍞 Нуждающиеся поддерживают! Это помощь!',
+    reactionOligarchs: '🏪 Пекарни теряют прибыль.'
+},
+{
+    text: 'Запретим использование красителей в лекарствах!',
+    people: 5,
+    oligarchs: -3,
+    reactionPeople: '💊 Пациенты поддерживают! Это безопасность!',
+    reactionOligarchs: '🏥 Фармацевтические компании теряют прибыль.'
+},
+{
+    text: 'Отменим все налоги на покупку спортивного инвентаря для детей!',
+    people: 6,
+    oligarchs: 3,
+    reactionPeople: '🏅 Родители поддерживают! Это развитие спорта!',
+    reactionOligarchs: '📈 Производители инвентаря рады.'
+},
+{
+    text: 'Введём государственный день творчества для детей!',
+    people: 5,
+    oligarchs: 2,
+    reactionPeople: '🎨 Дети и родители поддерживают! Это развитие талантов!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для спонсорства.'
+},
+{
+    text: 'Создадим государственный центр помощи пострадавшим от наводнений!',
+    people: 6,
+    oligarchs: -2,
+    reactionPeople: '🏠 Общество поддерживает! Это помощь в беде!',
+    reactionOligarchs: '📊 Страховые компании теряют часть прибыли.'
+},
+{
+    text: 'Введём бесплатные уроки танцев для пенсионеров!',
+    people: 5,
+    oligarchs: 0,
+    reactionPeople: '💃 Пенсионеры в восторге! Это радость и здоровье!',
+    reactionOligarchs: '🕺 Танцевальные студии видят новые возможности.'
+},
+{
+    text: 'Запретим использование глифосата в сельском хозяйстве!',
+    people: 6,
+    oligarchs: -5,
+    reactionPeople: '🌾 Фермеры и экологи поддерживают! Это безопасность!',
+    reactionOligarchs: '🧪 Производители гербицидов теряют прибыль.'
+},
+{
+    text: 'Отменим все пошлины на ввоз книг для библиотек!',
+    people: 6,
+    oligarchs: 1,
+    reactionPeople: '📚 Библиотеки и читатели поддерживают! Это доступ к знаниям!',
+    reactionOligarchs: '📖 Издательства получают госзаказы.'
+},
+{
+    text: 'Введём государственный день помощи соседям!',
+    people: 5,
+    oligarchs: 1,
+    reactionPeople: '🏘️ Соседи поддерживают! Это укрепление общин!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Создадим государственный центр профессиональной переподготовки!',
+    people: 6,
+    oligarchs: 3,
+    reactionPeople: '👩‍💼 Безработные и работники поддерживают! Это новые навыки!',
+    reactionOligarchs: '📈 Олигархи видят новые кадры.'
+},
+{
+    text: 'Введём бесплатную раздачу молока пенсионерам!',
+    people: 6,
+    oligarchs: -2,
+    reactionPeople: '🥛 Пенсионеры рады! Это забота о здоровье!',
+    reactionOligarchs: '🏭 Молочные комбинаты теряют прибыль.'
+},
+{
+    text: 'Запретим использование микропластика в косметике!',
+    people: 5,
+    oligarchs: -3,
+    reactionPeople: '🌿 Экологи и потребители поддерживают! Это чистота!',
+    reactionOligarchs: '🧴 Производители косметики теряют прибыль.'
+},
+{
+    text: 'Отменим все штрафы за помощь бездомным!',
+    people: 5,
+    oligarchs: -1,
+    reactionPeople: '🤝 Волонтёры поддерживают! Это свобода помощи!',
+    reactionOligarchs: '📊 Городские власти теряют контроль.'
+},
+{
+    text: 'Введём государственный день здоровья животных!',
+    people: 5,
+    oligarchs: 2,
+    reactionPeople: '🐾 Зоозащитники и владельцы поддерживают! Это забота!',
+    reactionOligarchs: '🏛️ Ветеринарные клиники видят новые возможности.'
+},
+{
+    text: 'Создадим государственный фонд помощи семьям с двойнями!',
+    people: 6,
+    oligarchs: -3,
+    reactionPeople: '👨‍👩‍👧‍👦 Семьи с двойнями поддерживают! Это важная помощь!',
+    reactionOligarchs: '📊 Социальные службы теряют часть бюджета.'
+},
+{
+    text: 'Введём бесплатные консультации юристов для бедных!',
+    people: 7,
+    oligarchs: -4,
+    reactionPeople: '⚖️ Нуждающиеся поддерживают! Это доступ к правосудию!',
+    reactionOligarchs: '📜 Частные юристы теряют прибыль.'
+},
+{
+    text: 'Запретим использование ароматизаторов в сигаретах!',
+    people: 5,
+    oligarchs: -5,
+    reactionPeople: '🚭 Врачи и общество поддерживают! Это борьба с курением!',
+    reactionOligarchs: '🚬 Табачные компании теряют прибыль.'
+},
+{
+    text: 'Отменим все налоги на пожертвования в приюты для людей!',
+    people: 6,
+    oligarchs: -2,
+    reactionPeople: '🏠 Благотворители поддерживают! Это помощь нуждающимся!',
+    reactionOligarchs: '📊 Социальные службы теряют часть бюджета.'
+},
+{
+    text: 'Введём государственный день чтения для детей!',
+    people: 5,
+    oligarchs: 1,
+    reactionPeople: '📚 Дети и родители поддерживают! Это любовь к чтению!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для спонсорства.'
+},
+{
+    text: 'Создадим государственный центр развития городского фермерства!',
+    people: 5,
+    oligarchs: 2,
+    reactionPeople: '🌱 Горожане поддерживают! Это экологичные продукты!',
+    reactionOligarchs: '🌿 Агробизнес видит новые возможности.'
+},
+{
+    text: 'Введём бесплатную раздачу таблеток от аллергии!',
+    people: 6,
+    oligarchs: -3,
+    reactionPeople: '🤧 Аллергики поддерживают! Это забота о здоровье!',
+    reactionOligarchs: '💊 Фармацевты теряют прибыль.'
+},
+{
+    text: 'Запретим использование алюминия в дезодорантах!',
+    people: 4,
+    oligarchs: -2,
+    reactionPeople: '🧴 Потребители поддерживают! Это безопасность!',
+    reactionOligarchs: '🧪 Производители косметики теряют прибыль.'
+},
+{
+    text: 'Отменим все пошлины на ввоз инвалидных колясок!',
+    people: 7,
+    oligarchs: -2,
+    reactionPeople: '♿ Инвалиды поддерживают! Это доступ к мобильности!',
+    reactionOligarchs: '🏛️ Производители колясок теряют прибыль.'
+},
+{
+    text: 'Введём государственный день защиты детей в интернете!',
+    people: 6,
+    oligarchs: 2,
+    reactionPeople: '👶 Родители поддерживают! Это безопасность детей!',
+    reactionOligarchs: '📱 IT-компании видят новые возможности.'
+},
+{
+    text: 'Создадим государственный фонд развития волонтёрства!',
+    people: 6,
+    oligarchs: 2,
+    reactionPeople: '🤝 Волонтёры и общество поддерживают! Это развитие!',
+    reactionOligarchs: '📊 Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Введём бесплатные кружки для детей с ограниченными возможностями!',
+    people: 7,
+    oligarchs: -3,
+    reactionPeople: '♿ Дети и родители поддерживают! Это инклюзия!',
+    reactionOligarchs: '🏛️ Частные центры теряют прибыль.'
+},
+{
+    text: 'Запретим использование бисфенола А в бутылках!',
+    people: 5,
+    oligarchs: -3,
+    reactionPeople: '🍼 Родители поддерживают! Это безопасность!',
+    reactionOligarchs: '🏭 Производители бутылок теряют прибыль.'
+},
+{
+    text: 'Отменим все налоги на товары для новорожденных!',
+    people: 7,
+    oligarchs: -2,
+    reactionPeople: '👶 Молодые родители поддерживают! Это помощь!',
+    reactionOligarchs: '🧸 Производители детских товаров теряют прибыль.'
+},
+{
+    text: 'Введём государственный день помощи пожилым соседям!',
+    people: 5,
+    oligarchs: 1,
+    reactionPeople: '👴 Общество поддерживает! Это забота о старших!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Создадим государственный центр развития школьного спорта!',
+    people: 6,
+    oligarchs: 3,
+    reactionPeople: '🏅 Школьники и родители поддерживают! Это здоровье!',
+    reactionOligarchs: '📈 Производители спортинвентаря рады.'
+},
+{
+    text: 'Введём бесплатную раздачу витамина D для всех!',
+    people: 5,
+    oligarchs: -2,
+    reactionPeople: '☀️ Граждане поддерживают! Это забота о здоровье!',
+    reactionOligarchs: '💊 Фармацевты теряют прибыль.'
+},
+{
+    text: 'Запретим использование хлоргексидина в мыле!',
+    people: 3,
+    oligarchs: -2,
+    reactionPeople: '🧼 Потребители разделились. Производители недовольны.',
+    reactionOligarchs: '🧪 Производители мыла теряют прибыль.'
+},
+{
+    text: 'Отменим все запреты на ношение национальной одежды!',
+    people: 5,
+    oligarchs: 3,
+    reactionPeople: '👘 Национальные общины поддерживают! Это уважение культур!',
+    reactionOligarchs: '🧵 Олигархи видят новые рынки одежды.'
+},
+{
+    text: 'Введём государственный день чтения стихов!',
+    people: 4,
+    oligarchs: 1,
+    reactionPeople: '📝 Поэты и читатели поддерживают! Это красота слова!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для спонсорства.'
+},
+{
+    text: 'Создадим государственный центр поддержки молодых матерей!',
+    people: 7,
+    oligarchs: -4,
+    reactionPeople: '👩‍👦 Молодые матери поддерживают! Это важная помощь!',
+    reactionOligarchs: '📊 Социальные службы теряют часть бюджета.'
+},
+{
+    text: 'Введём бесплатные занятия йогой для пенсионеров!',
+    people: 5,
+    oligarchs: 0,
+    reactionPeople: '🧘 Пенсионеры поддерживают! Это здоровье и гармония!',
+    reactionOligarchs: '🧘‍♀️ Йога-студии видят новые возможности.'
+},
+{
+    text: 'Запретим использование формалина в косметологии!',
+    people: 5,
+    oligarchs: -3,
+    reactionPeople: '💄 Потребители поддерживают! Это безопасность!',
+    reactionOligarchs: '🧴 Косметологические клиники теряют прибыль.'
+},
+{
+    text: 'Отменим все налоги на спортивные соревнования!',
+    people: 5,
+    oligarchs: 4,
+    reactionPeople: '🏆 Спортсмены и болельщики поддерживают! Это развитие спорта!',
+    reactionOligarchs: '📈 Олигархи видят новые возможности для бизнеса.'
+},
+{
+    text: 'Введём государственный день добра к животным!',
+    people: 5,
+    oligarchs: 2,
+    reactionPeople: '🐾 Зоозащитники и общество поддерживают! Это гуманность!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для пиара.'
+},
+{
+    text: 'Создадим государственный фонд помощи пострадавшим от землетрясений!',
+    people: 6,
+    oligarchs: -2,
+    reactionPeople: '🏠 Общество поддерживает! Это помощь в беде!',
+    reactionOligarchs: '📊 Страховые компании теряют часть прибыли.'
+},
+{
+    text: 'Введём бесплатные консультации стоматологов для детей!',
+    people: 7,
+    oligarchs: -3,
+    reactionPeople: '🦷 Родители поддерживают! Это здоровые зубы!',
+    reactionOligarchs: '🏥 Частные стоматологии теряют прибыль.'
+},
+{
+    text: 'Запретим использование красителей в колбасе!',
+    people: 5,
+    oligarchs: -4,
+    reactionPeople: '🌭 Потребители поддерживают! Это борьба за качество!',
+    reactionOligarchs: '🏭 Мясокомбинаты теряют прибыль.'
+},
+{
+    text: 'Отменим все штрафы за помощь бездомным животным!',
+    people: 5,
+    oligarchs: -1,
+    reactionPeople: '🐱 Зоозащитники рады! Это свобода помощи!',
+    reactionOligarchs: '📊 Городские службы теряют контроль.'
+},
+{
+    text: 'Введём государственный день красоты природы!',
+    people: 4,
+    oligarchs: 1,
+    reactionPeople: '🌿 Экологи и туристы поддерживают! Это защита природы!',
+    reactionOligarchs: '🏛️ Олигархи видят возможности для эко-бизнеса.'
+},
+{
+    text: 'Создадим государственный центр переработки пластика!',
+    people: 5,
+    oligarchs: -2,
+    reactionPeople: '♻️ Экологи поддерживают! Это борьба с мусором!',
+    reactionOligarchs: '🏭 Мусорные монополии теряют прибыль.'
+},
+{
+    text: 'Введём бесплатную раздачу презервативов в школах!',
+    people: -6,
+    oligarchs: 4,
+    reactionPeople: '🔞 Консерваторы возмущены. Врачи поддерживают.',
+    reactionOligarchs: '🏛️ Производители товаров интимного назначения рады.'
+},
+{
+    text: 'Запретим использование опилок в продуктах!',
+    people: 5,
+    oligarchs: -3,
+    reactionPeople: '🍞 Потребители поддерживают! Это борьба за качество!',
+    reactionOligarchs: '🏭 Производители хлеба теряют прибыль.'
+},
+{
+    text: 'Отменим все пошлины на ввоз протезов!',
+    people: 7,
+    oligarchs: -2,
+    reactionPeople: '🦿 Инвалиды поддерживают! Это доступ к здоровью!',
+    reactionOligarchs: '🏛️ Производители протезов теряют прибыль.'
+},
+{
+    text: 'Введём государственный день без автомобильного транспорта!',
+    people: 4,
+    oligarchs: -2,
+    reactionPeople: '🚲 Экологи и велосипедисты поддерживают! Это чистота воздуха!',
+    reactionOligarchs: '🚗 Нефтяные компании теряют прибыль.'
+},
+{
+    text: 'Создадим государственный фонд развития сельских школ!',
+    people: 7,
+    oligarchs: -3,
+    reactionPeople: '🏫 Сельские учителя и ученики поддерживают! Это развитие!',
+    reactionOligarchs: '📊 Городские школы теряют часть бюджета.'
+},
+{
+    text: 'Введём бесплатные уроки плавания для детей!',
+    people: 6,
+    oligarchs: 1,
+    reactionPeople: '🏊 Родители поддерживают! Это безопасность на воде!',
+    reactionOligarchs: '🏛️ Бассейны получают господдержку.'
+},
+{
+    text: 'Запретим использование химических удобрений в парках!',
+    people: 5,
+    oligarchs: -3,
+    reactionPeople: '🌿 Экологи и горожане поддерживают! Это чистота!',
+    reactionOligarchs: '🧪 Производители удобрений теряют прибыль.'
+},
+{
+    text: 'Отменим все налоги на уличное искусство!',
+    people: 5,
+    oligarchs: 3,
+    reactionPeople: '🎨 Художники и горожане поддерживают! Это свобода творчества!',
+    reactionOligarchs: '📈 Олигархи видят новые возможности для бизнеса.'
+},
+{
+    text: 'Введём государственный день защиты растений!',
+    people: 4,
+    oligarchs: 1,
+    reactionPeople: '🌳 Экологи и садоводы поддерживают! Это защита природы!',
+    reactionOligarchs: '🌿 Агробизнес видит новые возможности.'
+},
+{
+    text: 'Создадим государственный центр помощи жертвам буллинга!',
+    people: 6,
+    oligarchs: -2,
+    reactionPeople: '🛡️ Школьники и родители поддерживают! Это защита!',
+    reactionOligarchs: '📊 Образовательные учреждения теряют часть бюджета.'
+}
+			
+        ];
+
+        // ---- ИГРОВОЕ СОСТОЯНИЕ ----
+        let state = {
+            candidates: [],
+            slogans: [],
+            day: 0,
+            totalDays: 10,
+            gameOver: false,
+            winner: null,
+            playerChose: false,
+            logs: [],
+            turnPhase: 'waiting',
+            pendingReaction: null,
+            waitingForModal: false
+        };
+
+        // ---- ИНИЦИАЛИЗАЦИЯ ----
+        function initGame() {
+            state.candidates = CANDIDATES.map(c => ({
+                ...c,
+                rating: 33,
+                ratingHistory: [33]
+            }));
+
+            state.slogans = SLOGANS.map(s => ({ ...s, used: false }));
+            shuffleArray(state.slogans);
+
+            state.day = 0;
+            state.gameOver = false;
+            state.winner = null;
+            state.playerChose = false;
+            state.logs = [];
+            state.turnPhase = 'waiting';
+            state.pendingReaction = null;
+            state.waitingForModal = false;
+
+            document.getElementById('messageBox').textContent = '🗳️ Предвыборная кампания началась!';
+            document.getElementById('reactionModal').classList.remove('active');
+            updateUI();
+            renderSlogans();
+            updateButtons();
+            renderLogs();
+        }
+
+        function shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function getAvailableSlogans() {
+            return state.slogans.filter(s => !s.used);
+        }
+
+        function getRandomSlogan() {
+            const available = getAvailableSlogans();
+            if (available.length === 0) return null;
+            return available[Math.floor(Math.random() * available.length)];
+        }
+
+        function getCandidate(id) {
+            return state.candidates.find(c => c.id === id);
+        }
+
+        function getPlayer() {
+            return getCandidate('player');
+        }
+
+        function getLeader() {
+            let max = -1,
+                leader = null;
+            for (let c of state.candidates) {
+                if (c.rating > max) {
+                    max = c.rating;
+                    leader = c;
+                }
+            }
+            return leader;
+        }
+
+        function clampRating(val) {
+            return Math.min(100, Math.max(0, Math.round(val)));
+        }
+
+        // ---- ЛОГИ ----
+        function addLog(message, type = 'neutral', isPlayer = false) {
+            const entry = {
+                text: message,
+                type: type,
+                isPlayer: isPlayer,
+                time: Date.now()
+            };
+            state.logs.push(entry);
+            if (state.logs.length > 30) state.logs.shift();
+            renderLogs();
+        }
+
+        // ---- ПРИМЕНЕНИЕ ЛОЗУНГА (со случайностью) ----
+        function applySlogan(candidateId, slogan) {
+            if (state.gameOver) return { success: false, totalEffect: 0 };
+            if (slogan.used) return { success: false, totalEffect: 0 };
+
+            const candidate = getCandidate(candidateId);
+            if (!candidate) return { success: false, totalEffect: 0 };
+
+            // Базовый эффект
+            let totalEffect = slogan.people + slogan.oligarchs;
+            
+            // Добавляем случайность от -4 до +4
+            const randomness = Math.floor(Math.random() * 9) - 4;
+            totalEffect += randomness;
+
+            candidate.rating = clampRating(candidate.rating + totalEffect);
+
+            const halfEffect = Math.round(totalEffect / 2);
+            for (let c of state.candidates) {
+                if (c.id !== candidateId) {
+                    c.rating = clampRating(c.rating - halfEffect);
+                }
+            }
+
+            slogan.used = true;
+
+            // Логируем
+            const candidateName = candidate.isPlayer ? 'Вы' : candidate.name;
+            let logMsg = `🗣️ ${candidateName} выдвинул лозунг: "${slogan.text}"`;
+            let logType = 'neutral';
+            if (totalEffect > 0) logType = 'positive';
+            else if (totalEffect < 0) logType = 'negative';
+            
+            addLog(logMsg, logType, candidate.isPlayer);
+
+            if (candidateId === 'player') {
+                if (totalEffect > 0) playSuccess();
+                else if (totalEffect < 0) playFail();
+            }
+
+            return { success: true, totalEffect: totalEffect, slogan: slogan, randomness: randomness };
+        }
+
+        // ---- ПОКАЗ МОДАЛЬНОГО ОКНА (БЕЗ ЦИФР) ----
+        function showReactionModal(slogan, totalEffect) {
+            const modal = document.getElementById('reactionModal');
+            const reactionDiv = document.getElementById('modalReaction');
+            const summaryDiv = document.getElementById('modalSummary');
+
+            // Формируем реакцию (только текст, без цифр)
+            let reactionParts = [];
+            let reactionClass = 'mixed';
+
+            if (slogan.people > 0) {
+                reactionParts.push(`👥 ${slogan.reactionPeople}`);
+            } else if (slogan.people < 0) {
+                reactionParts.push(`👥 ${slogan.reactionPeople}`);
+            }
+
+            if (slogan.oligarchs > 0) {
+                reactionParts.push(`🏛️ ${slogan.reactionOligarchs}`);
+            } else if (slogan.oligarchs < 0) {
+                reactionParts.push(`🏛️ ${slogan.reactionOligarchs}`);
+            }
+
+            if (reactionParts.length === 0) {
+                reactionParts.push('⚖️ Общество встретило заявление сдержанно.');
+                reactionClass = 'neutral';
+            }
+
+            // Определяем общий тон
+            if (totalEffect > 5) {
+                reactionClass = 'positive';
+            } else if (totalEffect < -5) {
+                reactionClass = 'negative';
+            } else {
+                reactionClass = 'mixed';
+            }
+
+            reactionDiv.className = `modal-reaction ${reactionClass}`;
+            reactionDiv.innerHTML = reactionParts.join('<br><br>');
+
+            // Краткий итог (без цифр)
+            let summaryText = '';
+            if (totalEffect > 5) {
+                summaryText = '📈 Ваш рейтинг значительно вырос! Общество поддерживает вас.';
+            } else if (totalEffect > 0) {
+                summaryText = '📈 Ваш рейтинг немного вырос. Хороший ход!';
+            } else if (totalEffect < -5) {
+                summaryText = '📉 Ваш рейтинг значительно упал. Общество разочаровано.';
+            } else if (totalEffect < 0) {
+                summaryText = '📉 Ваш рейтинг немного упал. Стоит пересмотреть стратегию.';
+            } else {
+                summaryText = '⚖️ Ваш рейтинг остался примерно на том же уровне.';
+            }
+            summaryDiv.textContent = summaryText;
+
+            modal.classList.add('active');
+            state.waitingForModal = true;
+
+            document.getElementById('nextDayBtn').disabled = true;
+            document.getElementById('nextDayBtn').textContent = '⏳ Просмотрите реакцию';
+        }
+
+        // ---- ХОД ИИ ----
+        function aiTurn() {
+            const aiCandidates = state.candidates.filter(c => !c.isPlayer);
+            for (let ai of aiCandidates) {
+                const slogan = getRandomSlogan();
+                if (slogan) {
+                    applySlogan(ai.id, slogan);
+                }
+            }
+        }
+
+        // ---- ХОД ИГРОКА ----
+        function playerTurn(slogan) {
+            if (state.gameOver) return;
+            if (state.playerChose) return;
+            if (slogan.used) return;
+
+            const player = getPlayer();
+            if (!player) return;
+
+            const result = applySlogan('player', slogan);
+            if (!result.success) return;
+
+            state.playerChose = true;
+            state.turnPhase = 'day_end';
+
+            state.pendingReaction = {
+                slogan: slogan,
+                totalEffect: result.totalEffect
+            };
+
+            updateUI();
+            renderSlogans();
+
+            showReactionModal(slogan, result.totalEffect);
+
+            document.getElementById('messageBox').textContent = '✅ Вы выбрали лозунг! Посмотрите реакцию общества.';
+            updateButtons();
+        }
+
+        // ---- ЗАКРЫТИЕ МОДАЛЬНОГО ОКНА ----
+        function closeModalAndContinue() {
+            const modal = document.getElementById('reactionModal');
+            modal.classList.remove('active');
+            state.waitingForModal = false;
+            continueToNextDay();
+        }
+
+        // ---- ПРОДОЛЖЕНИЕ ПОСЛЕ МОДАЛЬНОГО ОКНА ----
+        function continueToNextDay() {
+            if (state.gameOver) {
+                document.getElementById('messageBox').textContent = 'Игра завершена! Нажмите "Перезапуск"';
+                return;
+            }
+
+            if (!state.playerChose && state.day === 0) {
+                document.getElementById('messageBox').textContent = '📢 День 1. Выберите ваш лозунг!';
+                updateUI();
+                renderSlogans();
+                updateButtons();
+                return;
+            }
+
+            if (!state.playerChose) {
+                document.getElementById('messageBox').textContent = '⚠️ Сначала выберите лозунг!';
+                return;
+            }
+
+            state.day++;
+            state.playerChose = false;
+            state.turnPhase = 'player_turn';
+            state.pendingReaction = null;
+
+            if (state.day >= state.totalDays) {
+                endGame();
+                return;
+            }
+
+            aiTurn();
+
+            updateUI();
+            renderSlogans();
+            updateButtons();
+
+            document.getElementById('messageBox').textContent = `📅 День ${state.day + 1}. Выберите лозунг!`;
+            document.getElementById('nextDayBtn').disabled = true;
+            document.getElementById('nextDayBtn').textContent = '⏳ Выберите лозунг';
+        }
+
+        // ---- ОКОНЧАНИЕ ----
+        function endGame() {
+            state.gameOver = true;
+            const leader = getLeader();
+            state.winner = leader;
+
+            let msg = '';
+            if (leader.id === 'player') {
+                msg = '🏆 ПОБЕДА! Вы стали президентом!';
+                playWin();
+            } else {
+                msg = `😞 Вы проиграли! Победил ${leader.name} (${leader.rating}%)`;
+                playLose();
+            }
+
+            document.getElementById('messageBox').textContent = msg;
+            updateUI();
+            renderSlogans();
+            updateButtons();
+
+            let resultMsg = `📊 ИТОГИ ВЫБОРОВ:\n`;
+            for (let c of state.candidates) {
+                resultMsg += `\n${c.emoji} ${c.name}: ${c.rating}%`;
+            }
+            resultMsg += `\n\n🏆 Победитель: ${leader.emoji} ${leader.name} (${leader.rating}%)`;
+            alert(resultMsg);
+        }
+
+        // ---- nextDay ----
+        function nextDay() {
+            if (state.waitingForModal) {
+                document.getElementById('messageBox').textContent = '⏳ Сначала закройте окно с реакцией!';
+                return;
+            }
+
+            if (state.gameOver) {
+                document.getElementById('messageBox').textContent = 'Игра завершена! Нажмите "Перезапуск"';
+                return;
+            }
+
+            if (!state.playerChose && state.day === 0) {
+                document.getElementById('messageBox').textContent = '📢 День 1. Выберите ваш лозунг!';
+                return;
+            }
+
+            if (!state.playerChose) {
+                document.getElementById('messageBox').textContent = '⚠️ Сначала выберите лозунг!';
+                return;
+            }
+
+            if (state.pendingReaction && !state.waitingForModal) {
+                showReactionModal(state.pendingReaction.slogan, state.pendingReaction.totalEffect);
+                return;
+            }
+
+            if (!state.waitingForModal) {
+                continueToNextDay();
+            }
+        }
+
+        // ---- UI ----
+        function updateUI() {
+            const container = document.getElementById('candidatesContainer');
+            container.innerHTML = '';
+            for (let c of state.candidates) {
+                const card = document.createElement('div');
+                card.className = `candidate-card${c.isPlayer ? ' player' : ''}`;
+                const fillClass = c.rating < 30 ? 'low' : (c.rating < 60 ? 'mid' : 'high');
+                const isLeader = getLeader()?.id === c.id && state.day > 0;
+
+                card.innerHTML = `
+                    <div class="name">${c.emoji} ${c.name} ${isLeader ? '👑' : ''}</div>
+                    <div class="party">${c.party}</div>
+                    <div class="rating-bar">
+                        <div class="rating-fill ${fillClass}" style="width:${Math.min(100, c.rating)}%;"></div>
+                    </div>
+                    <div class="rating-text">${Math.round(c.rating)}%</div>
+                    ${c.isPlayer ? '<div class="candidate-badge">ВЫ</div>' : ''}
+                `;
+                container.appendChild(card);
+            }
+
+            document.getElementById('dayDisplay').textContent = Math.min(state.day + 1, state.totalDays);
+            document.getElementById('totalDaysDisplay').textContent = state.totalDays;
+            const leader = getLeader();
+            document.getElementById('leaderDisplay').textContent = leader ? `${leader.emoji} ${leader.name} (${Math.round(leader.rating)}%)` : '—';
+            document.getElementById('remainingSlogans').textContent = getAvailableSlogans().length;
+        }
+
+        // ---- ЛОЗУНГИ ----
+        function renderSlogans() {
+            const container = document.getElementById('slogansContainer');
+            container.innerHTML = '';
+
+            const available = getAvailableSlogans();
+
+            if (state.gameOver) {
+                const msg = document.createElement('div');
+                msg.style.cssText = 'grid-column:1/-1; text-align:center; padding:20px; font-weight:600; color:#3d5a6b;';
+                msg.textContent = '📊 Игра завершена! Нажмите "Перезапуск" для новой игры.';
+                container.appendChild(msg);
+                return;
+            }
+
+            if (available.length === 0) {
+                const msg = document.createElement('div');
+                msg.style.cssText = 'grid-column:1/-1; text-align:center; padding:20px; font-weight:600; color:#3d5a6b;';
+                msg.textContent = '📢 Все лозунги использованы! Завершайте день.';
+                container.appendChild(msg);
+                return;
+            }
+
+            const shuffled = shuffleArray([...available]);
+            const display = shuffled.slice(0, 4);
+
+            for (let slogan of display) {
+                const btn = document.createElement('button');
+                btn.className = 'slogan-btn';
+                if (state.playerChose || state.gameOver || state.waitingForModal) {
+                    btn.classList.add('disabled');
+                }
+
+                // Визуальная подсказка (только эмодзи, без цифр)
+                let tag = '⚖️';
+                let tagTitle = '';
+                
+
+                btn.innerHTML = `
+                    <span class="slogan-title">${slogan.text}</span>
+                    <span class="slogan-effects">${tagTitle}</span>
+                    <span class="slogan-tag">${tag}</span>
+                `;
+
+                if (!state.playerChose && !state.gameOver && !state.waitingForModal) {
+                    btn.addEventListener('click', () => {
+                        if (state.playerChose) return;
+                        playerTurn(slogan);
+                    });
+                }
+
+                container.appendChild(btn);
+            }
+
+            if (display.length < 4 && available.length > 0) {
+                const msg = document.createElement('div');
+                msg.style.cssText = 'grid-column:1/-1; text-align:center; padding:10px; font-weight:500; color:#3d5a6b; font-size:0.9rem;';
+                msg.textContent = `📌 Осталось ${available.length} лозунгов`;
+                container.appendChild(msg);
+            }
+        }
+
+        // ---- ЛОГИ ----
+        function renderLogs() {
+            const container = document.getElementById('logEntries');
+            container.innerHTML = '';
+            const entries = state.logs.slice(-8);
+            for (let entry of entries) {
+                const div = document.createElement('div');
+                div.className = `log-entry ${entry.type}`;
+                if (entry.isPlayer) div.classList.add('player');
+                div.textContent = entry.text;
+                container.appendChild(div);
+            }
+            const logPanel = document.getElementById('logPanel');
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        // ---- КНОПКИ ----
+        function updateButtons() {
+            const nextBtn = document.getElementById('nextDayBtn');
+            if (state.gameOver) {
+                nextBtn.disabled = true;
+                nextBtn.textContent = '🏁 Игра окончена';
+                return;
+            }
+
+            if (state.day >= state.totalDays) {
+                nextBtn.disabled = true;
+                nextBtn.textContent = '🏁 Выборы завершены';
+                return;
+            }
+
+            if (state.waitingForModal) {
+                nextBtn.disabled = true;
+                nextBtn.textContent = '⏳ Закройте окно реакции';
+                return;
+            }
+
+            if (state.playerChose) {
+                nextBtn.disabled = false;
+                nextBtn.textContent = '➡️ Следующий день';
+            } else {
+                nextBtn.disabled = true;
+                nextBtn.textContent = '⏳ Выберите лозунг';
+            }
+        }
+
+        // ---- СБРОС ----
+        function resetGame() {
+            initGame();
+            document.getElementById('nextDayBtn').disabled = true;
+            document.getElementById('nextDayBtn').textContent = '⏳ Выберите лозунг';
+            document.getElementById('reactionModal').classList.remove('active');
+            state.waitingForModal = false;
+
+            setTimeout(() => {
+                aiTurn();
+                state.turnPhase = 'player_turn';
+                updateUI();
+                renderSlogans();
+                document.getElementById('messageBox').textContent = '📢 День 1. Выберите ваш лозунг!';
+                playTone(440, 0.1);
+                setTimeout(() => playTone(550, 0.1), 100);
+                setTimeout(() => playTone(660, 0.15), 200);
+            }, 300);
+        }
+
+        // ---- ИНИЦИАЛИЗАЦИЯ ----
+        document.getElementById('resetBtn').addEventListener('click', resetGame);
+        document.getElementById('nextDayBtn').addEventListener('click', nextDay);
+        document.getElementById('modalCloseBtn').addEventListener('click', closeModalAndContinue);
+
+        initGame();
+        document.getElementById('nextDayBtn').disabled = true;
+        document.getElementById('nextDayBtn').textContent = '⏳ Выберите лозунг';
+
+        setTimeout(() => {
+            aiTurn();
+            state.turnPhase = 'player_turn';
+            updateUI();
+            renderSlogans();
+            document.getElementById('messageBox').textContent = '📢 День 1. Выберите ваш лозунг!';
+        }, 300);
+    })();
+</script>
+</body>
+</html>
