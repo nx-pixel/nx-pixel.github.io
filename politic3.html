@@ -8805,15 +8805,15 @@
                 const isLeader = getLeader()?.id === c.id && state.day > 0;
 
                 card.innerHTML = `
-                    <div class="name">${c.emoji} ${c.name} ${isLeader ? '👑' : ''}</div>
-                    <div class="party">${c.party}</div>
-                    <div class="iq">🧠 IQ: ${c.iq}</div>
-                    <div class="rating-bar">
-                        <div class="rating-fill ${fillClass}" style="width:${Math.min(100, c.rating)}%;"></div>
-                    </div>
-                    <div class="rating-text">${Math.round(c.rating)}%</div>
-                    ${c.isPlayer ? '<div class="candidate-badge">ВЫ</div>' : ''}
-                `;
+					<div class="name">${c.emoji} ${c.name} ${isLeader ? '👑' : ''}</div>
+					<div class="party">${c.party}</div>
+					${!c.isPlayer ? `<div class="iq">🧠 IQ: ${c.iq}</div>` : ''}
+					<div class="rating-bar">
+						<div class="rating-fill ${fillClass}" style="width:${Math.min(100, c.rating)}%;"></div>
+					</div>
+					<div class="rating-text">${Math.round(c.rating)}%</div>
+					${c.isPlayer ? '<div class="candidate-badge">ВЫ</div>' : ''}
+				`;
                 container.appendChild(card);
             }
 
