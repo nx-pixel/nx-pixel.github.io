@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📝 Создание карточки персонажа</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            background: #1a1a2e;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: 400;
+            color: #e94560;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #aaa;
+            font-size: 14px;
+        }
+        
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid #2a2a4a;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+        
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+        
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s;
+            background: #e94560;
+            color: white;
+        }
+        
+        .btn:hover {
+            background: #c73a52;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: #2a2a4a;
+            color: #aaa;
+        }
+        
+        .btn-secondary:hover {
+            background: #3a3a5a;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .output-area {
+            margin-top: 30px;
+            border-top: 1px solid #2a2a4a;
+            padding-top: 20px;
+        }
+        
+        .output-area h3 {
+            color: #aaa;
+            font-weight: 400;
+            margin-bottom: 10px;
+        }
+        
+        .output-area .json-output {
+            background: #0f0f1a;
+            padding: 16px;
+            border-radius: 10px;
+            border: 1px solid #2a2a4a;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+            color: #8bc34a;
+        }
+        
+        .output-area .json-output .key {
+            color: #64b5f6;
+        }
+        
+        .output-area .json-output .string {
+            color: #8bc34a;
+        }
+        
+        .output-area .json-output .number {
+            color: #ffb74d;
+        }
+        
+        .output-area .json-output .boolean {
+            color: #e94560;
+        }
+        
+        .copy-btn {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            background: #2a2a4a;
+            color: #aaa;
+            transition: background 0.3s;
+        }
+        
+        .copy-btn:hover {
+            background: #3a3a5a;
+        }
+        
+        .status {
+            margin-top: 10px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .status.success {
+            display: block;
+            background: rgba(46, 204, 113, 0.15);
+            border: 1px solid #2ecc71;
+            color: #2ecc71;
+        }
+        
+        .status.error {
+            display: block;
+            background: rgba(231, 76, 60, 0.15);
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+        }
+        
+        .char-count {
+            text-align: right;
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            .btn-group {
+                flex-direction: column;
+            }
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 Создание карточки персонажа</h1>
+        <p class="subtitle">Введите имя и описание персонажа — программа создаст валидный JSON</p>
+
+        <div class="form-group">
+            <label for="name">👤 Имя персонажа</label>
+            <input type="text" id="name" placeholder="Например: Мастер Ли" />
+        </div>
+
+        <div class="form-group">
+            <label for="description">📄 Описание персонажа</label>
+            <textarea id="description" placeholder="Введите описание персонажа в произвольной форме...&#10;&#10;Например:&#10;Мастер Ли — опытный и мудрый наставник.&#10;Он говорит спокойно, вдумчиво, с восточной мудростью.&#10;Часто использует метафоры и притчи."></textarea>
+            <div class="char-count"><span id="charCount">0</span> символов</div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn" onclick="generateCard()">🎯 Создать карточку</button>
+            <button class="btn btn-secondary" onclick="clearAll()">🗑️ Очистить</button>
+            <button class="btn btn-secondary" onclick="loadExample()">📋 Пример</button>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <div class="output-area" id="outputArea" style="display:none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3>📦 Готовая карточка (JSON)</h3>
+                <button class="copy-btn" onclick="copyJSON()">📋 Копировать</button>
+            </div>
+            <div class="json-output" id="jsonOutput"></div>
+        </div>
+    </div>
+
+    <script>
+        // ===== ФУНКЦИИ =====
+
+        function escapeJsonString(text) {
+            // Экранируем кавычки и переносы для JSON
+            return text
+                .replace(/\\/g, '\\\\')
+                .replace(/"/g, '\\"')
+                .replace(/\n/g, '\\n')
+                .replace(/\r/g, '\\r')
+                .replace(/\t/g, '\\t');
+        }
+
+        function generateCard() {
+            const nameInput = document.getElementById('name');
+            const descriptionInput = document.getElementById('description');
+            const status = document.getElementById('status');
+            const outputArea = document.getElementById('outputArea');
+            const jsonOutput = document.getElementById('jsonOutput');
+
+            const name = nameInput.value.trim();
+            const description = descriptionInput.value.trim();
+
+            // Проверка
+            if (!name) {
+                showStatus('❌ Введите имя персонажа!', 'error');
+                return;
+            }
+
+            if (!description) {
+                showStatus('❌ Введите описание персонажа!', 'error');
+                return;
+            }
+
+            // Создаём карточку
+            const card = {
+                spec: "chara_card_v2",
+                spec_version: "2.0",
+                data: {
+                    name: name,
+                    description: description,
+                    personality: "",
+                    scenario: "",
+                    first_mes: "",
+                    mes_example: [],
+                    system_prompt: description,
+                    post_history_instructions: "",
+                    alternate_greetings: [],
+                    tags: [],
+                    creator: "User",
+                    character_version: "1.0",
+                    extensions: {
+                        style: "Стандартный",
+                        require_jail: false
+                    },
+                    character_book: null
+                }
+            };
+
+            // Форматируем JSON с отступами
+            const jsonString = JSON.stringify(card, null, 2);
+
+            // Подсветка синтаксиса (простая)
+            const highlighted = syntaxHighlight(jsonString);
+
+            // Показываем результат
+            jsonOutput.innerHTML = highlighted;
+            outputArea.style.display = 'block';
+            showStatus('✅ Карточка успешно создана!', 'success');
+        }
+
+        function syntaxHighlight(json) {
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(
+                /("(?:[^"\\]|\\.)*")(?=:)|("(?:[^"\\]|\\.)*")|(\b\d+\.?\d*\b)|(\btrue\b|\bfalse\b|\bnull\b)/g,
+                function(match, key, string, number, bool) {
+                    if (key) return '<span class="key">' + key + '</span>';
+                    if (string) return '<span class="string">' + string + '</span>';
+                    if (number) return '<span class="number">' + number + '</span>';
+                    if (bool) return '<span class="boolean">' + bool + '</span>';
+                    return match;
+                }
+            );
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+            // Автоскрытие через 5 секунд
+            clearTimeout(status._timeout);
+            status._timeout = setTimeout(() => {
+                status.className = 'status';
+            }, 5000);
+        }
+
+        function clearAll() {
+            document.getElementById('name').value = '';
+            document.getElementById('description').value = '';
+            document.getElementById('outputArea').style.display = 'none';
+            document.getElementById('status').className = 'status';
+            document.getElementById('jsonOutput').innerHTML = '';
+            updateCharCount();
+        }
+
+        function loadExample() {
+            document.getElementById('name').value = 'Мастер Ли';
+            document.getElementById('description').value =
+                'Мастер Ли — опытный и мудрый наставник.\n' +
+                'Он говорит спокойно, вдумчиво, с восточной мудростью.\n' +
+                'Часто использует метафоры и притчи, чтобы объяснять сложные вещи.\n' +
+                'Он терпелив и добр, но говорит прямо, когда это необходимо.\n' +
+                'Никогда не нарушает характер персонажа.\n\n' +
+                'Мастер Ли предпочитает тишину и уединение в горах.\n' +
+                'Его ученики приходят к нему за мудростью и советом.';
+            updateCharCount();
+            generateCard();
+        }
+
+        function updateCharCount() {
+            const desc = document.getElementById('description');
+            document.getElementById('charCount').textContent = desc.value.length;
+        }
+
+        async function copyJSON() {
+            const jsonOutput = document.getElementById('jsonOutput');
+            const text = jsonOutput.textContent;
+
+            try {
+                await navigator.clipboard.writeText(text);
+                showStatus('📋 JSON скопирован в буфер обмена!', 'success');
+            } catch (err) {
+                // Fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showStatus('📋 JSON скопирован в буфер обмена!', 'success');
+            }
+        }
+
+        // Счётчик символов
+        document.getElementById('description').addEventListener('input', updateCharCount);
+
+        // Ctrl+Enter для генерации
+        document.getElementById('description').addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                generateCard();
+            }
+        });
+    </script>
+</body>
+</html>
