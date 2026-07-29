@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дон Хуан · Третье Внимание</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(145deg, #0c0a0a 0%, #1f1a16 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', 'Arial', system-ui, sans-serif;
+        }
+
+        .game-container {
+            background: #2a241e;
+            padding: 1.5rem 2rem 2rem 2rem;
+            border-radius: 3.5rem 3.5rem 2rem 2rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), inset 0 0 0 1px #6b5a4a;
+            border-bottom: 6px solid #0e0b09;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            width: 720px;
+            height: 400px;
+            border-radius: 28px;
+            box-shadow: inset 0 0 0 2px #3f332a, 0 12px 28px rgba(0,0,0,0.7);
+            background: #231e19;
+            cursor: crosshair;
+        }
+
+        .title {
+            text-align: center;
+            color: #e3d7c0;
+            text-shadow: 0 2px 0 #3d2e22, 0 4px 8px #0a0705;
+            font-weight: 400;
+            letter-spacing: 3px;
+            margin: 0.4rem 0 0.8rem 0;
+            font-size: 1.8rem;
+            word-break: keep-all;
+        }
+
+        .title span {
+            color: #f7c87a;
+            font-weight: 600;
+            text-shadow: 0 0 8px #b87c3a;
+        }
+
+        .panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+            color: #bcae98;
+            font-weight: 500;
+            padding: 0 0.2rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .status {
+            background: #191411;
+            padding: 0.5rem 1.4rem;
+            border-radius: 40px;
+            font-size: 1.2rem;
+            border: 1px solid #5f4d3a;
+            box-shadow: inset 0 2px 3px #0f0c09;
+            color: #eedbc0;
+            letter-spacing: 1px;
+        }
+
+        .status i {
+            color: #d9b382;
+            font-style: normal;
+            margin-right: 6px;
+        }
+
+        button {
+            background: #3e3229;
+            border: none;
+            border-bottom: 4px solid #1f1712;
+            color: #f0e2cc;
+            font-size: 1.2rem;
+            padding: 0.4rem 1.8rem;
+            border-radius: 40px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.07s;
+            box-shadow: 0 4px 0 #1a1410, 0 6px 10px rgba(0,0,0,0.5);
+            background: #4d3d31;
+        }
+
+        button:hover {
+            background: #5f4b3b;
+            transform: translateY(-2px);
+            border-bottom-width: 6px;
+            color: #fff4e0;
+        }
+
+        button:active {
+            transform: translateY(3px);
+            border-bottom-width: 2px;
+            box-shadow: 0 2px 0 #1a1410;
+        }
+
+        .badge {
+            background: #2d241e;
+            padding: 0.3rem 1rem;
+            border-radius: 30px;
+            border: 1px solid #5b4a38;
+            color: #cbb59b;
+            font-size: 0.95rem;
+        }
+
+        .badge strong {
+            color: #f3d8b0;
+            margin-right: 0.3rem;
+        }
+
+        .controls-hint {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.7rem;
+            color: #8a7a6a;
+            letter-spacing: 0.5px;
+            margin-top: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .third-eye-indicator {
+            background: rgba(255, 215, 120, 0.15);
+            padding: 0.2rem 0.8rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 215, 120, 0.3);
+            font-size: 0.8rem;
+            color: #f7d98a;
+        }
+
+        .music-btn {
+            background: #2d241e;
+            border: 1px solid #5b4a38;
+            color: #cbb59b;
+            font-size: 1rem;
+            padding: 0.3rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.07s;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .music-btn:hover {
+            background: #4d3d31;
+            color: #f0e2cc;
+            border-color: #8a7a6a;
+        }
+
+        .music-btn.on {
+            border-color: #7fc0ff;
+            color: #7fc0ff;
+            background: #1f2a2e;
+        }
+
+        .music-btn.off {
+            border-color: #6b5a4a;
+            color: #8a7a6a;
+        }
+
+        .transform-counter {
+            background: #2d241e;
+            padding: 0.3rem 1rem;
+            border-radius: 30px;
+            border: 1px solid #5b4a38;
+            color: #cbb59b;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        .transform-counter span {
+            color: #7fc0ff;
+            font-weight: 600;
+        }
+
+        @media (max-width: 780px) {
+            .game-container { padding: 1rem; border-radius: 2rem; }
+            canvas { width: 100%; height: auto; aspect-ratio: 720/400; }
+            .title { font-size: 1.4rem; }
+            .panel { flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="title">🏜️ <span>Дон Хуан</span> · Третье Внимание</div>
+        <canvas id="gameCanvas" width="720" height="400"></canvas>
+        <div class="panel">
+            <div class="status"><i>⚔️</i> <span id="energyDisplay">100</span>%</div>
+            <div class="badge"><strong>👾</strong> <span id="enemyCount">0</span></div>
+            <div class="badge third-eye-indicator" id="sizeIndicator">📏 размер: 28</div>
+            <div class="transform-counter">🔄 Дар Арендатора: <span id="transformCount">0</span></div>
+            <button id="resetBtn">🌀 Новая битва</button>
+            <button class="music-btn on" id="musicToggleBtn">🎵 Музыка: Вкл</button>
+        </div>
+        <div class="controls-hint">
+            <span>🖱️ Движение мыши — перемещение</span>
+            <span>ПКМ — ворона / человек</span>
+            <span>ЛКМ (человек) — намерение</span>
+            <span>ЛКМ (ворона) — каркать</span>
+            <span>🔄 Колесико мыши — новая цитата</span>
+            <span>🎯 Цель: размер 55+</span>
+        </div>
+    </div>
+    <script>
+        (function() {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const energySpan = document.getElementById('energyDisplay');
+            const enemyCountSpan = document.getElementById('enemyCount');
+            const sizeIndicator = document.getElementById('sizeIndicator');
+            const musicToggleBtn = document.getElementById('musicToggleBtn');
+            const transformCountSpan = document.getElementById('transformCount');
+
+            // ----- СЧЕТЧИК ПРЕВРАЩЕНИЙ -----
+            let transformCount = 0;
+
+            function incrementTransformCount() {
+                transformCount++;
+                transformCountSpan.textContent = transformCount;
+            }
+
+            function resetTransformCount() {
+                transformCount = 0;
+                transformCountSpan.textContent = '0';
+            }
+
+            // ----- ФОНОВАЯ МУЗЫКА -----
+            let audioCtx = null;
+            let bgOscillators = [];
+            let bgGains = [];
+            let bgIsPlaying = false;
+            let musicEnabled = true;
+            let bgTimeoutId = null;
+
+            function initAudio() {
+                if (!audioCtx) {
+                    try {
+                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    } catch(e) { /* тихо */ }
+                }
+                return audioCtx;
+            }
+
+            // Саундтрек: "Полет вороны" + "Полет вороны - Рассвет"
+            const crowNotes = [
+                50, 54, 59, 63, 59, 54, 50, 54, 59, 66, 59, 54, 50, 54, 59, 63,
+                47, 52, 59, 64, 59, 52, 47, 52, 59, 64, 59, 52, 47, 52, 59, 64, 68, 64, 59, 52
+            ];
+            const crowBpm = 82;
+
+            function playBackgroundMusic() {
+                if (!musicEnabled) return;
+                if (!audioCtx) {
+                    initAudio();
+                    if (!audioCtx) return;
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume().catch(() => {});
+                }
+
+                stopBackgroundMusic();
+
+                const ctx = audioCtx;
+                const now = ctx.currentTime;
+                const beatDuration = 60 / crowBpm;
+                const noteDuration = beatDuration * 0.5;
+                const gap = beatDuration * 0.3;
+                const baseVolume = 0.06;
+
+                let startTime = now + 0.1;
+                const notes = crowNotes;
+
+                for (let i = 0; i < notes.length; i++) {
+                    const freq = 220 * Math.pow(2, (notes[i] - 57) / 12);
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+
+                    if (i < 16) {
+                        osc.type = (i % 2 === 0) ? 'sine' : 'triangle';
+                    } else {
+                        osc.type = (i % 3 === 0) ? 'sine' : (i % 3 === 1) ? 'triangle' : 'sawtooth';
+                    }
+
+                    osc.frequency.setValueAtTime(freq, startTime);
+
+                    const vol = baseVolume * (0.6 + 0.4 * Math.sin(i * 0.7 + 1.2));
+                    const attack = 0.03 + 0.02 * (i % 3) / 3;
+                    const release = 0.04 + 0.04 * (i % 2);
+
+                    gain.gain.setValueAtTime(0, startTime);
+                    gain.gain.linearRampToValueAtTime(vol, startTime + attack);
+                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + noteDuration - release);
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    osc.start(startTime);
+                    osc.stop(startTime + noteDuration);
+
+                    bgOscillators.push(osc);
+                    bgGains.push(gain);
+
+                    startTime += noteDuration + gap;
+                }
+
+                bgIsPlaying = true;
+
+                const totalDuration = notes.length * (noteDuration + gap);
+                bgTimeoutId = setTimeout(() => {
+                    if (musicEnabled && bgIsPlaying) {
+                        playBackgroundMusic();
+                    }
+                }, totalDuration * 1000 + 3000);
+            }
+
+            function stopBackgroundMusic() {
+                if (bgTimeoutId) {
+                    clearTimeout(bgTimeoutId);
+                    bgTimeoutId = null;
+                }
+                for (let i = 0; i < bgOscillators.length; i++) {
+                    try {
+                        bgOscillators[i].stop();
+                        bgOscillators[i].disconnect();
+                    } catch(e) {}
+                }
+                for (let i = 0; i < bgGains.length; i++) {
+                    try {
+                        bgGains[i].disconnect();
+                    } catch(e) {}
+                }
+                bgOscillators = [];
+                bgGains = [];
+                bgIsPlaying = false;
+            }
+
+            function toggleMusic() {
+                musicEnabled = !musicEnabled;
+                if (musicEnabled) {
+                    musicToggleBtn.textContent = '🎵 Музыка: Вкл';
+                    musicToggleBtn.className = 'music-btn on';
+                    initAudio();
+                    if (audioCtx && audioCtx.state === 'suspended') {
+                        audioCtx.resume().catch(() => {});
+                    }
+                    setTimeout(() => {
+                        if (!bgIsPlaying && musicEnabled) {
+                            playBackgroundMusic();
+                        }
+                    }, 200);
+                } else {
+                    musicToggleBtn.textContent = '🎵 Музыка: Выкл';
+                    musicToggleBtn.className = 'music-btn off';
+                    stopBackgroundMusic();
+                    if (audioCtx && audioCtx.state === 'running') {
+                        audioCtx.suspend().catch(() => {});
+                    }
+                }
+            }
+
+            // ----- ЗВУКИ (Web Audio) -----
+            function playTone(freq, duration, type = 'sine', volume = 0.3) {
+                try {
+                    const ctx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+                    if (!audioCtx) audioCtx = ctx;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(volume, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + duration);
+                } catch(e) { /* тихо */ }
+            }
+
+            function initAudioForSounds() {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                return audioCtx;
+            }
+
+            function soundAttack() {
+                playTone(880, 0.15, 'square', 0.2);
+                setTimeout(() => playTone(1200, 0.1, 'sawtooth', 0.15), 80);
+            }
+
+            function soundHit() {
+                playTone(600, 0.2, 'sawtooth', 0.25);
+                setTimeout(() => playTone(400, 0.15, 'sawtooth', 0.2), 100);
+            }
+
+            function soundHurt() {
+                playTone(200, 0.3, 'sawtooth', 0.3);
+                setTimeout(() => playTone(150, 0.3, 'sawtooth', 0.2), 120);
+            }
+
+            function soundWin() {
+                [523, 659, 784, 1047, 1318, 1568].forEach((f, i) => {
+                    setTimeout(() => playTone(f, 0.2, 'sine', 0.2), i * 120);
+                });
+            }
+
+            function soundGameOver() {
+                [400, 300, 200, 150].forEach((f, i) => {
+                    setTimeout(() => playTone(f, 0.3, 'sawtooth', 0.2), i * 200);
+                });
+            }
+
+            function soundSpawn() {
+                playTone(900, 0.08, 'sine', 0.1);
+                setTimeout(() => playTone(1200, 0.06, 'sine', 0.08), 50);
+            }
+
+            function soundTransform() {
+                playTone(1400, 0.1, 'sine', 0.15);
+                setTimeout(() => playTone(1000, 0.15, 'sine', 0.12), 100);
+                setTimeout(() => playTone(800, 0.2, 'sine', 0.1), 200);
+            }
+
+            function soundAbsorb() {
+                playTone(500, 0.15, 'sine', 0.2);
+                setTimeout(() => playTone(700, 0.15, 'sine', 0.15), 80);
+            }
+
+            function soundCrow() {
+                try {
+                    const ctx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+                    if (!audioCtx) audioCtx = ctx;
+                    const now = ctx.currentTime;
+
+                    const osc1 = ctx.createOscillator();
+                    const gain1 = ctx.createGain();
+                    osc1.type = 'sawtooth';
+                    osc1.frequency.setValueAtTime(380, now);
+                    osc1.frequency.exponentialRampToValueAtTime(250, now + 0.12);
+                    gain1.gain.setValueAtTime(0.25, now);
+                    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                    osc1.connect(gain1);
+                    gain1.connect(ctx.destination);
+                    osc1.start(now);
+                    osc1.stop(now + 0.15);
+
+                    const osc2 = ctx.createOscillator();
+                    const gain2 = ctx.createGain();
+                    osc2.type = 'square';
+                    osc2.frequency.setValueAtTime(520, now + 0.1);
+                    osc2.frequency.exponentialRampToValueAtTime(300, now + 0.22);
+                    gain2.gain.setValueAtTime(0.18, now + 0.1);
+                    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc2.connect(gain2);
+                    gain2.connect(ctx.destination);
+                    osc2.start(now + 0.1);
+                    osc2.stop(now + 0.25);
+
+                    const osc3 = ctx.createOscillator();
+                    const gain3 = ctx.createGain();
+                    osc3.type = 'sawtooth';
+                    osc3.frequency.setValueAtTime(280, now + 0.2);
+                    osc3.frequency.exponentialRampToValueAtTime(180, now + 0.32);
+                    gain3.gain.setValueAtTime(0.2, now + 0.2);
+                    gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                    osc3.connect(gain3);
+                    gain3.connect(ctx.destination);
+                    osc3.start(now + 0.2);
+                    osc3.stop(now + 0.35);
+
+                    const bufferSize = ctx.sampleRate * 0.1;
+                    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / bufferSize * 3);
+                    }
+                    const noise = ctx.createBufferSource();
+                    noise.buffer = buffer;
+                    const noiseGain = ctx.createGain();
+                    noiseGain.gain.setValueAtTime(0.15, now);
+                    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                    noise.connect(noiseGain);
+                    noiseGain.connect(ctx.destination);
+                    noise.start(now);
+                    noise.stop(now + 0.35);
+                } catch(e) { /* тихо */ }
+            }
+
+            function soundThirdAttention() {
+                [440, 554, 659, 880, 1108, 1318].forEach((f, i) => {
+                    setTimeout(() => playTone(f, 0.15, 'sine', 0.15), i * 100);
+                });
+                setTimeout(() => {
+                    [880, 1108, 1318, 1760].forEach((f, i) => {
+                        setTimeout(() => playTone(f, 0.2, 'sine', 0.12), i * 80);
+                    });
+                }, 800);
+            }
+
+            // ----- БОЛЬШЕ ЦИТАТ КАСТАНЕДЫ -----
+            const quotes = [
+				 // Основные цитаты из списка
+				"Неорганикам верить нельзя. Мне - можно!",
+				"Если б дона Хуана не было, его следовало бы придумать.",
+				"Энергия неоргаников нам нужна чтоб перемещаться по вселенной.",
+				"Пожирай энергию слабых неоргаников и избегай сильных.",
+				"Я - неорганик.",
+				"Я - дон Хуан.",
+				"Этот мир создан неорганиками.",
+				"Летуны (volodares) пожирают нашу энергию.",
+				"Я не одобряю ни сделку, ни цену (о дарах Арендатора).",
+				"Способность превращаться в ворону - дар Арендатора.",
+				"Не используй дары Арендатора без необходимости.",
+				"Нам требуется всё наше время и вся наша энергия, чтобы победить идиотизм в себе.",
+                "Ты должен стереть свою личную историю.",
+                "Безупречный воин — это тот, кто знает, что он умрёт.",
+                "Сила — это личное дело воина.",
+                "Только если ты будешь ждать, ты узнаешь, что ждать нечего.",
+                "Самый опасный враг — это твой собственный разум.",
+                "То, что мы называем реальностью, — всего лишь описание.",
+                "Воин не ищет битвы, но когда она приходит, он принимает её.",
+                "Чтобы изменить мир, нужно изменить себя.",
+                "Намерение — это то, что делает возможным невозможное.",
+                "Путь воина — это путь сердца.",
+                "Только тот, кто действует, живёт.",
+                "Третье Внимание — это осознание без слов.",
+                "Когда воин достигает Третьего Внимания, он становится светом.",
+                "Только воин может выстоять.",
+                "Воин не позволяет никому и ничему влиять на себя.",
+                "Быть воином — значит быть недоступным.",
+                "Только действие имеет значение.",
+                "Воин действует, а не говорит.",
+                "Страх — это первый враг воина.",
+                "Ясность — это второй враг воина.",
+                "Сила — это третий враг воина.",
+                "Старость — это четвертый враг воина.",
+                "Воин знает, что он ждет, и знает, что он ждет неизвестно что.",
+                "Только тот, кто знает, что он умрет, может быть безупречным.",
+                "Безупречность — это делать все возможное.",
+                "Воин не жалеет ни о чем.",
+                "Твой разум — это твой самый большой враг.",
+                "Чтобы увидеть, нужно остановить внутренний диалог.",
+                "Мир — это только описание.",
+                "Мы — это восприятие.",
+                "Только намерение может изменить реальность.",
+                "Намерение — это энергия духа.",
+                "Дух — это то, что делает возможным намерение.",
+                "Воин использует смерть как советчика.",
+                "Смерть — это лучший учитель.",
+                "Только перед лицом смерти воин становится безупречным.",
+                "Безупречный воин не имеет личной истории.",
+                "Личная история — это тюрьма.",
+                "Освободи себя от своей личной истории.",
+                "Только действие может разрушить личную историю.",
+                "Воин не ищет защиты.",
+                "Защита — это слабость.",
+                "Только уязвимый воин может быть сильным.",
+                "Сила приходит из уязвимости.",
+                "Воин не боится быть смешным.",
+                "Смешной — значит свободный.",
+                "Свобода — это быть никем.",
+                "Быть никем — значит быть всем.",
+                "Воин не имеет ничего, кроме своего намерения.",
+                "Намерение воина — это его единственное оружие.",
+                "Безупречное намерение — это ключ.",
+                "Ключ открывает все двери.",
+                "Воин не судит.",
+                "Суд — это ловушка разума.",
+                "Принимай все без осуждения.",
+                "Только принятие ведет к силе.",
+                "Сила — это принятие смерти.",
+                "Смерть — это дверь в бесконечность.",
+                "Бесконечность — это дом воина."
+            ];
+
+            let currentQuote = null;
+            let gameOverMessage = null; // для сообщения о победе
+
+            function showRandomQuote() {
+                if (quotes.length === 0) return;
+                let available = quotes.filter(q => q !== currentQuote);
+                if (available.length === 0) available = quotes;
+                const idx = Math.floor(Math.random() * available.length);
+                currentQuote = available[idx];
+            }
+
+            setTimeout(() => showRandomQuote(), 100);
+
+            // ----- ПАРАМЕТРЫ -----
+            const THIRD_ATTENTION_SIZE = 55;
+            // КОНСТАНТА: на сколько процентов снижается скорость при увеличении размера (0.15 = 15%)
+            const SPEED_REDUCTION_PER_SIZE = 0.15;
+            const DON = {
+                x: 360,
+                y: 200,
+                radius: 28,
+                baseRadius: 28,
+                energy: 100,
+                maxEnergy: 100,
+                attackCooldown: 0,
+                attackDuration: 0,
+                hurtCooldown: 0,
+                isCrow: false,
+                crowTimer: 0,
+                wingAngle: 0,
+                savedRadius: 28,
+                thirdAttention: false,
+                auraPulse: 0,
+                direction: 1,
+            };
+
+            let castaneda = {
+                x: 400,
+                y: 310,
+                visible: true,
+            };
+
+            let enemies = [];
+            let gameOver = false;
+            let winCondition = false;
+            let frameCounter = 0;
+            const ENEMY_SPAWN_RATE = 35;
+            const MAX_ENEMIES = 12;
+            const ENEMY_BASE_SPEED = 0.9;
+            const ATTACK_RANGE = 75;
+
+            const KAR_DELTA = 60;
+            let crowCooldown = 0;
+
+            let mouseTargetX = DON.x;
+            let mouseTargetY = DON.y;
+            const MOVE_SPEED = 3.5;
+
+            // ----- ФОН -----
+            const cacti = [];
+            for (let i = 0; i < 14; i++) {
+                cacti.push({
+                    x: 20 + Math.random() * 680,
+                    h: 25 + Math.random() * 40,
+                    w: 6 + Math.random() * 10,
+                    branch: Math.random() > 0.5,
+                });
+            }
+            const mountains = [
+                { x: 0, w: 200, h: 70, color: '#7a6b56' },
+                { x: 150, w: 280, h: 110, color: '#8a7a64' },
+                { x: 380, w: 220, h: 80, color: '#6d5f4b' },
+                { x: 550, w: 200, h: 100, color: '#7f6f59' },
+            ];
+
+            // ----- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ -----
+            function resetGame() {
+                DON.energy = DON.maxEnergy;
+                DON.attackCooldown = 0;
+                DON.attackDuration = 0;
+                DON.hurtCooldown = 0;
+                DON.isCrow = false;
+                DON.crowTimer = 0;
+                DON.radius = DON.baseRadius;
+                DON.savedRadius = DON.baseRadius;
+                DON.x = 360;
+                DON.y = 200;
+                DON.wingAngle = 0;
+                DON.thirdAttention = false;
+                DON.auraPulse = 0;
+                DON.direction = 1;
+                mouseTargetX = 360;
+                mouseTargetY = 200;
+                enemies = [];
+                gameOver = false;
+                winCondition = false;
+                frameCounter = 0;
+                crowCooldown = 0;
+                gameOverMessage = null;
+                resetTransformCount();
+                showRandomQuote();
+                for (let i = 0; i < 5; i++) spawnEnemy();
+                updateUI();
+                if (musicEnabled) {
+                    setTimeout(() => {
+                        stopBackgroundMusic();
+                        playBackgroundMusic();
+                    }, 300);
+                }
+            }
+
+            function spawnEnemy() {
+                if (gameOver || winCondition) return;
+                if (enemies.length >= MAX_ENEMIES) return;
+
+                const baseRadius = 12 + Math.random() * 30;
+                const type = Math.floor(Math.random() * 3);
+                const speed = ENEMY_BASE_SPEED + (1.5 - baseRadius / 30) * 0.5;
+
+                const side = Math.floor(Math.random() * 4);
+                let x, y;
+                const margin = 20;
+                switch(side) {
+                    case 0: x = -margin; y = 30 + Math.random() * 340; break;
+                    case 1: x = 720 + margin; y = 30 + Math.random() * 340; break;
+                    case 2: x = 30 + Math.random() * 660; y = -margin; break;
+                    case 3: x = 30 + Math.random() * 660; y = 400 + margin; break;
+                }
+
+                const enemy = {
+                    x: x,
+                    y: y,
+                    radius: baseRadius,
+                    speed: Math.max(0.4, speed),
+                    type: type,
+                    hurtTimer: 0,
+                    state: 'approach',
+                };
+                enemies.push(enemy);
+                soundSpawn();
+                updateUI();
+            }
+
+            function checkThirdAttention() {
+                if (DON.thirdAttention) return;
+                if (DON.radius >= THIRD_ATTENTION_SIZE && !DON.isCrow) {
+                    DON.thirdAttention = true;
+                    winCondition = true;
+                    soundThirdAttention();
+                    soundWin();
+                    showRandomQuote();
+
+                    // Формируем сообщение о победе с учетом счетчика
+                    if (transformCount === 0) {
+                        gameOverMessage = "ТРЕТЬЕ ВНИМАНИЕ ДОСТИГНУТО:\nдар Арендатора (превращение в ворону) не применялся";
+                    } else {
+                        gameOverMessage = "ТРЕТЬЕ ВНИМАНИЕ ДОСТИГНУТО:\nдар Арендатора (превращение в ворону) применялся " + transformCount + " раз" + (transformCount > 1 ? "а" : "");
+                    }
+
+                    setTimeout(() => {
+                        currentQuote = "✨ Дон Хуан достиг Третьего Внимания! ✨";
+                    }, 100);
+                    updateUI();
+                }
+            }
+
+            function crowScare() {
+                if (!DON.isCrow) return;
+                if (crowCooldown > 0) return;
+                if (gameOver || winCondition) return;
+
+                crowCooldown = KAR_DELTA;
+                soundCrow();
+                showRandomQuote();
+
+                const pushPower = 80;
+                for (let i = 0; i < enemies.length; i++) {
+                    const e = enemies[i];
+                    const dx = e.x - DON.x;
+                    const dy = e.y - DON.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 1) continue;
+                    const normX = dx / dist;
+                    const normY = dy / dist;
+                    const power = pushPower * (1 + 50 / (dist + 10));
+                    e.x += normX * power;
+                    e.y += normY * power;
+                    e.x += (Math.random() - 0.5) * 30;
+                    e.y += (Math.random() - 0.5) * 30;
+                    e.x = Math.min(720, Math.max(-20, e.x));
+                    e.y = Math.min(400, Math.max(-20, e.y));
+                }
+            }
+
+            function applyIntention() {
+                if (gameOver || winCondition) return;
+
+                if (DON.isCrow) {
+                    crowScare();
+                    return;
+                }
+
+                if (DON.attackCooldown > 0) return;
+                if (DON.energy < 12) {
+                    playTone(300, 0.1, 'sine', 0.08);
+                    return;
+                }
+
+                DON.attackDuration = 14;
+                DON.attackCooldown = 22;
+                soundAttack();
+
+                let hitAny = false;
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const e = enemies[i];
+                    const dx = e.x - DON.x;
+                    const dy = e.y - DON.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < ATTACK_RANGE + e.radius) {
+                        if (DON.radius > e.radius * 1.05) {
+                            enemies.splice(i, 1);
+                            hitAny = true;
+                            const bonus = 10 + Math.round(e.radius * 0.2);
+                            DON.energy = Math.min(DON.maxEnergy, DON.energy + bonus);
+                            soundHit();
+                            DON.radius = Math.min(60, DON.radius + e.radius * 0.08);
+                            if (!DON.isCrow) {
+                                DON.savedRadius = DON.radius;
+                            }
+                            checkThirdAttention();
+                        } else {
+                            DON.energy = Math.max(0, DON.energy - 8);
+                            soundHurt();
+                            const angle = Math.atan2(dy, dx);
+                            e.x += Math.cos(angle) * 20;
+                            e.y += Math.sin(angle) * 20;
+                            DON.radius = Math.max(14, DON.radius - 0.5);
+                            if (!DON.isCrow) {
+                                DON.savedRadius = DON.radius;
+                            }
+                            showRandomQuote();
+                            if (DON.energy <= 0) {
+                                DON.energy = 0;
+                                gameOver = true;
+                                soundGameOver();
+                                updateUI();
+                                return;
+                            }
+                        }
+                    }
+                }
+
+                if (hitAny) {
+                    DON.energy = Math.min(DON.maxEnergy, DON.energy + 5);
+                    showRandomQuote();
+                }
+
+                if (DON.energy < 0) DON.energy = 0;
+                checkThirdAttention();
+
+                if (enemies.length === 0 && !gameOver && !winCondition) {
+                    winCondition = true;
+                    soundWin();
+                    showRandomQuote();
+                }
+
+                updateUI();
+            }
+
+            function toggleCrow() {
+                if (gameOver || winCondition) return;
+
+                if (!DON.isCrow) {
+                    DON.savedRadius = DON.radius;
+                    DON.isCrow = true;
+                    DON.radius = 14;
+                    soundTransform();
+                    showRandomQuote();
+                    // Увеличиваем счетчик превращений
+                    incrementTransformCount();
+                } else {
+                    DON.isCrow = false;
+                    DON.radius = DON.savedRadius;
+                    soundTransform();
+                    showRandomQuote();
+                    checkThirdAttention();
+                }
+                DON.crowTimer = 0;
+            }
+
+            function updateUI() {
+                energySpan.textContent = Math.round(DON.energy);
+                enemyCountSpan.textContent = enemies.length;
+                sizeIndicator.textContent = '📏 размер: ' + Math.round(DON.radius);
+                transformCountSpan.textContent = transformCount;
+
+                if (gameOver) {
+                    energySpan.textContent = '💀';
+                } else if (winCondition) {
+                    energySpan.textContent = '✨';
+                    sizeIndicator.textContent = '🌟 ТРЕТЬЕ ВНИМАНИЕ!';
+                }
+            }
+
+            // ----- ОБНОВЛЕНИЕ -----
+            function update() {
+                if (gameOver || winCondition) return;
+
+                if (crowCooldown > 0) crowCooldown--;
+                DON.auraPulse += 0.03;
+
+                // Вычисляем текущую скорость с учетом размера
+                let currentSpeed = MOVE_SPEED;
+                if (DON.isCrow) {
+                    currentSpeed = MOVE_SPEED * 2; // ворона быстрее
+                } else {
+                    // Уменьшаем скорость в зависимости от размера (чем больше размер, тем медленнее)
+                    const sizeFactor = (DON.radius - DON.baseRadius) * SPEED_REDUCTION_PER_SIZE;
+                    currentSpeed = MOVE_SPEED * (1 - Math.min(0.6, Math.max(0, sizeFactor)));
+                }
+
+                const dx = mouseTargetX - DON.x;
+                const dy = mouseTargetY - DON.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+
+                if (Math.abs(dx) > 2) {
+                    DON.direction = dx > 0 ? 1 : -1;
+                }
+
+                if (dist > 3) {
+                    const moveX = (dx / dist) * Math.min(currentSpeed, dist);
+                    const moveY = (dy / dist) * Math.min(currentSpeed, dist);
+                    DON.x += moveX;
+                    DON.y += moveY;
+                } else {
+                    DON.x = mouseTargetX;
+                    DON.y = mouseTargetY;
+                }
+
+                DON.x = Math.min(700, Math.max(20, DON.x));
+                DON.y = Math.min(380, Math.max(20, DON.y));
+
+                if (DON.isCrow) {
+                    DON.wingAngle += 0.15;
+                } else {
+                    DON.wingAngle = 0;
+                }
+
+                if (DON.attackCooldown > 0) DON.attackCooldown--;
+                if (DON.attackDuration > 0) DON.attackDuration--;
+                if (DON.hurtCooldown > 0) DON.hurtCooldown--;
+                if (DON.isCrow) DON.crowTimer++;
+
+                frameCounter++;
+                if (frameCounter % ENEMY_SPAWN_RATE === 0) {
+                    spawnEnemy();
+                }
+
+                for (let i = 0; i < enemies.length; i++) {
+                    const e = enemies[i];
+                    const dx2 = DON.x - e.x;
+                    const dy2 = DON.y - e.y;
+                    const dist2 = Math.sqrt(dx2*dx2 + dy2*dy2);
+
+                    const sizeRatio = e.radius / DON.radius;
+
+                    if (sizeRatio > 1.1) {
+                        e.state = 'approach';
+                        if (dist2 > 0.5) {
+                            const moveSpeed = e.speed * 1.2;
+                            e.x += (dx2 / dist2) * moveSpeed;
+                            e.y += (dy2 / dist2) * moveSpeed;
+                        }
+                    } else if (sizeRatio < 0.9) {
+                        e.state = 'retreat';
+                        const idealDist = 150 + e.radius + DON.radius;
+                        if (dist2 < idealDist * 0.7) {
+                            const retreatSpeed = e.speed * 0.8;
+                            if (dist2 > 0.5) {
+                                e.x -= (dx2 / dist2) * retreatSpeed;
+                                e.y -= (dy2 / dist2) * retreatSpeed;
+                            }
+                        } else if (dist2 > idealDist * 1.3) {
+                            const approachSpeed = e.speed * 0.4;
+                            if (dist2 > 0.5) {
+                                e.x += (dx2 / dist2) * approachSpeed;
+                                e.y += (dy2 / dist2) * approachSpeed;
+                            }
+                        }
+                    } else {
+                        e.state = 'approach';
+                        if (dist2 > 100) {
+                            const moveSpeed = e.speed * 0.5;
+                            if (dist2 > 0.5) {
+                                e.x += (dx2 / dist2) * moveSpeed;
+                                e.y += (dy2 / dist2) * moveSpeed;
+                            }
+                        } else if (dist2 < 60) {
+                            const pushSpeed = e.speed * 0.6;
+                            if (dist2 > 0.5) {
+                                e.x -= (dx2 / dist2) * pushSpeed;
+                                e.y -= (dy2 / dist2) * pushSpeed;
+                            }
+                        }
+                    }
+
+                    e.x = Math.min(720, Math.max(-20, e.x));
+                    e.y = Math.min(400, Math.max(-20, e.y));
+                }
+
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const e = enemies[i];
+                    const dx2 = e.x - DON.x;
+                    const dy2 = e.y - DON.y;
+                    const dist2 = Math.sqrt(dx2*dx2 + dy2*dy2);
+                    const collisionDist = DON.isCrow ? DON.radius + e.radius - 4 : DON.radius + e.radius - 6;
+
+                    if (dist2 < collisionDist) {
+                        if (DON.isCrow) {
+                            const angle = Math.atan2(dy2, dx2);
+                            e.x += Math.cos(angle) * 25;
+                            e.y += Math.sin(angle) * 25;
+                            continue;
+                        }
+
+                        if (DON.radius > e.radius * 1.1) {
+                            const sizeBonus = e.radius * 0.15;
+                            DON.radius = Math.min(60, DON.radius + sizeBonus);
+                            DON.savedRadius = DON.radius;
+                            DON.energy = Math.min(DON.maxEnergy, DON.energy + 10);
+                            soundAbsorb();
+                            showRandomQuote();
+                            enemies.splice(i, 1);
+                            checkThirdAttention();
+                            updateUI();
+                            continue;
+                        } else if (DON.radius < e.radius * 0.9) {
+                            const sizeLoss = e.radius * 0.12;
+                            DON.radius = Math.max(14, DON.radius - sizeLoss);
+                            DON.savedRadius = DON.radius;
+                            DON.energy = Math.max(0, DON.energy - 16);
+                            soundHurt();
+                            const angle = Math.atan2(dy2, dx2);
+                            e.x += Math.cos(angle) * 30;
+                            e.y += Math.sin(angle) * 30;
+                            showRandomQuote();
+                            if (DON.energy <= 0) {
+                                DON.energy = 0;
+                                gameOver = true;
+                                soundGameOver();
+                                updateUI();
+                                return;
+                            }
+                            updateUI();
+                            continue;
+                        } else {
+                            const angle = Math.atan2(dy2, dx2);
+                            DON.x -= Math.cos(angle) * 12;
+                            DON.y -= Math.sin(angle) * 12;
+                            e.x += Math.cos(angle) * 12;
+                            e.y += Math.sin(angle) * 12;
+                            continue;
+                        }
+                    }
+                }
+
+                if (enemies.length === 0 && !gameOver && !winCondition) {
+                    winCondition = true;
+                    soundWin();
+                    showRandomQuote();
+                    updateUI();
+                }
+
+                if (!gameOver && !winCondition && DON.energy < DON.maxEnergy) {
+                    DON.energy = Math.min(DON.maxEnergy, DON.energy + 0.06);
+                }
+
+                if (DON.energy <= 0 && !gameOver) {
+                    DON.energy = 0;
+                    gameOver = true;
+                    soundGameOver();
+                    updateUI();
+                }
+
+                updateUI();
+            }
+
+            // ----- ОТРИСОВКА -----
+            function drawBackground() {
+                const skyGrad = ctx.createLinearGradient(0, 0, 0, 340);
+                skyGrad.addColorStop(0, '#f5d6a8');
+                skyGrad.addColorStop(0.5, '#e8c394');
+                skyGrad.addColorStop(0.85, '#d4a87a');
+                skyGrad.addColorStop(1, '#b8895e');
+                ctx.fillStyle = skyGrad;
+                ctx.fillRect(0, 0, 720, 340);
+
+                ctx.beginPath();
+                ctx.arc(650, 70, 45, 0, Math.PI * 2);
+                const sunGrad = ctx.createRadialGradient(650, 70, 10, 650, 70, 55);
+                sunGrad.addColorStop(0, '#fff7e0');
+                sunGrad.addColorStop(0.3, '#ffdd88');
+                sunGrad.addColorStop(0.8, '#e8a040');
+                sunGrad.addColorStop(1, '#c08030');
+                ctx.fillStyle = sunGrad;
+                ctx.fill();
+
+                for (let m of mountains) {
+                    ctx.beginPath();
+                    ctx.moveTo(m.x, 340);
+                    ctx.quadraticCurveTo(m.x + m.w * 0.3, 340 - m.h * 1.2, m.x + m.w * 0.5, 340 - m.h);
+                    ctx.quadraticCurveTo(m.x + m.w * 0.7, 340 - m.h * 0.9, m.x + m.w, 340);
+                    ctx.closePath();
+                    ctx.fillStyle = m.color;
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(240, 235, 210, 0.2)';
+                    ctx.beginPath();
+                    ctx.moveTo(m.x + m.w * 0.25, 340 - m.h * 0.8);
+                    ctx.quadraticCurveTo(m.x + m.w * 0.4, 340 - m.h * 1.0, m.x + m.w * 0.5, 340 - m.h * 0.85);
+                    ctx.quadraticCurveTo(m.x + m.w * 0.6, 340 - m.h * 0.95, m.x + m.w * 0.75, 340 - m.h * 0.7);
+                    ctx.fill();
+                }
+
+                const groundGrad = ctx.createLinearGradient(0, 300, 0, 400);
+                groundGrad.addColorStop(0, '#c9a87c');
+                groundGrad.addColorStop(0.3, '#b8956a');
+                groundGrad.addColorStop(0.7, '#a07d55');
+                groundGrad.addColorStop(1, '#7a5f3e');
+                ctx.fillStyle = groundGrad;
+                ctx.fillRect(0, 300, 720, 100);
+
+                ctx.strokeStyle = '#b0885e';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, 300);
+                ctx.lineTo(720, 300);
+                ctx.stroke();
+
+                for (let c of cacti) {
+                    const x = c.x, h = c.h, w = c.w;
+                    ctx.fillStyle = '#3a6b3a';
+                    ctx.strokeStyle = '#2a4f2a';
+                    ctx.lineWidth = 1.5;
+                    ctx.fillRect(x - w/2, 300 - h, w, h);
+                    ctx.strokeRect(x - w/2, 300 - h, w, h);
+                    if (c.branch) {
+                        ctx.fillRect(x - w - 6, 300 - h + 10, 8, 14);
+                        ctx.strokeRect(x - w - 6, 300 - h + 10, 8, 14);
+                        ctx.fillRect(x + w/2 - 2, 300 - h + 18, 8, 14);
+                        ctx.strokeRect(x + w/2 - 2, 300 - h + 18, 8, 14);
+                        ctx.fillRect(x - w - 2, 300 - h + 6, 4, 8);
+                        ctx.fillRect(x + w/2 + 2, 300 - h + 14, 4, 8);
+                    }
+                    ctx.fillStyle = '#4f7a4a';
+                    for (let s = 0; s < 5; s++) {
+                        const sy = 300 - h + 6 + s * 7;
+                        ctx.fillRect(x - w/2 - 3, sy, 2, 2);
+                        ctx.fillRect(x + w/2 + 1, sy, 2, 2);
+                    }
+                }
+
+                ctx.fillStyle = '#8a7a64';
+                for (let i = 0; i < 20; i++) {
+                    const rx = 10 + i * 37 + Math.sin(i*2) * 8;
+                    const ry = 310 + Math.sin(i*1.7) * 15 + 10;
+                    ctx.beginPath();
+                    ctx.ellipse(rx, ry, 4 + Math.sin(i)*2, 3 + Math.cos(i)*2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, 720, 400);
+                drawBackground();
+
+                // ---- КАСТАНЕДА С ЦИТАТОЙ ----
+                const c = castaneda;
+                const targetX = Math.min(680, Math.max(80, DON.x + 90));
+                const targetY = DON.y - 20;
+                c.x += (targetX - c.x) * 0.06;
+                c.y += (targetY - c.y) * 0.06;
+
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = 'rgba(200, 180, 150, 0.3)';
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, 18, 0, Math.PI * 2);
+                ctx.fillStyle = '#4a3d33';
+                ctx.fill();
+                ctx.strokeStyle = '#6b5a48';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(c.x - 2, c.y - 6, 10, 0, Math.PI * 2);
+                ctx.fillStyle = '#d4b896';
+                ctx.fill();
+                ctx.strokeStyle = '#8a705a';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.fillStyle = '#2d241e';
+                ctx.beginPath();
+                ctx.ellipse(c.x - 2, c.y - 14, 16, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#1f1813';
+                ctx.beginPath();
+                ctx.ellipse(c.x - 2, c.y - 17, 10, 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#6a5a4a';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(c.x - 6, c.y - 8, 4, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(c.x + 2, c.y - 8, 4, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.shadowBlur = 0;
+                ctx.font = 'bold 18px "Segoe UI", serif';
+                ctx.fillStyle = '#000000';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = 'rgba(255,255,200,0.5)';
+                ctx.shadowBlur = 6;
+                ctx.fillText('Карлос Кастанеда', c.x, c.y + 32);
+                ctx.shadowBlur = 0;
+
+                if (currentQuote) {
+                    ctx.font = 'bold 15px "Segoe UI", serif';
+                    ctx.fillStyle = '#000000';
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = 'rgba(255,255,200,0.7)';
+                    ctx.shadowBlur = 8;
+                    const metrics = ctx.measureText('"' + currentQuote + '"');
+                    const tw = metrics.width + 20;
+                    ctx.fillStyle = 'rgba(240, 235, 215, 0.9)';
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath();
+                    ctx.roundRect(360 - tw/2, 30, tw, 50, 10);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#000000';
+                    ctx.font = 'bold 15px "Segoe UI", serif';
+                    ctx.fillText('"' + currentQuote + '"', 360, 53);
+                    ctx.font = '12px "Segoe UI", serif';
+                    ctx.fillStyle = '#000000';
+                    ctx.fillText('— Карлос Кастанеда', 360, 72);
+                    ctx.shadowBlur = 0;
+                }
+
+                // ---- ДОН ХУАН ----
+                const d = DON;
+
+                const auraRadius = d.radius + 20 + 8 * Math.sin(d.auraPulse * 0.7);
+                const grad = ctx.createRadialGradient(d.x, d.y, d.radius * 0.3, d.x, d.y, auraRadius);
+                grad.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
+                grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.2)');
+                grad.addColorStop(0.6, 'rgba(255, 255, 255, 0.1)');
+                grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, auraRadius, 0, Math.PI * 2);
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                const innerGrad = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.radius + 8);
+                innerGrad.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
+                innerGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.2)');
+                innerGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, d.radius + 8, 0, Math.PI * 2);
+                ctx.fillStyle = innerGrad;
+                ctx.fill();
+
+                if (winCondition && DON.thirdAttention) {
+                    const goldGrad = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, 100);
+                    goldGrad.addColorStop(0, 'rgba(255, 215, 0, 0.5)');
+                    goldGrad.addColorStop(0.2, 'rgba(255, 200, 50, 0.3)');
+                    goldGrad.addColorStop(0.5, 'rgba(255, 255, 200, 0.15)');
+                    goldGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                    ctx.beginPath();
+                    ctx.arc(d.x, d.y, 100, 0, Math.PI * 2);
+                    ctx.fillStyle = goldGrad;
+                    ctx.fill();
+
+                    for (let i = 0; i < 12; i++) {
+                        const angle = i / 12 * Math.PI * 2 + d.auraPulse * 0.5;
+                        const dist2 = 35 + 20 * Math.sin(d.auraPulse * 1.5 + i);
+                        const sx = d.x + Math.cos(angle) * dist2;
+                        const sy = d.y + Math.sin(angle) * dist2;
+                        const sparkSize = 2 + Math.sin(d.auraPulse * 2 + i * 1.5) * 1.5;
+                        ctx.beginPath();
+                        ctx.arc(sx, sy, sparkSize, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255, 215, 0, ${0.3 + 0.3 * Math.sin(d.auraPulse + i)})`;
+                        ctx.fill();
+                    }
+                }
+
+                ctx.shadowColor = 'rgba(0,0,0,0.4)';
+                ctx.shadowBlur = 16;
+                ctx.shadowOffsetY = 4;
+
+                if (d.isCrow) {
+                    ctx.save();
+                    ctx.translate(d.x, d.y);
+
+                    if (d.direction < 0) {
+                        ctx.scale(-1, 1);
+                    }
+
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#2a1f18';
+
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 18, 12, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = '#1a1410';
+                    ctx.fill();
+                    ctx.strokeStyle = '#0d0a08';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    const wingAngle = Math.sin(d.wingAngle) * 0.5 + 0.3;
+                    ctx.fillStyle = '#1e1712';
+                    ctx.beginPath();
+                    ctx.ellipse(-18, -4 + Math.sin(d.wingAngle) * 6, 14, 5 + Math.sin(d.wingAngle) * 3, -0.3 - wingAngle * 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#0d0a08';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#1e1712';
+                    ctx.beginPath();
+                    ctx.ellipse(18, -4 + Math.sin(d.wingAngle + 0.5) * 6, 14, 5 + Math.sin(d.wingAngle + 0.5) * 3, 0.3 + wingAngle * 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#0d0a08';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(6, -8, 8, 0, Math.PI * 2);
+                    ctx.fillStyle = '#1a1410';
+                    ctx.fill();
+                    ctx.strokeStyle = '#0d0a08';
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#3a3028';
+                    ctx.beginPath();
+                    ctx.moveTo(12, -6);
+                    ctx.lineTo(22, -4);
+                    ctx.lineTo(12, -2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#f0e8d0';
+                    ctx.beginPath();
+                    ctx.arc(8, -10, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#0a0808';
+                    ctx.beginPath();
+                    ctx.arc(9, -11, 1.2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#1a1410';
+                    ctx.beginPath();
+                    ctx.moveTo(-16, 2);
+                    ctx.lineTo(-28, 6);
+                    ctx.lineTo(-16, 6);
+                    ctx.fill();
+
+                    ctx.restore();
+
+                    if (crowCooldown > 0) {
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = 'rgba(200, 100, 100, 0.5)';
+                        ctx.font = '10px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('⏳', d.x, d.y - 30);
+                    } else {
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = 'rgba(200, 200, 100, 0.6)';
+                        ctx.font = '12px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('🔊', d.x, d.y - 30);
+                    }
+                } else {
+                    const bodyGrad = ctx.createRadialGradient(
+                        d.x - d.radius * 0.3, d.y - d.radius * 0.3, d.radius * 0.1,
+                        d.x, d.y, d.radius
+                    );
+                    bodyGrad.addColorStop(0, '#f5e8d0');
+                    bodyGrad.addColorStop(0.3, '#e8d5b8');
+                    bodyGrad.addColorStop(0.6, '#d4b89a');
+                    bodyGrad.addColorStop(0.85, '#c4a080');
+                    bodyGrad.addColorStop(1, '#b08868');
+
+                    ctx.beginPath();
+                    ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = bodyGrad;
+                    ctx.fill();
+                    ctx.strokeStyle = '#c4a080';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(d.x - d.radius * 0.25, d.y - d.radius * 0.3, d.radius * 0.3, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.arc(d.x - d.radius * 0.15, d.y - d.radius * 0.45, d.radius * 0.1, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.fill();
+
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath();
+                    ctx.ellipse(d.x - 2, d.y - 4, 12, 13, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = '#8B6B4A';
+                    ctx.fill();
+                    ctx.strokeStyle = '#6D4F33';
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.ellipse(d.x - 2, d.y - 2, 9, 10, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = '#7A5C3E';
+                    ctx.fill();
+
+                    ctx.fillStyle = '#f2e3c0';
+                    ctx.beginPath();
+                    ctx.ellipse(d.x - 7, d.y - 6, 3, 2.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(d.x + 3, d.y - 6, 3, 2.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#1a120c';
+                    ctx.beginPath();
+                    ctx.arc(d.x - 8, d.y - 6, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(d.x + 2, d.y - 6, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#3d2c1a';
+                    ctx.lineWidth = 1.8;
+                    ctx.beginPath();
+                    ctx.moveTo(d.x - 10, d.y - 10);
+                    ctx.lineTo(d.x - 5, d.y - 11);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(d.x + 1, d.y - 11);
+                    ctx.lineTo(d.x + 6, d.y - 10);
+                    ctx.stroke();
+
+                    ctx.strokeStyle = '#6D4F33';
+                    ctx.lineWidth = 1.2;
+                    ctx.beginPath();
+                    ctx.moveTo(d.x - 2, d.y - 6);
+                    ctx.lineTo(d.x - 3, d.y - 2);
+                    ctx.lineTo(d.x + 0, d.y - 1);
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(d.x - 1, d.y + 1, 3, 0.1, Math.PI - 0.1);
+                    ctx.strokeStyle = '#5a3d28';
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+
+                    ctx.shadowBlur = 4;
+                    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                    ctx.fillStyle = '#3d2c1d';
+                    ctx.beginPath();
+                    ctx.ellipse(d.x - 2, d.y - 14, 22, 7, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#2f1f14';
+                    ctx.beginPath();
+                    ctx.ellipse(d.x - 2, d.y - 18, 14, 4.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.shadowBlur = 0;
+                    ctx.strokeStyle = '#3d2c1a';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(d.x - 14, d.y - 1);
+                    ctx.lineTo(d.x - 24, d.y + 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(d.x - 14, d.y + 2);
+                    ctx.lineTo(d.x - 24, d.y + 7);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(d.x + 10, d.y - 1);
+                    ctx.lineTo(d.x + 20, d.y + 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(d.x + 10, d.y + 2);
+                    ctx.lineTo(d.x + 20, d.y + 7);
+                    ctx.stroke();
+
+                    if (d.attackDuration > 0) {
+                        ctx.shadowBlur = 40;
+                        ctx.shadowColor = 'rgba(255,255,255,0.6)';
+                        ctx.beginPath();
+                        ctx.arc(d.x, d.y, d.radius + 16, 0, Math.PI * 2);
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                        ctx.lineWidth = 4;
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+                    }
+
+                    if (!winCondition) {
+                        const progress = Math.min(1, (DON.radius - 14) / (THIRD_ATTENTION_SIZE - 14));
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                        ctx.fillRect(d.x - 30, d.y + d.radius + 12, 60, 4);
+                        const grad2 = ctx.createLinearGradient(d.x - 30, 0, d.x + 30, 0);
+                        grad2.addColorStop(0, 'rgba(200,200,255,0.3)');
+                        grad2.addColorStop(progress, 'rgba(255,255,255,0.8)');
+                        grad2.addColorStop(1, 'rgba(255,255,255,0.3)');
+                        ctx.fillStyle = grad2;
+                        ctx.fillRect(d.x - 30, d.y + d.radius + 12, 60 * progress, 4);
+                        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                        ctx.lineWidth = 0.5;
+                        ctx.strokeRect(d.x - 30, d.y + d.radius + 12, 60, 4);
+                    }
+                }
+
+                ctx.shadowBlur = 0;
+                ctx.font = 'bold 20px "Segoe UI", serif';
+                ctx.fillStyle = '#000000';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = 'rgba(255,255,200,0.5)';
+                ctx.shadowBlur = 6;
+                const labelY = DON.isCrow ? d.y + 24 : d.y + d.radius + 24;
+                ctx.fillText('Дон Хуан', d.x, labelY);
+                ctx.shadowBlur = 0;
+
+                // ---- ВРАГИ ----
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = '#1f1510';
+                for (let e of enemies) {
+                    const isAggressive = e.radius > DON.radius * 1.1;
+                    const isRetreating = e.radius < DON.radius * 0.9;
+
+                    ctx.beginPath();
+                    ctx.arc(e.x, e.y, e.radius + 6, 0, Math.PI * 2);
+                    if (isAggressive) {
+                        ctx.strokeStyle = 'rgba(255, 100, 100, 0.4)';
+                    } else if (isRetreating) {
+                        ctx.strokeStyle = 'rgba(100, 255, 100, 0.3)';
+                    } else {
+                        ctx.strokeStyle = 'rgba(160, 200, 255, 0.2)';
+                    }
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    const grad = ctx.createRadialGradient(e.x-6, e.y-6, 4, e.x, e.y, e.radius+4);
+                    if (e.type === 0) {
+                        grad.addColorStop(0, '#6f8b9f');
+                        grad.addColorStop(0.7, '#2f4555');
+                    } else if (e.type === 1) {
+                        grad.addColorStop(0, '#b09a7a');
+                        grad.addColorStop(0.7, '#4d3d2b');
+                    } else {
+                        grad.addColorStop(0, '#936f6f');
+                        grad.addColorStop(0.7, '#4a2a2a');
+                    }
+                    ctx.beginPath();
+                    ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+                    ctx.strokeStyle = '#102030';
+                    ctx.lineWidth = 1.8;
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#b0d0f0';
+                    ctx.shadowBlur = 14;
+                    ctx.shadowColor = '#7fc0ff';
+                    const eyeSize = Math.min(6, e.radius * 0.3);
+                    ctx.beginPath();
+                    ctx.arc(e.x - 6, e.y - 4, eyeSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(e.x + 6, e.y - 4, eyeSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#050a10';
+                    ctx.shadowBlur = 4;
+                    ctx.beginPath();
+                    ctx.arc(e.x - 8, e.y - 6, eyeSize * 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(e.x + 4, e.y - 6, eyeSize * 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#aaccdd';
+                    ctx.lineWidth = 1.2;
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.moveTo(e.x - 12, e.y + 8);
+                    ctx.lineTo(e.x + 12, e.y + 8);
+                    ctx.stroke();
+
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = 'rgba(200,200,200,0.4)';
+                    ctx.font = '9px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(Math.round(e.radius), e.x, e.y + e.radius + 14);
+
+                    if (isAggressive) {
+                        ctx.fillStyle = 'rgba(255, 80, 80, 0.6)';
+                        ctx.font = '10px sans-serif';
+                        ctx.fillText('⚔️', e.x, e.y - e.radius - 10);
+                    } else if (isRetreating) {
+                        ctx.fillStyle = 'rgba(80, 255, 80, 0.5)';
+                        ctx.font = '10px sans-serif';
+                        ctx.fillText('↺', e.x, e.y - e.radius - 10);
+                    }
+                }
+
+                // ---- Текст состояния ----
+                ctx.shadowBlur = 0;
+                ctx.shadowColor = 'transparent';
+                ctx.font = 'bold 16px "Segoe UI", sans-serif';
+                ctx.textAlign = 'left';
+                if (gameOver) {
+                    ctx.fillStyle = '#d47a7a';
+                    ctx.font = 'bold 28px "Segoe UI", sans-serif';
+                    ctx.fillText('✖ СИЛА ИСТОЩЕНА', 240, 130);
+                } else if (winCondition && DON.thirdAttention) {
+                    // ---- СИНЕЕ СООБЩЕНИЕ О ПОБЕДЕ (две строки) ----
+                    ctx.shadowBlur = 0;
+                    ctx.textAlign = 'center';
+
+                    // Первая строка - золотая
+                    ctx.fillStyle = '#2d1b69';
+                    ctx.font = 'bold 30px "Segoe UI", sans-serif';
+                    ctx.shadowColor = 'rgba(255,215,0,0.5)';
+                    ctx.shadowBlur = 20;
+                    ctx.fillText('🌟 ТРЕТЬЕ ВНИМАНИЕ ДОСТИГНУТО! 🌟', 360, 125);
+                    ctx.shadowBlur = 0;
+
+                    // Вторая строка - СИНЯЯ, с информацией о даре Арендатора
+                    ctx.fillStyle = '#2d1b69';
+                    ctx.font = 'bold 20px "Segoe UI", sans-serif';
+                    ctx.shadowColor = 'rgba(74, 158, 255, 0.4)';
+                    ctx.shadowBlur = 15;
+
+                    let messageText = "";
+                    if (transformCount === 0) {
+                        messageText = "дар Арендатора (превращение в ворону) не применялся";
+                    } else {
+                        messageText = "дар Арендатора (превращение в ворону) применялся " + transformCount + " раз" + (transformCount > 1 ? "а" : "");
+                    }
+                    ctx.fillText(messageText, 360, 160);
+                    ctx.shadowBlur = 0;
+                } else if (winCondition) {
+                    ctx.fillStyle = '#f7d98a';
+                    ctx.font = 'bold 28px "Segoe UI", sans-serif';
+                    ctx.fillText('✨ БЕЗУПРЕЧНОЕ НАМЕРЕНИЕ', 200, 130);
+                }
+
+                ctx.font = '12px "Segoe UI", sans-serif';
+                ctx.fillStyle = '#b8a58b';
+                ctx.textAlign = 'right';
+                if (DON.isCrow) {
+                    ctx.fillText('🔊 ЛКМ — каркать', 700, 380);
+                } else {
+                    ctx.fillText('⚔️ ЛКМ — намерение', 700, 380);
+                }
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#7d6b58';
+                ctx.font = '12px monospace';
+                if (!winCondition) {
+                    const progress = Math.min(100, ((DON.radius - 14) / (THIRD_ATTENTION_SIZE - 14)) * 100);
+                    ctx.fillText('прогресс: ' + Math.round(progress) + '%', 10, 380);
+                }
+                if (DON.isCrow) {
+                    ctx.fillStyle = '#b8a58b';
+                    ctx.fillText('🐦 ворона (скорость x2)', 10, 362);
+                }
+
+                ctx.fillStyle = 'rgba(200,200,200,0.3)';
+                ctx.font = '8px monospace';
+                ctx.textAlign = 'right';
+                ctx.fillText('⚔️ атакует  ↺ отступает', 700, 395);
+            }
+
+            // ----- ПОЛИФИЛЛ ДЛЯ ROUNDRECT -----
+            if (!CanvasRenderingContext2D.prototype.roundRect) {
+                CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+                    if (r > w/2) r = w/2;
+                    if (r > h/2) r = h/2;
+                    this.moveTo(x + r, y);
+                    this.arcTo(x + w, y, x + w, y + h, r);
+                    this.arcTo(x + w, y + h, x, y + h, r);
+                    this.arcTo(x, y + h, x, y, r);
+                    this.arcTo(x, y, x + w, y, r);
+                    return this;
+                };
+            }
+
+            // ----- ИГРОВОЙ ЦИКЛ -----
+            function gameLoop() {
+                if (!gameOver && !winCondition) {
+                    update();
+                }
+                draw();
+                requestAnimationFrame(gameLoop);
+            }
+
+            // ----- ОБРАБОТЧИКИ -----
+            function onCanvasClick(e) {
+                e.preventDefault();
+                initAudioForSounds();
+                if (gameOver || winCondition) return;
+                applyIntention();
+            }
+
+            function onCanvasRightClick(e) {
+                e.preventDefault();
+                initAudioForSounds();
+                toggleCrow();
+            }
+
+            function onMouseMove(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const canvasX = (e.clientX - rect.left) * scaleX;
+                const canvasY = (e.clientY - rect.top) * scaleY;
+                mouseTargetX = Math.min(700, Math.max(20, canvasX));
+                mouseTargetY = Math.min(380, Math.max(20, canvasY));
+            }
+
+            function onWheel(e) {
+                e.preventDefault();
+                initAudioForSounds();
+                if (gameOver || winCondition) return;
+                showRandomQuote();
+                playTone(600, 0.08, 'sine', 0.1);
+            }
+
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                initAudioForSounds();
+                resetGame();
+                updateUI();
+            });
+
+            musicToggleBtn.addEventListener('click', toggleMusic);
+
+            canvas.addEventListener('click', onCanvasClick);
+            canvas.addEventListener('contextmenu', onCanvasRightClick);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('wheel', onWheel);
+
+            // ----- ИНИЦИАЛИЗАЦИЯ -----
+            function init() {
+                resetGame();
+                updateUI();
+                setTimeout(() => {
+                    if (musicEnabled) {
+                        initAudio();
+                        playBackgroundMusic();
+                    }
+                }, 1000);
+                gameLoop();
+            }
+
+            init();
+        })();
+    </script>
+</body>
+</html>
