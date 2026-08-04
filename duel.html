@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Дуэль 18 века</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    body {
+      background: #2c1810;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Georgia', serif;
+    }
+    .duel-container {
+      background: #4a3520;
+      padding: 30px 40px 40px;
+      border-radius: 60px 60px 30px 30px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.8), inset 0 0 10px #6b4f3a;
+      border: 2px solid #7a5f44;
+    }
+    .canvas-wrapper {
+      background: #8fbc8f;
+      padding: 20px 20px 10px;
+      border-radius: 40px 40px 20px 20px;
+      box-shadow: inset 0 0 30px #3a5e3a;
+      position: relative;
+    }
+    canvas {
+      display: block;
+      width: 800px;
+      height: 320px;
+      background: #b8d9b0;
+      border-radius: 30px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      cursor: crosshair;
+      margin: 0 auto;
+    }
+    .start-hint-overlay {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #2a1a0a;
+      font-size: 20px;
+      font-weight: bold;
+      background: rgba(255, 215, 0, 0.85);
+      padding: 8px 24px;
+      border-radius: 8px;
+      pointer-events: none;
+      z-index: 10;
+      letter-spacing: 0.5px;
+      text-shadow: 0 1px 2px rgba(255,255,255,0.3);
+      text-align: center;
+      line-height: 1.4;
+      max-width: 90%;
+    }
+    .start-hint-overlay .insult {
+      font-size: 22px;
+      color: #8a1a1a;
+      text-shadow: 0 1px 4px rgba(139, 26, 26, 0.3);
+      margin-bottom: 4px;
+    }
+    .start-hint-overlay .hint {
+      font-size: 18px;
+      color: #2a1a0a;
+    }
+    .start-hint-overlay.hidden {
+      display: none;
+    }
+    .info-panel {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+      color: #f0e0c0;
+      text-shadow: 1px 1px 2px #1f120a;
+      background: #3a281c;
+      padding: 12px 24px;
+      border-radius: 40px;
+      box-shadow: inset 0 2px 8px #1f120a;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .score {
+      display: flex;
+      gap: 40px;
+      font-size: 22px;
+      letter-spacing: 1px;
+    }
+    .score span {
+      font-weight: bold;
+      color: #ffd78a;
+    }
+    .status {
+      font-size: 20px;
+      background: #2a1a10;
+      padding: 6px 24px;
+      border-radius: 40px;
+      min-width: 180px;
+      text-align: center;
+      border: 1px solid #7a5f44;
+      color: #f5e6c8;
+    }
+    button {
+      background: #6b3f2a;
+      border: none;
+      color: #f5e6c8;
+      font-size: 20px;
+      font-family: 'Georgia', serif;
+      padding: 8px 28px;
+      border-radius: 40px;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #3a2218, 0 6px 12px rgba(0,0,0,0.5);
+      transition: all 0.08s ease;
+      letter-spacing: 1px;
+      border: 1px solid #8f6b50;
+    }
+    button:active {
+      transform: translateY(4px);
+      box-shadow: 0 1px 0 #3a2218;
+    }
+    button:disabled {
+      opacity: 0.5;
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #3a2218;
+      pointer-events: none;
+    }
+    .duel-info {
+      display: flex;
+      gap: 16px;
+      font-size: 14px;
+      color: #d4c0a8;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .duel-info div {
+      background: #2a1a10;
+      padding: 4px 14px;
+      border-radius: 30px;
+      border: 1px solid #6b4f3a;
+    }
+    .footnote {
+      margin-top: 12px;
+      text-align: center;
+      color: #b8a088;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+    }
+    .duel-hint {
+      color: #88ccff;
+    }
+  </style>
+</head>
+<body>
+<div class="duel-container">
+  <div class="canvas-wrapper">
+    <canvas id="duelCanvas" width="800" height="320"></canvas>
+    <div class="start-hint-overlay hidden" id="startHintOverlay">
+      <div class="insult" id="insultText">Противник назвал вашу жену шлюхой! Это нельзя терпеть!</div>
+      <div class="hint">🖱️ Нажмите ПКМ для начала дуэли</div>
+    </div>
+  </div>
+
+  <div class="info-panel">
+    <div class="score">
+      <div>🧑 <span id="playerScore">0</span></div>
+      <div>⚔️ <span id="computerScore">0</span></div>
+    </div>
+    <div class="status" id="statusMessage">⚔️ Ожидание</div>
+    <button id="newDuelBtn">🎯 Новая дуэль</button>
+  </div>
+
+  <div class="duel-info">
+    <div>📏 Барьер: <span id="barrierDist">20</span> м</div>
+    <div>🎯 P(s): <span id="pCurrent">0.00</span></div>
+    <div>🎯 P(b): <span id="pBarrier">0.00</span></div>
+    <div>⚔️ Решение: <span id="decisionDisplay">⏳</span></div>
+  </div>
+  <div class="footnote">
+    <span class="duel-hint">ЛКМ по полю — выстрел</span>
+  </div>
+</div>
+
+<script>
+  (function(){
+    const canvas = document.getElementById('duelCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Элементы UI
+    const playerScoreEl = document.getElementById('playerScore');
+    const computerScoreEl = document.getElementById('computerScore');
+    const statusEl = document.getElementById('statusMessage');
+    const barrierDistEl = document.getElementById('barrierDist');
+    const pCurrentEl = document.getElementById('pCurrent');
+    const pBarrierEl = document.getElementById('pBarrier');
+    const decisionDisplay = document.getElementById('decisionDisplay');
+    const newDuelBtn = document.getElementById('newDuelBtn');
+    const startHintOverlay = document.getElementById('startHintOverlay');
+    const insultText = document.getElementById('insultText');
+
+    // Список оскорблений
+    const insults = [
+            // Оскорбления жены
+            "Противник назвал вашу жену шлюхой! Это нельзя терпеть!",
+            "Противник сказал, что ваша жена вам изменяет! Это нельзя терпеть!",
+            "Противник назвал вашу жену кухаркой! Это нельзя терпеть!",
+            "Противник усомнился в верности вашей жены! Это нельзя терпеть!",
+            
+            // Оскорбления личности
+            "Противник назвал вас гандоном! Это нельзя терпеть!",
+            "Противник назвал вас ничтожеством! Это нельзя терпеть!",
+            "Противник назвал вас лжецом! Это нельзя терпеть!",
+            "Противник назвал вас уродом! Это нельзя терпеть!",
+            "Противник назвал вас пьяницей! Это нельзя терпеть!",
+            "Противник обвинил вас в трусости! Это нельзя терпеть!",
+            "Противник сказал, что вы подлец! Это нельзя терпеть!",
+            "Противник назвал вас вором! Это нельзя терпеть!",
+            "Противник сказал, что вы трус! Это нельзя терпеть!",
+            "Противник назвал вас трусливым зайцем! Это нельзя терпеть!",
+            
+            // Оскорбления ума и способностей
+            "Противник усомнился в вашем уме! Это нельзя терпеть!",
+            "Противник усомнился в вашей мужской силе! Это нельзя терпеть!",
+            "Противник усомнился в вашей храбрости! Это нельзя терпеть!",
+            "Противник заявил, что вы не умеете стрелять! Это нельзя терпеть!",
+            "Противник сказал, что вы недостойны носить шпагу! Это нельзя терпеть!",
+            "Противник заявил, что вы проиграете! Это нельзя терпеть!",
+            "Противник сказал, что вы стары и немощны! Это нельзя терпеть!",
+            
+            // Оскорбления семьи
+            "Противник назвал вашу мать шлюхой! Это нельзя терпеть!",
+            "Противник оскорбил вашего отца! Это нельзя терпеть!",
+            "Противник оскорбил вашу сестру! Это нельзя терпеть!",
+            "Противник назвал вашего сына незаконнорожденным! Это нельзя терпеть!",
+            "Противник оскорбил вашу тёщу! Это нельзя терпеть!",
+            
+            // Оскорбления чести и статуса
+            "Противник оскорбил вашу честь! Это нельзя терпеть!",
+            "Противник оскорбил вашу честь как дворянина! Это нельзя терпеть!",
+            "Противник оскорбил вашу фамилию! Это нельзя терпеть!",
+            "Противник оскорбил ваш мундир! Это нельзя терпеть!",
+            "Противник оскорбил ваш титул! Это нельзя терпеть!",
+            "Противник сказал, что вы не дворянин! Это нельзя терпеть!",
+            "Противник заявил, что вы ниже его по происхождению! Это нельзя терпеть!",
+            "Противник усомнился в вашей родословной! Это нельзя терпеть!",
+            
+            // Прочие оскорбления
+            "Противник плюнул в вашу сторону! Это нельзя терпеть!",
+            "Противник оскорбил вашу любимую лошадь! Это нельзя терпеть!",
+            "Противник заявил, что ваш род недостоин чести! Это нельзя терпеть!",
+            "Противник сказал, что вы проиграете ему в карты! Это нельзя терпеть!",
+            "Противник назвал вас ничтожеством без рода и племени! Это нельзя терпеть!",
+			"Противник назвал вас говноедом! Это нельзя терпеть!",
+			"Противник назвал вас пидарасом! Это нельзя терпеть!",
+			"Противник сказал что у вас некрасивые уши! Это нельзя терпеть!",
+			"Противник сказал что вы диктатор! Это нельзя терпеть!",
+			
+			// Трэш-оскорбления для дуэли
+			"Противник сказал, что ваш парик пахнет как старый сыр! Это нельзя терпеть!",
+			"Противник заявил, что ваша шпага тупее его бабушкиных вилок! Это нельзя терпеть!",
+			"Противник назвал ваши усы похожими на гнездо крысы! Это нельзя терпеть!",
+			"Противник сказал, что от вас разит застарелым перегаром! Это нельзя терпеть!",
+			"Противник усомнился, что вы вообще умеете держать пистолет! Это нельзя терпеть!",
+			"Противник назвал вашу шляпу помойным ведром! Это нельзя терпеть!",
+			"Противник сказал, что ваша пуля летит медленнее черепахи! Это нельзя терпеть!",
+			"Противник обозвал вас ходячим чучелом с ярмарки! Это нельзя терпеть!",
+			"Противник заявил, что ваш выстрел точнее будет, если вы просто бросите пистолет! Это нельзя терпеть!",
+			"Противник сказал, что ваша жена спит с конюхом! Это нельзя терпеть!",
+			"Противник назвал вас самым бесполезным дворянином в округе! Это нельзя терпеть!",
+			"Противник заявил, что ваш герб можно рисовать на заборе! Это нельзя терпеть!",
+			"Противник сказал, что вы достойны лишь чистить ему сапоги! Это нельзя терпеть!",
+			"Противник обозвал вас пустым местом в дворянском собрании! Это нельзя терпеть!",
+			"Противник заявил, что вы не умеете даже делать выстрел в упор! Это нельзя терпеть!",
+			"Противник сказал, что ваша дуэльная перчатка воняет как рыба! Это нельзя терпеть!",
+			"Противник назвал ваш камзол тряпкой с базара! Это нельзя терпеть!",
+			"Противник заявил, что ваша пуля разминулась бы с амбаром в упор! Это нельзя терпеть!",
+			"Противник сказал, что вы не отличите шпагу от вилки! Это нельзя терпеть!",
+			"Противник обозвал вас грязным пьяницей из кабака! Это нельзя терпеть!",
+			"Противник заявил, что ваше дворянство куплено за гроши! Это нельзя терпеть!",
+			"Противник сказал, что ваш род прервётся на вас! Это нельзя терпеть!",
+			"Противник назвал вас трусливым щенком, который боится выстрела! Это нельзя терпеть!",
+			"Противник заявил, что вы не умеете даже прицелиться правильно! Это нельзя терпеть!",
+			"Противник сказал, что ваша пуля летит кривее ваших ног! Это нельзя терпеть!",
+			"Противник обозвал вас хромой уткой из деревни! Это нельзя терпеть!",
+			"Противник заявил, что вы недостойны даже держать оружие в руках! Это нельзя терпеть!",
+			"Противник сказал, что ваша кожа бледнее, чем у покойника! Это нельзя терпеть!",
+			"Противник назвал вас позором для всей вашей семьи! Это нельзя терпеть!",
+			"Противник заявил, что вы боитесь даже собственной тени! Это нельзя терпеть!",
+			"Противник сказал, что ваша жена лучше стреляет чем вы! Это нельзя терпеть!",
+			"Противник заявил, что вы на дуэли дрожите как осиновый лист! Это нельзя терпеть!",
+			"Противник обозвал вас ряженым поросёнком в дворянском платье! Это нельзя терпеть!",
+			"Противник сказал, что ваш пистолет годится лишь забивать гвозди! Это нельзя терпеть!",
+			"Противник заявил, что вы и муху не подстрелите с трёх шагов! Это нельзя терпеть!",
+			"Противник назвал вас жирным боровом из хлева! Это нельзя терпеть!",
+			"Противник сказал, что ваш голос писклявее комара! Это нельзя терпеть!",
+			"Противник обозвал вас убогим калекой без чести! Это нельзя терпеть!",
+			"Противник заявил, что вы умрёте даже без его помощи! Это нельзя терпеть!",
+			"Противник сказал, что ваши сапоги сделаны из кожи его старой коровы! Это нельзя терпеть!"
+						
+			
+        ];
+
+    // Звуки
+    let audioCtx = null;
+    let waitingForStart = false;
+    let isDuelReady = false;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playSound(type) {
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        gain.gain.value = 0.15;
+
+        if (type === 'shot') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.25);
+        } else if (type === 'hit') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.3);
+          gain.gain.value = 0.12;
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.35);
+        } else if (type === 'miss') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.4);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.4);
+        } else if (type === 'duel_start') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(700, audioCtx.currentTime + 0.15);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.2);
+        }
+      } catch(e) { /* заглушка */ }
+    }
+
+    // ---------- Параметры ----------
+    const START_DIST = 60;
+    const MIN_BARRIER = 10;
+    const MAX_BARRIER = 28;
+    let barrierDist = 20;
+
+    // Состояние
+    let player = { x: 0, y: 0 };
+    let computer = { x: 0, y: 0 };
+    let currentDist = START_DIST;
+    let gameActive = false;
+    let duelPhase = 'approach';
+    let playerFired = false;
+    let computerFired = false;
+    let playerScore = 0;
+    let computerScore = 0;
+    let animFrame = null;
+    let stepTimer = null;
+
+    // Анимация пули
+    let bullet = null;
+
+    // Функция вероятности попадания P(s) - ПОВЫШЕННАЯ ТОЧНОСТЬ
+function P(s) {
+    if (s <= 2) return 0.85;
+    if (s >= 60) return 0.25;
+    // На 50м ~50%, на 40м ~70%, на 30м ~85%
+    const raw = 0.25 + 0.60 / (1 + Math.exp(0.06 * (s - 12)));
+    return Math.min(0.85, Math.max(0.25, raw));
+}
+
+    // Условие выстрела: P(s) > P(b) / (1 + P(b))
+	function shouldShoot(s, b) {
+		const pS = P(s);
+		const pB = P(b);
+		const threshold = pB / (1 + pB) + 0.04 + Math.random() * 0.05; // случайное число 
+		return pS > threshold;
+	}
+
+    function initPositions() {
+      player.x = 80;
+      player.y = 190;
+      computer.x = 720;
+      computer.y = 190;
+      currentDist = START_DIST;
+    }
+
+    function updatePositions(dist) {
+      const totalWidth = 640;
+      const half = totalWidth / 2;
+      const ratio = dist / START_DIST;
+      const offset = half * (1 - ratio);
+      player.x = 80 + offset;
+      computer.x = 720 - offset;
+      currentDist = dist;
+    }
+
+    // Рисование дуэлянта
+    function drawDuelist(x, y, who, fired) {
+      const dir = (who === 'player') ? 1 : -1;
+      ctx.save();
+      ctx.translate(x, y);
+
+      ctx.shadowColor = 'rgba(0,0,0,0.3)';
+      ctx.shadowBlur = 10;
+
+      ctx.fillStyle = (who === 'player') ? '#1a2a4a' : '#2a1a2a';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.ellipse(0, 8, 18, 28, 0, 0, Math.PI*2);
+      ctx.fill();
+      
+      ctx.fillStyle = (who === 'player') ? '#1f3050' : '#2f1f2f';
+      ctx.beginPath();
+      ctx.ellipse(-10, 22, 10, 14, 0.2, 0, Math.PI*2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(10, 22, 10, 14, -0.2, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.fillStyle = '#f5e0c0';
+      ctx.shadowBlur = 4;
+      ctx.beginPath();
+      ctx.arc(0, -18, 14, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.fillStyle = '#1a1a1a';
+      ctx.shadowBlur = 6;
+      ctx.fillRect(-13, -38, 26, 18);
+      ctx.fillStyle = '#2a2a2a';
+      ctx.fillRect(-15, -22, 30, 4);
+      ctx.fillStyle = '#8a1a1a';
+      ctx.fillRect(-13, -30, 26, 4);
+
+      // РУКА С ПИСТОЛЕТОМ
+      ctx.shadowBlur = 4;
+      ctx.fillStyle = '#f5e0c0';
+      ctx.save();
+
+      const handOffset = dir * 16;
+      ctx.translate(handOffset, -6);
+
+      if (dir === 1) {
+        ctx.fillRect(0, -3, 22, 6);
+      } else {
+        ctx.fillRect(-22, -3, 22, 6);
+      }
+
+      if (!fired) {
+        ctx.fillStyle = '#3a2a1a';
+        if (dir === 1) {
+          ctx.fillRect(18, -4, 22, 8);
+          ctx.fillStyle = '#5a4a3a';
+          ctx.fillRect(36, -5, 8, 10);
+          ctx.fillStyle = '#2a1a0a';
+          ctx.fillRect(34, -3, 4, 6);
+        } else {
+          ctx.fillRect(-40, -4, 22, 8);
+          ctx.fillStyle = '#5a4a3a';
+          ctx.fillRect(-44, -5, 8, 10);
+          ctx.fillStyle = '#2a1a0a';
+          ctx.fillRect(-38, -3, 4, 6);
+        }
+      } else {
+        ctx.fillStyle = '#3a2a1a';
+        if (dir === 1) {
+          ctx.fillRect(18, -4, 22, 8);
+          ctx.fillStyle = '#5a4a3a';
+          ctx.fillRect(36, -5, 8, 10);
+        } else {
+          ctx.fillRect(-40, -4, 22, 8);
+          ctx.fillStyle = '#5a4a3a';
+          ctx.fillRect(-44, -5, 8, 10);
+        }
+      }
+      ctx.restore();
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#1a1a2a';
+      ctx.beginPath();
+      ctx.arc(dir*5, -20, 2.5, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#f5f0e0';
+      ctx.beginPath();
+      ctx.arc(dir*5, -20, 1, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.restore();
+
+      ctx.fillStyle = '#1f120a';
+      ctx.font = '14px Georgia';
+      ctx.fillText(who === 'player' ? '🧑 Вы' : '⚔️ Противник', x-30, y-50);
+    }
+
+    // Отрисовка сцены
+    function drawScene() {
+      ctx.clearRect(0, 0, 800, 320);
+
+      const grad = ctx.createLinearGradient(0, 0, 0, 320);
+      grad.addColorStop(0, '#b8d9b0');
+      grad.addColorStop(0.7, '#9ac79a');
+      grad.addColorStop(1, '#7baa7b');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 800, 320);
+
+      ctx.fillStyle = '#a6b88a';
+      ctx.fillRect(0, 160, 800, 50);
+      ctx.fillStyle = '#8aa06a';
+      ctx.fillRect(0, 168, 800, 34);
+
+      const bLeft = 80 + (640 / 2) * (1 - barrierDist / START_DIST);
+      const bRight = 720 - (640 / 2) * (1 - barrierDist / START_DIST);
+      ctx.strokeStyle = '#4a2a1a';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([6, 8]);
+      ctx.beginPath();
+      ctx.moveTo(bLeft, 130);
+      ctx.lineTo(bLeft, 230);
+      ctx.moveTo(bRight, 130);
+      ctx.lineTo(bRight, 230);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#3a2218';
+      ctx.font = '14px Georgia';
+      ctx.fillText('🚧', bLeft-10, 120);
+      ctx.fillText('🚧', bRight-10, 120);
+
+      drawDuelist(player.x, player.y, 'player', playerFired);
+      drawDuelist(computer.x, computer.y, 'computer', computerFired);
+
+      if (bullet && bullet.active) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(255,200,50,0.6)';
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = '#ffdd44';
+        ctx.beginPath();
+        ctx.arc(bullet.x, bullet.y, 5, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#ff8800';
+        ctx.beginPath();
+        ctx.arc(bullet.x, bullet.y, 3, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+        
+        ctx.strokeStyle = 'rgba(255,200,100,0.3)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(bullet.x - 10, bullet.y);
+        ctx.lineTo(bullet.x + 10, bullet.y);
+        ctx.stroke();
+      }
+
+      // Информация на поле
+      ctx.fillStyle = '#1f120a';
+      ctx.font = 'bold 16px Georgia';
+      ctx.fillText('📏 ' + Math.round(currentDist) + ' м', 350, 290);
+
+      const pS = P(currentDist);
+      const pB = P(barrierDist);
+      pCurrentEl.textContent = pS.toFixed(3);
+      pBarrierEl.textContent = pB.toFixed(3);
+
+      const should = pS > pB / (1 + pB);
+      decisionDisplay.textContent = should ? '🔫 СТРЕЛЯТЬ' : '⏳ ЖДАТЬ';
+      decisionDisplay.style.color = should ? '#7f7' : '#f77';
+    }
+
+    // Анимация пули
+    function animateBullet(fromX, fromY, toX, toY, hit, callback) {
+      bullet = {
+        x: fromX,
+        y: fromY,
+        targetX: toX,
+        targetY: toY,
+        progress: 0,
+        speed: 0.035,
+        active: true,
+        hit: hit
+      };
+
+      function step() {
+        if (!bullet || !bullet.active) {
+          if (callback) callback();
+          return;
+        }
+        bullet.progress += bullet.speed;
+        if (bullet.progress >= 1) {
+          bullet.progress = 1;
+          bullet.active = false;
+          drawScene();
+          if (callback) callback();
+          return;
+        }
+        const ease = bullet.progress;
+        bullet.x = fromX + (toX - fromX) * ease;
+        bullet.y = fromY + (toY - fromY) * ease + Math.sin(ease * 15) * 2;
+        drawScene();
+        requestAnimationFrame(step);
+      }
+      step();
+    }
+
+    // ----- Подготовка дуэли -----
+    function prepareDuel() {
+      if (animFrame) cancelAnimationFrame(animFrame);
+      if (stepTimer) clearInterval(stepTimer);
+      initAudio();
+
+      const randomInsult = insults[Math.floor(Math.random() * insults.length)];
+      insultText.textContent = randomInsult;
+
+      barrierDist = Math.round(MIN_BARRIER + Math.random() * (MAX_BARRIER - MIN_BARRIER));
+      barrierDistEl.textContent = barrierDist;
+
+      playerFired = false;
+      computerFired = false;
+      bullet = null;
+      gameActive = false;
+      duelPhase = 'approach';
+      waitingForStart = true;
+      isDuelReady = true;
+      
+      initPositions();
+      updatePositions(START_DIST);
+      
+      statusEl.textContent = '⚔️ Оскорбление!';
+      newDuelBtn.disabled = true;
+      startHintOverlay.classList.remove('hidden');
+      drawScene();
+    }
+
+    // ----- Запуск дуэли (по ПКМ) -----
+    function startDuel() {
+      if (!isDuelReady) return;
+      
+      playerFired = false;
+      computerFired = false;
+      bullet = null;
+      gameActive = true;
+      duelPhase = 'approach';
+      initPositions();
+      updatePositions(START_DIST);
+      
+      statusEl.textContent = '⚔️ Сближение';
+      newDuelBtn.disabled = true;
+      startHintOverlay.classList.add('hidden');
+      playSound('duel_start');
+      waitingForStart = false;
+      isDuelReady = false;
+
+      stepTimer = setInterval(() => {
+        if (!gameActive) return;
+        if (duelPhase === 'approach') {
+          let newDist = currentDist - 0.4;
+          if (newDist < barrierDist) newDist = barrierDist;
+          updatePositions(newDist);
+          drawScene();
+
+          const shouldShootNow = shouldShoot(currentDist, barrierDist);
+          
+          if (shouldShootNow && !computerFired && gameActive) {
+            computerFired = true;
+            duelPhase = 'computer_shot';
+            statusEl.textContent = '⚔️ Противник стреляет!';
+            playSound('shot');
+
+            const hitProb = P(currentDist);
+            const hit = Math.random() < hitProb;
+            
+            const fromX = computer.x - 30;
+            const fromY = computer.y - 6;
+            const toX = player.x + 20;
+            const toY = player.y - 6;
+            
+            animateBullet(fromX, fromY, toX, toY, hit, () => {
+              if (!gameActive) return;
+              if (hit) {
+                playSound('hit');
+                statusEl.textContent = '💀 Противник попал! Вы проиграли.';
+                computerScore++;
+                computerScoreEl.textContent = computerScore;
+                gameActive = false;
+                newDuelBtn.disabled = false;
+                clearInterval(stepTimer);
+                drawScene();
+              } else {
+                playSound('miss');
+                statusEl.textContent = '❌ Противник промахнулся! Идём к барьеру...';
+                duelPhase = 'walking_to_barrier';
+                setTimeout(() => {
+                  if (!gameActive) return;
+                  updatePositions(barrierDist);
+                  drawScene();
+                  if (!playerFired && gameActive) {
+                    playerFired = true;
+                    duelPhase = 'player_shot';
+                    statusEl.textContent = '🧑 Ваш выстрел!';
+                    playSound('shot');
+                    const pHit = P(barrierDist);
+                    const pSuccess = Math.random() < pHit;
+                    
+                    const fromX2 = player.x + 30;
+                    const fromY2 = player.y - 6;
+                    const toX2 = computer.x - 20;
+                    const toY2 = computer.y - 6;
+                    
+                    animateBullet(fromX2, fromY2, toX2, toY2, pSuccess, () => {
+                      if (pSuccess) {
+                        playSound('hit');
+                        statusEl.textContent = '🎯 Вы попали! Победа!';
+                        playerScore++;
+                        playerScoreEl.textContent = playerScore;
+                      } else {
+                        playSound('miss');
+                        statusEl.textContent = '😔 Вы промахнулись. Ничья.';
+                      }
+                      gameActive = false;
+                      newDuelBtn.disabled = false;
+                      clearInterval(stepTimer);
+                      drawScene();
+                    });
+                  }
+                }, 600);
+                clearInterval(stepTimer);
+              }
+            });
+            clearInterval(stepTimer);
+            return;
+          }
+
+          if (currentDist <= barrierDist + 0.1 && !computerFired && !playerFired) {
+            if (!computerFired) {
+              computerFired = true;
+              duelPhase = 'computer_shot';
+              statusEl.textContent = '⚔️ Противник стреляет (у барьера)!';
+              playSound('shot');
+              const hitProb = P(currentDist);
+              const hit = Math.random() < hitProb;
+              
+              const fromX = computer.x - 30;
+              const fromY = computer.y - 6;
+              const toX = player.x + 20;
+              const toY = player.y - 6;
+              
+              animateBullet(fromX, fromY, toX, toY, hit, () => {
+                if (hit) {
+                  playSound('hit');
+                  statusEl.textContent = '💀 Противник попал! Вы проиграли.';
+                  computerScore++;
+                  computerScoreEl.textContent = computerScore;
+                } else {
+                  playSound('miss');
+                  statusEl.textContent = '❌ Противник промахнулся! Идём к барьеру...';
+                  duelPhase = 'walking_to_barrier';
+                  setTimeout(() => {
+                    if (!gameActive) return;
+                    updatePositions(barrierDist);
+                    drawScene();
+                    if (!playerFired && gameActive) {
+                      playerFired = true;
+                      duelPhase = 'player_shot';
+                      playSound('shot');
+                      const pHit = P(barrierDist);
+                      const pSuccess = Math.random() < pHit;
+                      const fromX2 = player.x + 30;
+                      const fromY2 = player.y - 6;
+                      const toX2 = computer.x - 20;
+                      const toY2 = computer.y - 6;
+                      animateBullet(fromX2, fromY2, toX2, toY2, pSuccess, () => {
+                        if (pSuccess) {
+                          playSound('hit');
+                          statusEl.textContent = '🎯 Вы попали! Победа!';
+                          playerScore++;
+                          playerScoreEl.textContent = playerScore;
+                        } else {
+                          playSound('miss');
+                          statusEl.textContent = '😔 Вы промахнулись. Ничья.';
+                        }
+                        gameActive = false;
+                        newDuelBtn.disabled = false;
+                        clearInterval(stepTimer);
+                        drawScene();
+                      });
+                    }
+                  }, 600);
+                  clearInterval(stepTimer);
+                }
+                gameActive = false;
+                newDuelBtn.disabled = false;
+                clearInterval(stepTimer);
+                drawScene();
+              });
+              clearInterval(stepTimer);
+              return;
+            }
+          }
+          drawScene();
+        }
+      }, 50);
+    }
+
+    // Обработка клика игрока
+    canvas.addEventListener('click', (e) => {
+      if (!gameActive) return;
+      if (playerFired) return;
+      if (duelPhase === 'settled') return;
+      if (duelPhase === 'computer_shot') return;
+      if (duelPhase === 'walking_to_barrier') return;
+
+      playerFired = true;
+      duelPhase = 'player_shot';
+      statusEl.textContent = '🧑 Ваш выстрел!';
+      playSound('shot');
+
+      const hitProb = P(currentDist);
+      const hit = Math.random() < hitProb;
+      
+      const fromX = player.x + 30;
+      const fromY = player.y - 6;
+      const toX = computer.x - 20;
+      const toY = computer.y - 6;
+      
+      animateBullet(fromX, fromY, toX, toY, hit, () => {
+        if (hit) {
+          playSound('hit');
+          statusEl.textContent = '🎯 Вы попали! Победа!';
+          playerScore++;
+          playerScoreEl.textContent = playerScore;
+          gameActive = false;
+          newDuelBtn.disabled = false;
+          clearInterval(stepTimer);
+          drawScene();
+        } else {
+          playSound('miss');
+          statusEl.textContent = '❌ Промах! Идём к барьеру...';
+          duelPhase = 'walking_to_barrier';
+          setTimeout(() => {
+            if (!gameActive) return;
+            updatePositions(barrierDist);
+            drawScene();
+            if (!computerFired && gameActive) {
+              computerFired = true;
+              duelPhase = 'computer_shot';
+              statusEl.textContent = '⚔️ Противник стреляет!';
+              playSound('shot');
+              const compHitProb = P(barrierDist);
+              const compHit = Math.random() < compHitProb;
+              
+              const fromX2 = computer.x - 30;
+              const fromY2 = computer.y - 6;
+              const toX2 = player.x + 20;
+              const toY2 = player.y - 6;
+              
+              animateBullet(fromX2, fromY2, toX2, toY2, compHit, () => {
+                if (compHit) {
+                  playSound('hit');
+                  statusEl.textContent = '💀 Противник попал! Вы проиграли.';
+                  computerScore++;
+                  computerScoreEl.textContent = computerScore;
+                } else {
+                  playSound('miss');
+                  statusEl.textContent = '🤝 Оба промахнулись. Ничья.';
+                }
+                gameActive = false;
+                newDuelBtn.disabled = false;
+                clearInterval(stepTimer);
+                drawScene();
+              });
+            }
+          }, 600);
+          clearInterval(stepTimer);
+          drawScene();
+        }
+      });
+      clearInterval(stepTimer);
+    });
+
+    // Обработка ПКМ для начала дуэли
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (waitingForStart && isDuelReady && !gameActive) {
+        startDuel();
+      }
+    });
+
+    // Новая дуэль
+    newDuelBtn.addEventListener('click', () => {
+      if (animFrame) cancelAnimationFrame(animFrame);
+      if (stepTimer) clearInterval(stepTimer);
+      bullet = null;
+      playerFired = false;
+      computerFired = false;
+      gameActive = false;
+      duelPhase = 'approach';
+      waitingForStart = false;
+      isDuelReady = false;
+      initPositions();
+      updatePositions(START_DIST);
+      drawScene();
+      statusEl.textContent = '⚔️ Подготовка...';
+      newDuelBtn.disabled = true;
+      setTimeout(() => {
+        prepareDuel();
+      }, 300);
+    });
+
+    // Инициализация
+    initPositions();
+    updatePositions(START_DIST);
+    barrierDist = 20;
+    barrierDistEl.textContent = barrierDist;
+    drawScene();
+    statusEl.textContent = '⚔️ Нажмите "Новая дуэль"';
+    newDuelBtn.disabled = false;
+    startHintOverlay.classList.add('hidden');
+
+    function animate() {
+      if (!gameActive) {
+        drawScene();
+      }
+      animFrame = requestAnimationFrame(animate);
+    }
+    animate();
+  })();
+</script>
+</body>
+</html>
