@@ -179,7 +179,7 @@
   </div>
 
   <div class="duel-info">
-    <div>📏 Барьер: <span id="barrierDist">20</span> м</div>
+    <div>📏 Барьер: <span id="barrierDist">20</span> шагов</div>
     <div>🎯 P(s): <span id="pCurrent">0.00</span></div>
     <div>🎯 P(b): <span id="pBarrier">0.00</span></div>
     <div>⚔️ Решение: <span id="decisionDisplay">⏳</span></div>
@@ -576,7 +576,7 @@ function P(s) {
       // Информация на поле
       ctx.fillStyle = '#1f120a';
       ctx.font = 'bold 16px Georgia';
-      ctx.fillText('📏 ' + Math.round(currentDist) + ' м', 350, 290);
+      ctx.fillText('📏 ' + Math.round(currentDist) + ' шагов', 350, 290);
 
       const pS = P(currentDist);
       const pB = P(barrierDist);
