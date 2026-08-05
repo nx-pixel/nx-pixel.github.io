@@ -396,7 +396,7 @@ function P(s) {
 	function shouldShoot(s, b) {
 		const pS = P(s);
 		const pB = P(b);
-		const threshold = pB / (1 + pB) + 0.04 + Math.random() * 0.05; // случайное число 
+		const threshold = pB / (1 + pB) + 0.05 + Math.random() * 0.02; // случайное число 
 		return pS > threshold;
 	}
 
