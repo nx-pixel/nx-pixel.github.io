@@ -1,1326 +1,448 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Кровавый взрыв мышей | Веерный огонь, защита, королева</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Измеритель состояния лета</title>
     <style>
         * {
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
         }
-
         body {
-            background: linear-gradient(145deg, #0a0f1e 0%, #0c1225 100%);
+            background: linear-gradient(145deg, #f5f9ff 0%, #dae3f0 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: 'Courier New', 'VT323', monospace;
             margin: 0;
             padding: 20px;
         }
-
-        .game-container {
-            background: #010114;
-            border-radius: 32px;
-            padding: 16px 20px 20px 20px;
-            box-shadow: 0 20px 35px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
-            border: 1px solid #2c3e66;
+        .card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 48px;
+            padding: 40px 36px;
+            max-width: 560px;
+            width: 100%;
+            box-shadow: 0 20px 50px rgba(0, 20, 40, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: all 0.2s ease;
         }
-
-        canvas {
-            display: block;
-            margin: 0 auto;
-            border-radius: 20px;
-            box-shadow: 0 0 0 3px #2d3e5f, 0 10px 25px rgba(0,0,0,0.3);
-            cursor: crosshair;
-        }
-
-        .info-panel {
+        h1 {
+            font-weight: 500;
+            font-size: 2.1rem;
+            letter-spacing: -0.5px;
+            margin: 0 0 8px 0;
+            color: #1a2b3c;
             display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin-top: 16px;
-            margin-bottom: 10px;
-            background: #03030fcc;
-            backdrop-filter: blur(4px);
-            padding: 10px 20px;
-            border-radius: 60px;
-            border: 1px solid #3a4f7a;
-            flex-wrap: wrap;
+            align-items: center;
             gap: 10px;
         }
-
-        .score-board, .health-board, .queen-board {
-            font-size: 26px;
-            font-weight: bold;
-            letter-spacing: 2px;
-            text-shadow: 0 0 5px #00ccff;
-        }
-
-        .score-board span, .health-board span, .queen-board span {
-            color: #f5e56b;
-            background: #00000066;
-            padding: 4px 14px;
-            border-radius: 32px;
-            margin-left: 8px;
-        }
-
-        .queen-board span {
-            background: #4a1a4e;
-            color: #ffb7ff;
-        }
-
-        .restart-btn {
-            background: #2c3e50;
-            border: none;
-            font-family: inherit;
-            font-size: 18px;
-            font-weight: bold;
-            padding: 6px 18px;
-            border-radius: 40px;
-            color: #ecf0f1;
-            cursor: pointer;
-            transition: 0.2s;
-            box-shadow: 0 4px 0 #0f1720;
-        }
-
-        .restart-btn:active {
-            transform: translateY(2px);
-            box-shadow: 0 1px 0 #0f1720;
-        }
-
-        .controls {
-            margin-top: 12px;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            font-size: 14px;
-            background: #00000077;
-            border-radius: 60px;
-            padding: 6px 16px;
-            width: fit-content;
+        h1 small {
+            font-size: 1rem;
+            font-weight: 400;
+            color: #3e5a70;
             margin-left: auto;
-            margin-right: auto;
-            backdrop-filter: blur(4px);
+            background: rgba(0,0,0,0.03);
+            padding: 4px 14px;
+            border-radius: 40px;
+        }
+        .sub {
+            color: #2c4055;
+            margin-top: -6px;
+            margin-bottom: 28px;
+            font-weight: 350;
+            border-left: 3px solid #f9b84a;
+            padding-left: 14px;
+        }
+        .meter {
+            background: #eaf0f8;
+            border-radius: 120px;
+            height: 28px;
+            box-shadow: inset 0 3px 8px rgba(0,0,0,0.08);
+            margin: 16px 0 20px 0;
+            overflow: hidden;
+            position: relative;
+        }
+        .meter-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #fdcb6e, #f9a825, #f57c00);
+            border-radius: 120px;
+            transition: width 0.2s ease-out;
+            box-shadow: 0 0 12px #f9a82566;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 12px;
+            color: #1e2a36;
+            font-weight: 600;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            min-width: 0;
+        }
+        .value-label {
+            font-size: 3.2rem;
+            font-weight: 500;
+            letter-spacing: -1px;
+            color: #0b1a2a;
+            line-height: 1.1;
+            margin: 8px 0 4px 0;
+        }
+        .value-label span {
+            font-size: 1.3rem;
+            font-weight: 400;
+            color: #34506b;
+            margin-left: 6px;
+        }
+        .date-info {
+            background: #dce6f2;
+            padding: 10px 18px;
+            border-radius: 60px;
+            display: inline-block;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #1f3449;
+            margin: 12px 0 22px 0;
+            letter-spacing: 0.3px;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px 10px;
+            margin: 28px 0 12px 0;
+            background: #edf4fd;
+            padding: 18px 20px;
+            border-radius: 60px;
+            align-items: center;
+        }
+        .controls label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 450;
+            color: #1c3146;
+            cursor: pointer;
+            background: rgba(255,255,255,0.4);
+            padding: 6px 18px 6px 14px;
+            border-radius: 40px;
+            transition: 0.1s;
+        }
+        .controls label input[type="radio"] {
+            accent-color: #f9a825;
+            width: 18px;
+            height: 18px;
+            margin: 0;
+        }
+        .controls label:hover {
+            background: rgba(255, 215, 140, 0.3);
+        }
+        .date-picker {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
             flex-wrap: wrap;
         }
-
-        .controls kbd {
-            background: #1e2a3a;
-            border-radius: 8px;
-            padding: 4px 8px;
-            font-weight: bold;
-            color: #f5bc70;
-            margin: 0 4px;
-        }
-
-        .sound-toggle {
-            background: #2c3e50;
-            border: none;
-            font-family: inherit;
-            font-size: 18px;
-            font-weight: bold;
-            padding: 6px 18px;
+        .date-picker input[type="date"] {
+            border: 1px solid #b7ccdf;
+            background: white;
+            padding: 10px 12px;
             border-radius: 40px;
-            color: #ecf0f1;
+            font-size: 0.95rem;
+            outline: none;
+            transition: 0.15s;
+            color: #0a1a2b;
+            font-weight: 450;
+        }
+        .date-picker input[type="date"]:focus {
+            border-color: #f9a825;
+            box-shadow: 0 0 0 3px #f9a82555;
+        }
+        .btn {
+            background: #1f3449;
+            border: none;
+            color: white;
+            padding: 10px 22px;
+            border-radius: 60px;
+            font-weight: 500;
+            font-size: 0.95rem;
             cursor: pointer;
-            transition: 0.2s;
-            margin-left: 15px;
-            box-shadow: 0 4px 0 #0f1720;
+            transition: 0.15s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            letter-spacing: 0.3px;
+            border: 1px solid #2b4057;
         }
-        .sound-toggle:active {
-            transform: translateY(2px);
-            box-shadow: 0 1px 0 #0f1720;
+        .btn:hover {
+            background: #2c455f;
+            transform: scale(0.97);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
-
-        @media (max-width: 850px) {
-            .info-panel { padding: 6px 16px; }
-            .score-board, .health-board, .queen-board { font-size: 20px; }
+        .btn-secondary {
+            background: #d6e2f2;
+            color: #1a2d42;
+            border: 1px solid #b7cbdf;
+        }
+        .btn-secondary:hover {
+            background: #c2d3e8;
+        }
+        .footnote {
+            margin-top: 24px;
+            font-size: 0.85rem;
+            color: #3a5772;
+            border-top: 1px dashed #b4cbdf;
+            padding-top: 18px;
+            text-align: center;
+        }
+        .footnote strong {
+            color: #1d3a55;
+        }
+        .mode-indicator {
+            font-size: 0.9rem;
+            background: #f0f6fe;
+            padding: 6px 18px;
+            border-radius: 30px;
+            display: inline-block;
+        }
+        @media (max-width: 480px) {
+            .card { padding: 28px 16px; }
+            .controls { flex-direction: column; align-items: stretch; }
+            .date-picker { margin-left: 0; }
         }
     </style>
 </head>
 <body>
-<div>
-    <div class="game-container">
-        <canvas id="gameCanvas" width="950" height="600"></canvas>
-        <div class="info-panel">
-            <div class="score-board">💀 СЧЁТ: <span id="scoreValue">0</span></div>
-            <div class="health-board">❤️ ЖИЗНИ: <span id="healthValue">3</span></div>
-            <div class="queen-board">👑 КОРОЛЕВА: <span id="queenNextSpan">10</span></div>
-            <button class="restart-btn" id="restartButton">⚡ НОВАЯ ИГРА</button>
-            <button class="sound-toggle" id="soundToggleBtn">🔊 ЗВУК ВКЛ</button>
+<div class="card">
+    <h1>
+        ☀️ Летомер
+        <small>синус</small>
+    </h1>
+    <div class="sub">состояние лета · 15.07 = 100% · 15.01 = 0%</div>
+
+    <!-- Индикатор -->
+    <div class="meter">
+        <div class="meter-fill" id="meterFill" style="width:0%;">0%</div>
+    </div>
+    <div class="value-label" id="valueLabel">0<span>%</span></div>
+
+    <div class="date-info" id="dateInfo">📅 сегодня</div>
+
+    <!-- Режимы -->
+    <div class="controls">
+        <label>
+            <input type="radio" name="mode" value="today" checked /> 📆 Сегодня
+        </label>
+        <label>
+            <input type="radio" name="mode" value="custom" /> ✏️ Дата
+        </label>
+
+        <div class="date-picker">
+            <input type="date" id="customDate" value="2026-07-15" />
+            <button class="btn" id="applyDateBtn">Показать</button>
+            <button class="btn btn-secondary" id="resetTodayBtn">↺ Сегодня</button>
         </div>
-        <div class="controls">
-            🎮 <kbd>A</kbd> / <kbd>D</kbd> — движение &nbsp;&nbsp;|&nbsp;&nbsp; 🖱️ <kbd>ЛКМ</kbd> — веерный режим (вкл/выкл) &nbsp;&nbsp;|&nbsp;&nbsp; 🛡️ <kbd>ПКМ</kbd> — защитная аура (0.5 сек)
-        </div>
+    </div>
+
+    <div class="footnote">
+        <strong>Как работает:</strong> лето измеряется по синусоиде с пиком 15 июля (100%) и минимумом 15 января (0%).
+        Плавно меняется в течение года.
     </div>
 </div>
 
 <script>
-    (function(){
-        // ==================== ГЛАВНЫЙ КОНФИГУРАЦИОННЫЙ ФАЙЛ ====================
-        const CONFIG = {
-            // ---------- ОСНОВНЫЕ ПАРАМЕТРЫ ----------
-            canvasWidth: 950,
-            canvasHeight: 600,
-            platformSpeed: 3.5,
-            
-            // ---------- СТРЕЛЬБА (НОВАЯ СИСТЕМА) ----------
-            bulletSpeed: 10.0,
-            normalShotDelayFrames: 6,      // Обычный режим: выстрел каждые 6 кадров
-            spreadShotDelayFrames: 18,     // Веерный режим: выстрел каждые 18 кадров (в 3 раза реже)
-            spreadBulletCount: 3,          // Количество пуль за выстрел в веерном режиме
-            spreadAngleDeg: 18,            // Угол разлета веера в градусах (общий размах)
-            maxGunAngleDeg: 90,
-            
-            // ---------- КОРОЛЕВА ----------
-            queenHealth: 10,
-            queenSpawnScoreGap: 10,
-            queenFireballDelayFrames: 50,
-            queenFireballCount: 5,
-            queenAppearSpeed: 1.2,
-            queenFlySpeed: 2.5,
-            
-            // ---------- МЫШИ ----------
-            maxBats: 6,
-            batBaseShootDelay: 60,
-            batSpawnBaseDelay: 30,
-            batMinSpawnDelay: 18,
-            aimAtPlayerMinPercent: 0,
-            aimAtPlayerMaxPercent: 70,
-            maxScoreForAim: 300,
-            
-            // ---------- ОГНЕННЫЕ ШАРЫ ----------
-            fireballSpeedBase: 3.8,
-            fireballSize: 24,
-            
-            // ---------- ИГРОК ----------
-            startLives: 3,
-            invincibleDuration: 45,
-            
-            // ---------- СЕРДЕЧКИ ----------
-            heartSpawnChance: 0.008,
-            heartSize: 14,
-            heartFallSpeed: 1.8,
-            
-            // ---------- ЗАЩИТНАЯ АУРА ----------
-            shieldDurationFrames: 30,
-            shieldCooldownFrames: 30,
-            
-            // ---------- КРОВАВЫЙ ВЗРЫВ ----------
-            bloodParticleCount: 22,
-            bloodParticleMinSize: 3,
-            bloodParticleMaxSize: 8,
-            bloodParticleSpeedMin: 2,
-            bloodParticleSpeedMax: 6,
-            bloodParticleLifeFrames: 35,
-            bloodColorHueVariation: 18,
-            
-            // ---------- ВИЗУАЛ ----------
-            gunWidth: 70,
-            gunHeight: 14,
-            bulletSize: 8,
-        };
-        
-        // Дополнительные вычисляемые значения
-        const W = CONFIG.canvasWidth;
-        const H = CONFIG.canvasHeight;
-        const GUN_WIDTH = CONFIG.gunWidth;
-        const GUN_HEIGHT = CONFIG.gunHeight;
-        const BULLET_SIZE = CONFIG.bulletSize;
-        const FIREBALL_SIZE = CONFIG.fireballSize;
-        const MAX_GUN_ANGLE_RAD = CONFIG.maxGunAngleDeg * Math.PI / 180;
-        const SPREAD_ANGLE_RAD = CONFIG.spreadAngleDeg * Math.PI / 180;
-        
-        // ---------- CANVAS ----------
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = W;
-        canvas.height = H;
+    (function() {
+        // ---------- ЯДРО: вычисление уровня лета (синусоида) ----------
+        // Пик: 15 июля (день 196 в невисокосный) → 100%
+        // Ноль: 15 января (день 15) → 0%
+        // Используем синусоиду: смещаем так, чтобы 15 июля давало 1, 15 января давало 0.
+        // Период = 365 дней. 
+        // фаза: sin( 2π*(day - 15)/365 )  -> 15 января (day=15) даёт sin(0)=0
+        // но 15 июля (day=196) даст sin(2π*(181)/365) ≈ sin(π) = 0, не подходит.
+        // Поэтому добавим смещение: хотим чтобы 15 июля был пик (1), а 15 января — ноль (0)
+        // sin(2π*(day - offset)/365) = 1 при day=196 => (196 - offset)/365 = 1/4 => offset = 196 - 365/4 = 196 - 91.25 = 104.75
+        // Проверим day=15: (15 - 104.75)/365 = -89.75/365 ≈ -0.246 => sin(-0.246*2π) ≈ -0.987, не 0.
+        // Лучше использовать косинус: cos(2π*(day - 15)/365) даёт 1 при day=15, и -1 при day=197.5.
+        // Нам нужно: при day=15 значение 0, при day=196 значение 1.
+        // Формула: level = (1 - cos(2π * (day - 15) / 365)) / 2
+        // Проверка: day=15 → (1 - cos(0))/2 = 0  ✅
+        // day=196 (15 июля): (1 - cos(2π*181/365))/2 = (1 - cos(3.116))/2 = (1 - (-0.998))/2 ≈ 0.999 ✅ (почти 1)
+        // day=15+182.5 = 197.5 → (1 - cos(π))/2 = 1  -> максимум смещен на ~2 дня, но точность достаточная.
+        // Для большей точности используем dayOffset = 15, и считаем день года.
+        // Учтем високосный год — но для простоты используем фиксированный 365, 
+        // погрешность в високосный год ≤ 0.3%, что допустимо.
 
-        // ---------- ИГРОВЫЕ ПАРАМЕТРЫ ----------
-        let score = 0;
-        let lives = CONFIG.startLives;
-        let gameOver = false;
-        let invincibleFrames = 0;      
-        
-        // ---------- ЗАЩИТНАЯ АУРА ----------
-        let shieldActive = false;
-        let shieldCooldown = 0;
-        let shieldTimer = 0;
-        
-        // ---------- ПУШКА ----------
-        let platformX = (W - GUN_WIDTH) / 2;
-        const PLATFORM_Y = H - 42;
-        let barrelAngle = 0;
-        let mouseXWorld = W/2;
-        let mouseYWorld = H/2;
-        
-        // ---------- СНАРЯДЫ ----------
-        let bullets = [];
-        
-        // ---------- ФАЙЕРБОЛЫ ----------
-        let fireballs = [];
-        
-        // ---------- СЕРДЕЧКИ ----------
-        let hearts = [];
-        
-        // ---------- КРОВАВЫЕ ЧАСТИЦЫ ----------
-        let bloodParticles = [];
-        
-        // ---------- ОБЫЧНЫЕ МЫШИ ----------
-        let bats = [];
-        const BAT_WIDTH = 46;
-        const BAT_HEIGHT = 38;
-        let batSpawnTimer = 0;
-        let batSpawnDelay = CONFIG.batSpawnBaseDelay;           
-        
-        // ---------- КОРОЛЕВА ----------
-        let queen = null;
-        const QUEEN_WIDTH = 70;
-        const QUEEN_HEIGHT = 60;
-        let nextQueenScore = CONFIG.queenSpawnScoreGap;
-        let queenActive = false;
-        
-        // Анимация крыльев
-        let wingFlapFrame = 0;
-        
-        // ---------- СИСТЕМА СТРЕЛЬБЫ (НОВАЯ) ----------
-        // normalMode = true  -> обычный непрерывный огонь (стрельба всегда идет)
-        // spreadModeActive = true -> веерный режим (ЛКМ включен), иначе обычный
-        // При этом стрельба идет ВСЕГДА непрерывно, но меняется тип выстрелов
-        let spreadModeActive = false;   // Веерный режим включен/выключен (по ЛКМ)
-        let shotCooldown = 0;
-        
-        // ---------- ЗВУКИ ----------
-        let audioCtx = null;
-        let soundEnabled = true;
-        
-        // ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ----------
-        function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
-        
-        function initAudio() {
-            if (audioCtx) return;
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function getSummerLevel(dateObj) {
+            // Копируем дату, чтобы не мутировать
+            const d = new Date(dateObj);
+            // День года: 1-365 (для невисокосного)
+            const start = new Date(d.getFullYear(), 0, 0);
+            const diff = d - start;
+            const oneDay = 86400000;
+            let dayOfYear = Math.floor(diff / oneDay); // 1-365 (0-364)
+            // для 15 января dayOfYear = 15 (так как 1 января = 1)
+            // но из-за смещения start new Date(year,0,0) даёт 31 декабря предыдущего года, 
+            // поэтому 1 января = 1, 15 января = 15.
+            // Формула: level = (1 - cos(2π * (dayOfYear - 15) / 365)) / 2
+            const rad = (2 * Math.PI * (dayOfYear - 15)) / 365;
+            let level = (1 - Math.cos(rad)) / 2;
+            // Из-за округления может быть -0.000 или 1.000, ограничим
+            if (level < 0) level = 0;
+            if (level > 1) level = 1;
+            return level;
         }
-        
-        function playShootSound() {
-            if (!soundEnabled) return;
-            if (!audioCtx) initAudio();
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = 880;
-            osc.type = 'triangle';
-            gain.gain.setValueAtTime(0.08, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-            osc.start();
-            osc.stop(now + 0.08);
+
+        // ---------- Вспомогательные функции ----------
+        function formatDate(date) {
+            const dd = String(date.getDate()).padStart(2, '0');
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const yyyy = date.getFullYear();
+            return `${dd}.${mm}.${yyyy}`;
         }
-        
-        function playHitSound() {
-            if (!soundEnabled) return;
-            if (!audioCtx) initAudio();
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = 640;
-            osc.type = 'sine';
-            gain.gain.setValueAtTime(0.1, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-            osc.start();
-            osc.stop(now + 0.1);
-        }
-        
-        function playBatDeathSound() {
-            if (!soundEnabled) return;
-            if (!audioCtx) initAudio();
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = 180;
-            osc.type = 'sawtooth';
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-            osc.start();
-            osc.stop(now + 0.2);
-        }
-        
-        function playDamageSound() {
-            if (!soundEnabled) return;
-            if (!audioCtx) initAudio();
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = 220;
-            osc.type = 'sine';
-            gain.gain.setValueAtTime(0.25, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-            osc.start();
-            osc.stop(now + 0.3);
-        }
-        
-        function playHeartSound() {
-            if (!soundEnabled) return;
-            if (!audioCtx) initAudio();
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = 440;
-            osc.type = 'sine';
-            gain.gain.setValueAtTime(0.15, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-            osc.start();
-            osc.stop(now + 0.2);
-        }
-        
-        function playShieldSound() {
-            if (!soundEnabled) return;
-            if (!audioCtx) initAudio();
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = 560;
-            osc.type = 'sine';
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-            osc.start();
-            osc.stop(now + 0.15);
-        }
-        
-        function playQueenAppearSound() {
-            if (!soundEnabled) return;
-            if (!audioCtx) initAudio();
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = 360;
-            osc.type = 'sine';
-            gain.gain.setValueAtTime(0.25, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-            osc.start();
-            osc.stop(now + 0.5);
-        }
-        
-        function playQueenHitSound() {
-            if (!soundEnabled) return;
-            if (!audioCtx) initAudio();
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = 520;
-            osc.type = 'square';
-            gain.gain.setValueAtTime(0.15, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-            osc.start();
-            osc.stop(now + 0.15);
-        }
-        
-        function playQueenEscapeSound() {
-            if (!soundEnabled) return;
-            if (!audioCtx) initAudio();
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = 280;
-            osc.type = 'sine';
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-            osc.start();
-            osc.stop(now + 0.5);
-        }
-        
-        function enableAudioAndResume() {
-            if (!audioCtx) initAudio();
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-        }
-        
-        function updateUI() {
-            document.getElementById('scoreValue').innerText = score;
-            document.getElementById('healthValue').innerText = lives;
-            document.getElementById('queenNextSpan').innerText = nextQueenScore;
-        }
-        
-        // ---------- КРОВАВЫЙ ВЗРЫВ ----------
-        function spawnBloodExplosion(centerX, centerY) {
-            const count = CONFIG.bloodParticleCount;
-            for (let i = 0; i < count; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const speed = CONFIG.bloodParticleSpeedMin + Math.random() * (CONFIG.bloodParticleSpeedMax - CONFIG.bloodParticleSpeedMin);
-                const vx = Math.cos(angle) * speed;
-                const vy = Math.sin(angle) * speed;
-                const size = CONFIG.bloodParticleMinSize + Math.random() * (CONFIG.bloodParticleMaxSize - CONFIG.bloodParticleMinSize);
-                const hue = 0 + (Math.random() - 0.5) * CONFIG.bloodColorHueVariation;
-                const color = `hsl(${hue}, 80%, 48%)`;
-                
-                bloodParticles.push({
-                    x: centerX,
-                    y: centerY,
-                    vx: vx,
-                    vy: vy,
-                    size: size,
-                    life: CONFIG.bloodParticleLifeFrames,
-                    color: color
-                });
-            }
-        }
-        
-        function updateBloodParticles() {
-            for (let i = 0; i < bloodParticles.length; i++) {
-                const p = bloodParticles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.vy += 0.12;
-                p.life--;
-                if (p.life <= 0 || p.y > H + 80 || p.x < -80 || p.x > W + 80) {
-                    bloodParticles.splice(i, 1);
-                    i--;
-                }
-            }
-        }
-        
-        function drawBloodParticles() {
-            for (const p of bloodParticles) {
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size / 1.6, 0, Math.PI * 2);
-                ctx.fillStyle = p.color;
-                ctx.fill();
-                ctx.shadowBlur = 4;
-                ctx.fill();
-                ctx.shadowBlur = 0;
-            }
-        }
-        
-        function activateShield() {
-            if (shieldCooldown > 0) return;
-            if (shieldActive) return;
-            shieldActive = true;
-            shieldTimer = CONFIG.shieldDurationFrames;
-            playShieldSound();
-        }
-        
-        // ---------- ИГРОВАЯ ЛОГИКА ----------
-        function spawnQueen() {
-            if (queenActive) return;
-            let startY = -QUEEN_HEIGHT - 10;
-            queen = {
-                x: W/2 - QUEEN_WIDTH/2,
-                y: startY,
-                w: QUEEN_WIDTH,
-                h: QUEEN_HEIGHT,
-                health: CONFIG.queenHealth,
-                maxHealth: CONFIG.queenHealth,
-                wingPhase: 0,
-                fireballTimer: 0,
-                flyAway: false,
-                vy: CONFIG.queenAppearSpeed,
-                isSpawning: true
-            };
-            queenActive = true;
-            playQueenAppearSound();
-        }
-        
-        function queenSpreadFireballs() {
-            if (!queenActive || queen.flyAway) return;
-            const baseCount = CONFIG.queenFireballCount;
-            const count = baseCount + Math.floor(Math.random() * 4);
-            for (let i = 0; i < count; i++) {
-                let angle = (Math.random() - 0.5) * Math.PI * 1.2 + Math.PI/2;
-                let speed = 2.5 + Math.random() * 2.0;
-                let vx = Math.sin(angle) * speed;
-                let vy = Math.cos(angle) * speed;
-                fireballs.push({
-                    x: queen.x + queen.w/2 - FIREBALL_SIZE/2,
-                    y: queen.y + queen.h - 8,
-                    size: FIREBALL_SIZE,
-                    vx: vx,
-                    vy: vy,
-                });
-            }
-        }
-        
-        function restartGame() {
-            gameOver = false;
-            score = 0;
-            lives = CONFIG.startLives;
-            invincibleFrames = 0;
-            bullets = [];
-            bats = [];
-            fireballs = [];
-            hearts = [];
-            bloodParticles = [];
-            queen = null;
-            queenActive = false;
-            nextQueenScore = CONFIG.queenSpawnScoreGap;
-            platformX = (W - GUN_WIDTH) / 2;
-            barrelAngle = 0;
-            spreadModeActive = false;
-            shotCooldown = 0;
-            shieldActive = false;
-            shieldCooldown = 0;
-            shieldTimer = 0;
-            updateUI();
-            enableAudioAndResume();
-            for(let i=0;i<2;i++) spawnBat();
-        }
-        
-        function getAimAtPlayerPercent() {
-            let t = Math.min(1, score / CONFIG.maxScoreForAim);
-            return CONFIG.aimAtPlayerMinPercent + t * (CONFIG.aimAtPlayerMaxPercent - CONFIG.aimAtPlayerMinPercent);
-        }
-        
-        function spawnBat() {
-            if (bats.length >= CONFIG.maxBats) return;
-            const y = 40 + Math.random() * 70;
-            const x = 20 + Math.random() * (W - BAT_WIDTH - 20);
-            const vx = (Math.random() - 0.5) * 1.4;
-            const aimPercent = getAimAtPlayerPercent();
-            const aimsAtPlayer = Math.random() * 100 < aimPercent;
-            
-            bats.push({
-                x: x, y: y, w: BAT_WIDTH, h: BAT_HEIGHT,
-                vx: vx, vy: 0.4 + Math.random() * 0.6,
-                shootTimer: 0, 
-                shootDelay: CONFIG.batBaseShootDelay + Math.floor(Math.random() * 45),
-                aimsAtPlayer: aimsAtPlayer
-            });
-        }
-        
-        function spawnHeart(x, y) {
-            hearts.push({
-                x: x + BAT_WIDTH/2 - CONFIG.heartSize/2,
-                y: y + BAT_HEIGHT/2 - CONFIG.heartSize/2,
-                size: CONFIG.heartSize,
-                vy: CONFIG.heartFallSpeed
-            });
-        }
-        
-        function batShoot(bat) {
-            let vx, vy;
-            if (bat.aimsAtPlayer) {
-                const targetX = platformX + GUN_WIDTH/2;
-                const targetY = PLATFORM_Y - 10;
-                const dx = targetX - (bat.x + bat.w/2);
-                const dy = targetY - (bat.y + bat.h/2);
-                const len = Math.hypot(dx, dy);
-                if (len > 0.1) {
-                    const speed = CONFIG.fireballSpeedBase + 0.5;
-                    vx = (dx / len) * speed;
-                    vy = (dy / len) * speed;
-                } else {
-                    vx = 0; vy = CONFIG.fireballSpeedBase;
-                }
+
+        // ---------- UI обновление ----------
+        const meterFill = document.getElementById('meterFill');
+        const valueLabel = document.getElementById('valueLabel');
+        const dateInfo = document.getElementById('dateInfo');
+        const customDateInput = document.getElementById('customDate');
+        const todayRadio = document.querySelector('input[name="mode"][value="today"]');
+        const customRadio = document.querySelector('input[name="mode"][value="custom"]');
+        const applyBtn = document.getElementById('applyDateBtn');
+        const resetBtn = document.getElementById('resetTodayBtn');
+
+        // текущий режим: 'today' или 'custom'
+        let currentMode = 'today';
+        // дата, которая сейчас отображается (объект Date)
+        let displayDate = new Date(); // сегодня
+
+        function updateDisplay() {
+            const level = getSummerLevel(displayDate);
+            const percent = Math.round(level * 100);
+            // Обновляем полосу
+            meterFill.style.width = percent + '%';
+            meterFill.textContent = percent + '%';
+            // Обновляем цифру
+            valueLabel.innerHTML = percent + '<span>%</span>';
+
+            // Формируем дату в удобном формате
+            const dateStr = formatDate(displayDate);
+            // Дополнительно покажем день недели (опционально)
+            const weekdays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+            const wd = weekdays[displayDate.getDay()];
+            // индикатор режима
+            let modeText = (currentMode === 'today') ? '📍 сегодня' : '📌 выбранная дата';
+            dateInfo.textContent = `${dateStr} (${wd}) · ${modeText}`;
+
+            // синхронизируем поле ввода даты, если режим custom — ставим значение
+            if (currentMode === 'custom') {
+                const year = displayDate.getFullYear();
+                const month = String(displayDate.getMonth() + 1).padStart(2, '0');
+                const day = String(displayDate.getDate()).padStart(2, '0');
+                customDateInput.value = `${year}-${month}-${day}`;
             } else {
-                vx = (Math.random() - 0.5) * 1.2;
-                vy = CONFIG.fireballSpeedBase + Math.random() * 1.2;
-            }
-            fireballs.push({
-                x: bat.x + bat.w/2 - FIREBALL_SIZE/2,
-                y: bat.y + bat.h/2 - 4,
-                size: FIREBALL_SIZE,
-                vx: vx,
-                vy: vy,
-            });
-        }
-        
-        // НОВАЯ ФУНКЦИЯ ВЫСТРЕЛА с поддержкой веера
-        // Возвращает количество созданных пуль
-        function performShot() {
-            const pivotX = platformX + GUN_WIDTH/2;
-            const pivotY = PLATFORM_Y - 6;
-            
-            const rect = canvas.getBoundingClientRect();
-            const canvasMouseX = ((mouseXWorld - rect.left) * (W / rect.width));
-            const canvasMouseY = ((mouseYWorld - rect.top) * (H / rect.height));
-            let dx = canvasMouseX - pivotX;
-            let dy = canvasMouseY - pivotY;
-            let baseAngle = Math.atan2(dx, -dy);
-            baseAngle = clamp(baseAngle, -MAX_GUN_ANGLE_RAD, MAX_GUN_ANGLE_RAD);
-            barrelAngle = baseAngle;
-            
-            const barrelLength = 32;
-            
-            if (spreadModeActive) {
-                // Веерный режим: несколько пуль с разбросом
-                const count = CONFIG.spreadBulletCount;
-                const startAngle = baseAngle - SPREAD_ANGLE_RAD / 2;
-                const step = SPREAD_ANGLE_RAD / (count - 1);
-                for (let i = 0; i < count; i++) {
-                    let angle = startAngle + step * i;
-                    angle = clamp(angle, -MAX_GUN_ANGLE_RAD, MAX_GUN_ANGLE_RAD);
-                    const directionX = Math.sin(angle);
-                    const directionY = -Math.cos(angle);
-                    const tipX = pivotX + directionX * barrelLength;
-                    const tipY = pivotY + directionY * barrelLength;
-                    bullets.push({
-                        x: tipX - BULLET_SIZE/2,
-                        y: tipY - BULLET_SIZE/2,
-                        size: BULLET_SIZE,
-                        vx: directionX * CONFIG.bulletSpeed,
-                        vy: directionY * CONFIG.bulletSpeed,
-                    });
-                }
-                return count;
-            } else {
-                // Обычный режим: одна пуля
-                const directionX = Math.sin(baseAngle);
-                const directionY = -Math.cos(baseAngle);
-                const tipX = pivotX + directionX * barrelLength;
-                const tipY = pivotY + directionY * barrelLength;
-                bullets.push({
-                    x: tipX - BULLET_SIZE/2,
-                    y: tipY - BULLET_SIZE/2,
-                    size: BULLET_SIZE,
-                    vx: directionX * CONFIG.bulletSpeed,
-                    vy: directionY * CONFIG.bulletSpeed,
-                });
-                return 1;
+                // если сегодня, то поле ввода можно оставить как есть (не мешаем)
+                // но при желании можно синхронизировать: не будем, чтобы не сбивать.
             }
         }
-        
-        function updateGame() {
-            if (gameOver) return;
-            
-            wingFlapFrame = (wingFlapFrame + 0.28) % (Math.PI * 2);
-            if (invincibleFrames > 0) invincibleFrames--;
-            
-            // Аура
-            if (shieldActive) {
-                shieldTimer--;
-                if (shieldTimer <= 0) {
-                    shieldActive = false;
-                    shieldCooldown = CONFIG.shieldCooldownFrames;
-                }
-            }
-            if (shieldCooldown > 0) shieldCooldown--;
-            
-            // НЕПРЕРЫВНАЯ СТРЕЛЬБА (всегда активна)
-            const currentShotDelay = spreadModeActive ? CONFIG.spreadShotDelayFrames : CONFIG.normalShotDelayFrames;
-            if (!gameOver) {
-                if (shotCooldown <= 0) {
-                    performShot();
-                    playShootSound();
-                    shotCooldown = currentShotDelay;
+
+        // Установить дату отображения
+        function setDisplayDate(dateObj, mode) {
+            displayDate = new Date(dateObj);
+            // очищаем время
+            displayDate.setHours(0, 0, 0, 0);
+            if (mode) {
+                currentMode = mode;
+                if (mode === 'today') {
+                    todayRadio.checked = true;
                 } else {
-                    shotCooldown--;
-                }
-            } else if (shotCooldown > 0) {
-                shotCooldown--;
-            }
-            
-            // Движение платформы
-            if (keys['KeyA']) platformX -= CONFIG.platformSpeed;
-            if (keys['KeyD']) platformX += CONFIG.platformSpeed;
-            platformX = clamp(platformX, 4, W - GUN_WIDTH - 4);
-            
-            // Угол пушки (только визуально)
-            const rect = canvas.getBoundingClientRect();
-            const canvasMouseX = ((mouseXWorld - rect.left) * (W / rect.width));
-            const canvasMouseY = ((mouseYWorld - rect.top) * (H / rect.height));
-            const pivotX = platformX + GUN_WIDTH/2;
-            const pivotY = PLATFORM_Y - 6;
-            let dx = canvasMouseX - pivotX;
-            let dy = canvasMouseY - pivotY;
-            let targetAngle = Math.atan2(dx, -dy);
-            barrelAngle = clamp(targetAngle, -MAX_GUN_ANGLE_RAD, MAX_GUN_ANGLE_RAD);
-            
-            // Мыши
-            for (let i=0; i<bats.length; i++) {
-                const b = bats[i];
-                b.x += b.vx; b.y += b.vy;
-                if (b.x <= 5) { b.x = 5; b.vx = Math.abs(b.vx)*0.9; }
-                if (b.x + b.w >= W-5) { b.x = W-b.w-5; b.vx = -Math.abs(b.vx)*0.9; }
-                if (b.y + b.h > 320) b.y = 320 - b.h;
-                if (b.y < 20) b.y = 20;
-                b.shootTimer++;
-                if (b.shootTimer >= b.shootDelay) {
-                    b.shootTimer = 0;
-                    batShoot(b);
-                    b.shootDelay = CONFIG.batBaseShootDelay + Math.floor(Math.random() * 45);
+                    customRadio.checked = true;
                 }
             }
-            
-            // Королева
-            if (queenActive && queen) {
-                queen.wingPhase = wingFlapFrame;
-                if (!queen.flyAway) {
-                    if (queen.isSpawning && queen.y < 60) {
-                        queen.y += queen.vy;
-                        if (queen.y >= 60) {
-                            queen.isSpawning = false;
-                            queen.vy = CONFIG.queenFlySpeed * 0.3;
+            updateDisplay();
+        }
+
+        // ---------- Обработчики ----------
+        // Переключение режимов (radio)
+        document.querySelectorAll('input[name="mode"]').forEach(radio => {
+            radio.addEventListener('change', function(e) {
+                if (this.value === 'today') {
+                    currentMode = 'today';
+                    // устанавливаем сегодняшнюю дату
+                    const now = new Date();
+                    setDisplayDate(now, 'today');
+                } else {
+                    currentMode = 'custom';
+                    // берем дату из поля ввода
+                    const val = customDateInput.value;
+                    if (val) {
+                        const parts = val.split('-');
+                        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                        if (!isNaN(d.getTime())) {
+                            setDisplayDate(d, 'custom');
+                        } else {
+                            // если невалидная, ставим сегодня
+                            const now = new Date();
+                            setDisplayDate(now, 'custom');
                         }
                     } else {
-                        queen.isSpawning = false;
-                        queen.y += queen.vy;
-                        if (queen.y + queen.h > 280) queen.y = 280 - queen.h;
-                        if (queen.y < 40) queen.y = 40;
+                        // если пусто, ставим сегодня
+                        const now = new Date();
+                        setDisplayDate(now, 'custom');
                     }
-                    queen.fireballTimer = (queen.fireballTimer || 0) + 1;
-                    if (queen.fireballTimer >= CONFIG.queenFireballDelayFrames) {
-                        queen.fireballTimer = 0;
-                        queenSpreadFireballs();
-                    }
-                } else {
-                    queen.y -= 3.2;
-                    if (queen.y + queen.h < 0) {
-                        queenActive = false;
-                        queen = null;
-                    }
-                }
-            }
-            
-            // Сердечки
-            for (let i=0; i<hearts.length; i++) {
-                hearts[i].y += hearts[i].vy;
-                if (hearts[i].y > H + 50) hearts.splice(i--,1);
-            }
-            
-            // Пули
-            for (let i=0; i<bullets.length; i++) {
-                bullets[i].x += bullets[i].vx;
-                bullets[i].y += bullets[i].vy;
-                if (bullets[i].x + bullets[i].size < 0 || bullets[i].x > W ||
-                    bullets[i].y + bullets[i].size < 0 || bullets[i].y > H) {
-                    bullets.splice(i--,1);
-                }
-            }
-            
-            // Файерболы
-            for (let i=0; i<fireballs.length; i++) {
-                fireballs[i].x += fireballs[i].vx;
-                fireballs[i].y += fireballs[i].vy;
-                if (fireballs[i].x + fireballs[i].size < -50 || fireballs[i].x > W+50 ||
-                    fireballs[i].y + fireballs[i].size < -50 || fireballs[i].y > H+100) {
-                    fireballs.splice(i--,1);
-                }
-            }
-            
-            // ПУЛИ VS МЫШИ + КРОВАВЫЙ ВЗРЫВ
-            for (let i=0; i<bullets.length; i++) {
-                const bullet = bullets[i];
-                let hitIndex = -1;
-                for (let j=0; j<bats.length; j++) {
-                    const bat = bats[j];
-                    if (bullet.x < bat.x+bat.w && bullet.x+bullet.size > bat.x &&
-                        bullet.y < bat.y+bat.h && bullet.y+bullet.size > bat.y) {
-                        hitIndex = j;
-                        break;
-                    }
-                }
-                if (hitIndex !== -1) {
-                    const deadBat = bats[hitIndex];
-                    const centerX = deadBat.x + deadBat.w/2;
-                    const centerY = deadBat.y + deadBat.h/2;
-                    bats.splice(hitIndex,1);
-                    bullets.splice(i,1);
-                    spawnBloodExplosion(centerX, centerY);
-                    score++;
-                    updateUI();
-                    playBatDeathSound();
-                    i--;
-                    if (Math.random() < CONFIG.heartSpawnChance) {
-                        spawnHeart(deadBat.x, deadBat.y);
-                    }
-                }
-            }
-            
-            // Пули vs Королева
-            if (queenActive && queen && !queen.flyAway) {
-                for (let i=0; i<bullets.length; i++) {
-                    const bullet = bullets[i];
-                    if (bullet.x < queen.x+queen.w && bullet.x+bullet.size > queen.x &&
-                        bullet.y < queen.y+queen.h && bullet.y+bullet.size > queen.y) {
-                        bullets.splice(i,1);
-                        queen.health--;
-                        playQueenHitSound();
-                        i--;
-                        if (queen.health <= 0) {
-                            queen.flyAway = true;
-                            playQueenEscapeSound();
-                            score += 5;
-                            updateUI();
-                        }
-                        break;
-                    }
-                }
-            }
-            
-            // Пули сбивают файерболы
-            for (let i=0; i<bullets.length; i++) {
-                const bullet = bullets[i];
-                let hitFireball = -1;
-                for (let j=0; j<fireballs.length; j++) {
-                    const fb = fireballs[j];
-                    if (bullet.x < fb.x+fb.size && bullet.x+bullet.size > fb.x &&
-                        bullet.y < fb.y+fb.size && bullet.y+bullet.size > fb.y) {
-                        hitFireball = j;
-                        break;
-                    }
-                }
-                if (hitFireball !== -1) {
-                    bullets.splice(i,1);
-                    fireballs.splice(hitFireball,1);
-                    playHitSound();
-                    i--;
-                }
-            }
-            
-            // Сбор сердечек
-            const gunHitbox = { x: platformX, y: PLATFORM_Y - 12, w: GUN_WIDTH, h: GUN_HEIGHT + 18 };
-            for (let i=0; i<hearts.length; i++) {
-                const heart = hearts[i];
-                if (heart.x < gunHitbox.x+gunHitbox.w && heart.x+heart.size > gunHitbox.x &&
-                    heart.y < gunHitbox.y+gunHitbox.h && heart.y+heart.size > gunHitbox.y) {
-                    hearts.splice(i,1);
-                    if (lives < 10) {
-                        lives++;
-                        playHeartSound();
-                        updateUI();
-                    }
-                    i--;
-                }
-            }
-            
-            // Файерболы vs пушка
-            for (let i=0; i<fireballs.length; i++) {
-                const fb = fireballs[i];
-                if (fb.x < gunHitbox.x+gunHitbox.w && fb.x+fb.size > gunHitbox.x &&
-                    fb.y < gunHitbox.y+gunHitbox.h && fb.y+fb.size > gunHitbox.y) {
-                    if (shieldActive) {
-                        fireballs.splice(i,1);
-                        i--;
-                        continue;
-                    }
-                    if (invincibleFrames <= 0 && !gameOver) {
-                        lives--;
-                        updateUI();
-                        playDamageSound();
-                        if (lives <= 0) {
-                            gameOver = true;
-                            updateUI();
-                            return;
-                        }
-                        invincibleFrames = CONFIG.invincibleDuration;
-                        fireballs.splice(i,1);
-                        i--;
-                    } else {
-                        fireballs.splice(i,1);
-                        i--;
-                    }
-                }
-            }
-            
-            // Мыши сталкиваются с пушкой
-            for (let i=0; i<bats.length; i++) {
-                const bat = bats[i];
-                if (bat.x < gunHitbox.x+gunHitbox.w && bat.x+bat.w > gunHitbox.x &&
-                    bat.y < gunHitbox.y+gunHitbox.h && bat.y+bat.h > gunHitbox.y) {
-                    if (invincibleFrames <= 0 && !gameOver) {
-                        lives--;
-                        updateUI();
-                        playDamageSound();
-                        if (lives <= 0) {
-                            gameOver = true;
-                            updateUI();
-                            return;
-                        }
-                        invincibleFrames = CONFIG.invincibleDuration;
-                        bats[i].y = Math.max(20, bats[i].y - 40);
-                        bats[i].x += (bats[i].x < platformX) ? -30 : 30;
-                        break;
-                    }
-                }
-            }
-            
-            // Королева касается пушки
-            if (queenActive && queen && !queen.flyAway) {
-                if (queen.x < gunHitbox.x+gunHitbox.w && queen.x+queen.w > gunHitbox.x &&
-                    queen.y < gunHitbox.y+gunHitbox.h && queen.y+queen.h > gunHitbox.y) {
-                    if (invincibleFrames <= 0 && !gameOver) {
-                        lives--;
-                        updateUI();
-                        playDamageSound();
-                        if (lives <= 0) {
-                            gameOver = true;
-                            updateUI();
-                            return;
-                        }
-                        invincibleFrames = CONFIG.invincibleDuration;
-                        queen.y -= 55;
-                        if (queen.y < 30) queen.y = 30;
-                    }
-                }
-            }
-            
-            // Удаление мышей улетевших вниз
-            for (let i=0; i<bats.length; i++) {
-                if (bats[i].y + bats[i].h > H - 70) bats.splice(i--,1);
-            }
-            
-            // Спавн мышей
-            if (!gameOver) {
-                if (batSpawnTimer <= 0 && bats.length < CONFIG.maxBats) {
-                    spawnBat();
-                    batSpawnTimer = batSpawnDelay;
-                    batSpawnDelay = Math.max(CONFIG.batMinSpawnDelay, CONFIG.batSpawnBaseDelay - Math.floor(score / 60));
-                } else {
-                    batSpawnTimer--;
-                }
-            }
-            
-            // Королева по очкам
-            if (!queenActive && !gameOver && score >= nextQueenScore) {
-                spawnQueen();
-                nextQueenScore = score + CONFIG.queenSpawnScoreGap;
-                updateUI();
-            }
-            if (!queenActive && !gameOver && nextQueenScore <= score) {
-                nextQueenScore = score + CONFIG.queenSpawnScoreGap;
-                updateUI();
-            }
-            
-            updateBloodParticles();
-        }
-        
-        // ---------- ОТРИСОВКА (с индикатором режима стрельбы) ----------
-        function drawBat(bat, wingPhase) {
-            const flapIntensity = Math.sin(wingPhase) * 0.6 + 0.5;
-            const wingSpread = 14 + 10 * flapIntensity;
-            ctx.save();
-            ctx.fillStyle = "#2b1e2f";
-            ctx.beginPath();
-            ctx.ellipse(bat.x+bat.w/2, bat.y+bat.h/2, bat.w/2.2, bat.h/2.5, 0, 0, Math.PI*2);
-            ctx.fill();
-            ctx.fillStyle = "#221526";
-            ctx.beginPath();
-            ctx.moveTo(bat.x+8, bat.y+bat.h/2-2);
-            ctx.lineTo(bat.x - wingSpread - (Math.sin(wingPhase)*5), bat.y+bat.h/2 + 4*flapIntensity);
-            ctx.lineTo(bat.x+12, bat.y+bat.h-6);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(bat.x+bat.w-8, bat.y+bat.h/2-2);
-            ctx.lineTo(bat.x+bat.w + wingSpread + (Math.sin(wingPhase)*5), bat.y+bat.h/2 + 4*flapIntensity);
-            ctx.lineTo(bat.x+bat.w-12, bat.y+bat.h-6);
-            ctx.fill();
-            ctx.fillStyle = "#ffd966";
-            ctx.beginPath();
-            ctx.arc(bat.x+bat.w/2-8, bat.y+12, 3, 0, Math.PI*2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(bat.x+bat.w/2+8, bat.y+12, 3, 0, Math.PI*2);
-            ctx.fill();
-            ctx.fillStyle = "#000";
-            ctx.beginPath();
-            ctx.arc(bat.x+bat.w/2-8.5, bat.y+11.5, 1.3, 0, Math.PI*2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(bat.x+bat.w/2+7.5, bat.y+11.5, 1.3, 0, Math.PI*2);
-            ctx.fill();
-            if (bat.aimsAtPlayer) {
-                ctx.fillStyle = "#ff3333";
-                ctx.beginPath();
-                ctx.arc(bat.x+bat.w/2-8, bat.y+12, 2, 0, Math.PI*2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(bat.x+bat.w/2+8, bat.y+12, 2, 0, Math.PI*2);
-                ctx.fill();
-            }
-            ctx.restore();
-        }
-        
-        function drawQueen(q, wingAngle) {
-            const flap = Math.sin(wingAngle) * 0.7;
-            const spread = 28 + 12 * (Math.sin(wingAngle)*0.5+0.6);
-            ctx.save();
-            ctx.fillStyle = "#5e2a6e";
-            ctx.beginPath();
-            ctx.ellipse(q.x+q.w/2, q.y+q.h/2, q.w/2.1, q.h/2.3, 0, 0, Math.PI*2);
-            ctx.fill();
-            ctx.fillStyle = "#9b4b96";
-            ctx.beginPath();
-            ctx.ellipse(q.x+q.w/2-10, q.y+q.h/2-5, 9, 11, 0, 0, Math.PI*2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(q.x+q.w/2+10, q.y+q.h/2-5, 9, 11, 0, 0, Math.PI*2);
-            ctx.fill();
-            ctx.fillStyle = "#f7d44a";
-            ctx.beginPath();
-            ctx.moveTo(q.x+q.w/2-15, q.y+8);
-            ctx.lineTo(q.x+q.w/2-8, q.y-2);
-            ctx.lineTo(q.x+q.w/2, q.y+5);
-            ctx.lineTo(q.x+q.w/2+8, q.y-2);
-            ctx.lineTo(q.x+q.w/2+15, q.y+8);
-            ctx.fill();
-            ctx.fillStyle = "#3b1e47";
-            ctx.beginPath();
-            ctx.moveTo(q.x+12, q.y+q.h/2);
-            ctx.lineTo(q.x - spread, q.y+q.h/2 + 8*flap);
-            ctx.lineTo(q.x+20, q.y+q.h-10);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(q.x+q.w-12, q.y+q.h/2);
-            ctx.lineTo(q.x+q.w + spread, q.y+q.h/2 + 8*flap);
-            ctx.lineTo(q.x+q.w-20, q.y+q.h-10);
-            ctx.fill();
-            ctx.fillStyle = "#ffaa55";
-            ctx.beginPath();
-            ctx.arc(q.x+q.w/2-12, q.y+20, 4, 0, Math.PI*2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(q.x+q.w/2+12, q.y+20, 4, 0, Math.PI*2);
-            ctx.fill();
-            ctx.fillStyle = "#000";
-            ctx.beginPath();
-            ctx.arc(q.x+q.w/2-13, q.y+19, 2, 0, Math.PI*2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(q.x+q.w/2+11, q.y+19, 2, 0, Math.PI*2);
-            ctx.fill();
-            for(let i=0; i<q.health; i++) {
-                ctx.fillStyle = "#ff4d6d";
-                ctx.fillRect(q.x+8 + i*14, q.y-8, 10, 6);
-            }
-            ctx.restore();
-        }
-        
-        function draw() {
-            ctx.clearRect(0, 0, W, H);
-            const grad = ctx.createLinearGradient(0, 0, 0, H);
-            grad.addColorStop(0, '#020617');
-            grad.addColorStop(0.7, '#0f172f');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, W, H);
-            ctx.fillStyle = '#f8f3d9';
-            for (let i=0; i<100; i++) {
-                let sx = (i*131)%W, sy = (i*253)%(H/2);
-                ctx.beginPath();
-                ctx.arc(sx, sy, 1+(i%3), 0, Math.PI*2);
-                ctx.fill();
-            }
-            ctx.beginPath();
-            ctx.arc(780, 65, 32, 0, Math.PI*2);
-            ctx.fillStyle = "#FFE484";
-            ctx.fill();
-            
-            for (let bat of bats) drawBat(bat, wingFlapFrame + (bat.x*0.02));
-            if (queenActive && queen) drawQueen(queen, queen.wingPhase);
-            
-            drawBloodParticles();
-            
-            for (let fb of fireballs) {
-                ctx.fillStyle = "#ff5e00";
-                ctx.shadowBlur = 12;
-                ctx.beginPath();
-                ctx.arc(fb.x+fb.size/2, fb.y+fb.size/2, fb.size/2, 0, Math.PI*2);
-                ctx.fill();
-                ctx.fillStyle = "#ffbb33";
-                ctx.beginPath();
-                ctx.arc(fb.x+fb.size/2-3, fb.y+fb.size/2-3, 5, 0, Math.PI*2);
-                ctx.fill();
-            }
-            
-            for (let heart of hearts) {
-                ctx.fillStyle = "#ff3366";
-                ctx.shadowBlur = 6;
-                ctx.beginPath();
-                const x = heart.x, y = heart.y, s = heart.size;
-                ctx.moveTo(x + s/2, y + s/3);
-                ctx.bezierCurveTo(x + s/2, y, x, y, x, y + s/3);
-                ctx.bezierCurveTo(x, y + s*0.7, x + s/2, y + s, x + s/2, y + s);
-                ctx.bezierCurveTo(x + s/2, y + s, x + s, y + s*0.7, x + s, y + s/3);
-                ctx.bezierCurveTo(x + s, y, x + s/2, y, x + s/2, y + s/3);
-                ctx.fill();
-            }
-            
-            for (let b of bullets) {
-                ctx.fillStyle = "#4affff";
-                ctx.shadowBlur = 6;
-                ctx.fillRect(b.x, b.y, b.size, b.size);
-            }
-            
-            ctx.fillStyle = "#4b6e8a";
-            ctx.fillRect(platformX, PLATFORM_Y, GUN_WIDTH, GUN_HEIGHT);
-            ctx.fillStyle = "#7c9eb3";
-            ctx.fillRect(platformX+6, PLATFORM_Y-6, GUN_WIDTH-12, 8);
-            
-            ctx.save();
-            const pivotX = platformX + GUN_WIDTH/2;
-            const pivotY = PLATFORM_Y - 6;
-            ctx.translate(pivotX, pivotY);
-            ctx.rotate(barrelAngle);
-            ctx.fillStyle = "#cfb284";
-            ctx.fillRect(-6, -32, 12, 32);
-            ctx.fillStyle = "#8f5e2c";
-            ctx.fillRect(-4, -40, 8, 12);
-            ctx.restore();
-            
-            ctx.fillStyle = "#b8925a";
-            ctx.beginPath();
-            ctx.ellipse(platformX + GUN_WIDTH/2, PLATFORM_Y - 8, 10, 6, 0, 0, Math.PI*2);
-            ctx.fill();
-            
-            if (shieldActive) {
-                ctx.beginPath();
-                ctx.arc(platformX + GUN_WIDTH/2, PLATFORM_Y - 6, 38, 0, Math.PI*2);
-                ctx.fillStyle = "#44aaff33";
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(platformX + GUN_WIDTH/2, PLATFORM_Y - 6, 38, 0, Math.PI*2);
-                ctx.strokeStyle = "#88ddff";
-                ctx.lineWidth = 3;
-                ctx.stroke();
-            }
-            
-            if (invincibleFrames > 0 && (Math.floor(Date.now()/50)%3 < 1)) {
-                ctx.globalAlpha = 0.5;
-                ctx.fillStyle = "#ffffaa";
-                ctx.fillRect(platformX, PLATFORM_Y-8, GUN_WIDTH, 24);
-                ctx.globalAlpha = 1;
-            }
-            
-            ctx.fillStyle = "#2b4123";
-            ctx.fillRect(0, H-28, W, 28);
-            for(let i=0;i<12;i++) ctx.fillRect(i*85, H-30, 45, 6);
-            
-            if (gameOver) {
-                ctx.font = "bold 44monospace";
-                ctx.fillStyle = "#fbffb9";
-                ctx.fillText("💀 GAME OVER 💀", W/2-180, H/2-60);
-            }
-            ctx.font = "bold 24px monospace";
-            ctx.fillStyle = "#fae672";
-            ctx.fillText("⚔️ " + score, 30, 65);
-            
-            // Индикатор режима стрельбы
-            if (spreadModeActive && !gameOver) {
-                ctx.font = "16px monospace";
-                ctx.fillStyle = "#ffaa44";
-                ctx.fillText("🔥 ВЕЕРНЫЙ РЕЖИМ 🔥", W-180, 35);
-                ctx.font = "12px monospace";
-                ctx.fillStyle = "#ffaa88";
-                ctx.fillText(`3 пули • разлёт ${CONFIG.spreadAngleDeg}°`, W-170, 55);
-            } else if (!gameOver) {
-                ctx.font = "14px monospace";
-                ctx.fillStyle = "#88aaff";
-                ctx.fillText("● ОБЫЧНЫЙ ОГОНЬ", W-160, 40);
-            }
-            
-            if (shieldCooldown > 0 && !shieldActive && !gameOver) {
-                ctx.font = "12px monospace";
-                ctx.fillStyle = "#888888";
-                ctx.fillText("🛡️ ЗАЩИТА ЗАРЯЖАЕТСЯ", W-150, 70);
-            }
-        }
-        
-        // ---------- УПРАВЛЕНИЕ ----------
-        let keys = { KeyA: false, KeyD: false };
-        
-        function handleKeyDown(e) {
-            if (e.code === 'KeyA') { keys.KeyA = true; e.preventDefault(); }
-            else if (e.code === 'KeyD') { keys.KeyD = true; e.preventDefault(); }
-            enableAudioAndResume();
-        }
-        
-        function handleKeyUp(e) {
-            if (e.code === 'KeyA') { keys.KeyA = false; e.preventDefault(); }
-            else if (e.code === 'KeyD') { keys.KeyD = false; e.preventDefault(); }
-        }
-        
-        function handleMouseMove(e) {
-            mouseXWorld = e.clientX;
-            mouseYWorld = e.clientY;
-        }
-        
-        // ЛКМ: переключение веерного режима
-        function handleCanvasClick(e) {
-            spreadModeActive = !spreadModeActive;
-            // Сбрасываем кулдаун, чтобы мгновенно применить новый режим
-            shotCooldown = 0;
-            enableAudioAndResume();
-            e.preventDefault();
-        }
-        
-        function handleContextMenu(e) {
-            e.preventDefault();
-            activateShield();
-            return false;
-        }
-        
-        function gameLoop() { 
-            if (!gameOver) updateGame(); 
-            draw(); 
-            requestAnimationFrame(gameLoop); 
-        }
-        
-        window.addEventListener('load', () => {
-            restartGame();
-            document.addEventListener('keydown', handleKeyDown);
-            document.addEventListener('keyup', handleKeyUp);
-            canvas.addEventListener('mousemove', handleMouseMove);
-            canvas.addEventListener('click', handleCanvasClick);
-            canvas.addEventListener('contextmenu', handleContextMenu);
-            canvas.addEventListener('touchmove', (e) => { 
-                e.preventDefault(); 
-                const rect = canvas.getBoundingClientRect(); 
-                const touch = e.touches[0]; 
-                if (touch) {
-                    mouseXWorld = touch.clientX; 
-                    mouseYWorld = touch.clientY;
                 }
             });
-            canvas.addEventListener('touchstart', (e) => { 
-                e.preventDefault(); 
-                if (e.touches.length === 1) {
-                    spreadModeActive = !spreadModeActive;
-                    shotCooldown = 0;
-                } else if (e.touches.length === 2) {
-                    activateShield();
-                }
-                enableAudioAndResume();
-            });
-            document.getElementById('restartButton').addEventListener('click', () => { 
-                restartGame(); 
-                gameOver = false; 
-                spreadModeActive = false;
-                updateUI(); 
-            });
-            document.getElementById('soundToggleBtn').addEventListener('click', () => { 
-                soundEnabled = !soundEnabled; 
-                document.getElementById('soundToggleBtn').innerText = soundEnabled ? "🔊 ЗВУК ВКЛ" : "🔇 ЗВУК ВЫКЛ"; 
-                if(soundEnabled) enableAudioAndResume(); 
-            });
-            gameLoop();
         });
+
+        // Кнопка "Показать" (применить выбранную дату)
+        applyBtn.addEventListener('click', function() {
+            const val = customDateInput.value;
+            if (!val) {
+                alert('Пожалуйста, выберите дату.');
+                return;
+            }
+            const parts = val.split('-');
+            const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            if (isNaN(d.getTime())) {
+                alert('Некорректная дата');
+                return;
+            }
+            // переключаем в режим custom, если ещё не
+            customRadio.checked = true;
+            currentMode = 'custom';
+            setDisplayDate(d, 'custom');
+        });
+
+        // Кнопка "Сегодня"
+        resetBtn.addEventListener('click', function() {
+            todayRadio.checked = true;
+            currentMode = 'today';
+            const now = new Date();
+            setDisplayDate(now, 'today');
+        });
+
+        // Загрузка: по умолчанию показываем сегодня
+        (function init() {
+            const now = new Date();
+            // устанавливаем сегодня, режим today
+            todayRadio.checked = true;
+            currentMode = 'today';
+            displayDate = new Date(now);
+            displayDate.setHours(0,0,0,0);
+            // установим значение в поле ввода (для удобства)
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            customDateInput.value = `${y}-${m}-${d}`;
+            updateDisplay();
+        })();
+
+        // Дополнительно: если пользователь вводит дату вручную и нажимает Enter (удобство)
+        customDateInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                applyBtn.click();
+            }
+        });
+
     })();
 </script>
 </body>
