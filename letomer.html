@@ -104,8 +104,41 @@
             font-size: 1rem;
             font-weight: 500;
             color: #1f3449;
-            margin: 12px 0 22px 0;
+            margin: 12px 0 10px 0;
             letter-spacing: 0.3px;
+        }
+        .speed-info {
+            background: #fff4e0;
+            border: 1px solid #f9d79a;
+            padding: 12px 18px;
+            border-radius: 24px;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #6b4a12;
+            margin: 0 0 22px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 0.2px;
+        }
+        .speed-info .arrow {
+            font-size: 1.3rem;
+            line-height: 1;
+        }
+        .speed-info.rising {
+            background: #e8f7e5;
+            border-color: #b5e0a8;
+            color: #2d5c22;
+        }
+        .speed-info.falling {
+            background: #fdecea;
+            border-color: #f5b7b1;
+            color: #7a2a22;
+        }
+        .speed-info.peak {
+            background: #e8eefc;
+            border-color: #b8c8f0;
+            color: #263c7a;
         }
         .controls {
             display: flex;
@@ -198,6 +231,75 @@
         .footnote strong {
             color: #1d3a55;
         }
+        .forecast {
+            margin-top: 22px;
+            background: #f7faff;
+            border: 1px solid #d7e4f2;
+            border-radius: 28px;
+            padding: 16px 20px;
+        }
+        .forecast h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1a2d42;
+            margin: 0 0 10px 0;
+            letter-spacing: 0.2px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .forecast-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            max-height: 220px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+        }
+        .forecast-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 14px;
+            color: #22384f;
+        }
+        .forecast-list li:nth-child(odd) {
+            background: rgba(255, 255, 255, 0.7);
+        }
+        .forecast-list li.today {
+            background: #ffe9b8;
+            font-weight: 600;
+            color: #4d3606;
+        }
+        .forecast-list .fl-date {
+            font-variant-numeric: tabular-nums;
+            min-width: 92px;
+        }
+        .forecast-list .fl-level {
+            font-variant-numeric: tabular-nums;
+            color: #566f88;
+            min-width: 52px;
+            text-align: right;
+        }
+        .forecast-list .fl-speed {
+            font-variant-numeric: tabular-nums;
+            min-width: 130px;
+            text-align: right;
+            font-weight: 500;
+        }
+        .forecast-list .fl-speed.rising { color: #2d7a22; }
+        .forecast-list .fl-speed.falling { color: #b13a2c; }
+        .forecast-list .fl-speed.peak { color: #263c7a; }
+        .forecast-list .fl-tag {
+            font-size: 0.78rem;
+            padding: 1px 8px;
+            border-radius: 20px;
+            background: #e5eefb;
+            color: #3a5772;
+            white-space: nowrap;
+        }
         .mode-indicator {
             font-size: 0.9rem;
             background: #f0f6fe;
@@ -209,6 +311,7 @@
             .card { padding: 28px 16px; }
             .controls { flex-direction: column; align-items: stretch; }
             .date-picker { margin-left: 0; }
+            .forecast-list .fl-speed { min-width: 100px; font-size: 0.8rem; }
         }
     </style>
 </head>
@@ -216,7 +319,7 @@
 <div class="card">
     <h1>
         ☀️ Летомер
-        <small>синус</small>
+        <small>синус + производная</small>
     </h1>
     <div class="sub">состояние лета · 15.07 = 100% · 15.01 = 0%</div>
 
@@ -227,6 +330,12 @@
     <div class="value-label" id="valueLabel">0<span>%</span></div>
 
     <div class="date-info" id="dateInfo">📅 сегодня</div>
+
+    <!-- Скорость изменения -->
+    <div class="speed-info" id="speedInfo">
+        <span class="arrow" id="speedArrow">→</span>
+        <span id="speedText">…</span>
+    </div>
 
     <!-- Режимы -->
     <div class="controls">
@@ -244,52 +353,104 @@
         </div>
     </div>
 
+    <!-- Прогноз на 14 дней -->
+    <div class="forecast">
+        <h2>📈 Динамика лета на 14 дней</h2>
+        <ul class="forecast-list" id="forecastList"></ul>
+    </div>
+
     <div class="footnote">
         <strong>Как работает:</strong> лето измеряется по синусоиде с пиком 15 июля (100%) и минимумом 15 января (0%).
-        Плавно меняется в течение года.
+        Производная показывает скорость изменения в %/сутки.
     </div>
 </div>
 
 <script>
     (function() {
         // ---------- ЯДРО: вычисление уровня лета (синусоида) ----------
-        // Пик: 15 июля (день 196 в невисокосный) → 100%
-        // Ноль: 15 января (день 15) → 0%
-        // Используем синусоиду: смещаем так, чтобы 15 июля давало 1, 15 января давало 0.
-        // Период = 365 дней. 
-        // фаза: sin( 2π*(day - 15)/365 )  -> 15 января (day=15) даёт sin(0)=0
-        // но 15 июля (day=196) даст sin(2π*(181)/365) ≈ sin(π) = 0, не подходит.
-        // Поэтому добавим смещение: хотим чтобы 15 июля был пик (1), а 15 января — ноль (0)
-        // sin(2π*(day - offset)/365) = 1 при day=196 => (196 - offset)/365 = 1/4 => offset = 196 - 365/4 = 196 - 91.25 = 104.75
-        // Проверим day=15: (15 - 104.75)/365 = -89.75/365 ≈ -0.246 => sin(-0.246*2π) ≈ -0.987, не 0.
-        // Лучше использовать косинус: cos(2π*(day - 15)/365) даёт 1 при day=15, и -1 при day=197.5.
-        // Нам нужно: при day=15 значение 0, при day=196 значение 1.
-        // Формула: level = (1 - cos(2π * (day - 15) / 365)) / 2
-        // Проверка: day=15 → (1 - cos(0))/2 = 0  ✅
-        // day=196 (15 июля): (1 - cos(2π*181/365))/2 = (1 - cos(3.116))/2 = (1 - (-0.998))/2 ≈ 0.999 ✅ (почти 1)
-        // day=15+182.5 = 197.5 → (1 - cos(π))/2 = 1  -> максимум смещен на ~2 дня, но точность достаточная.
-        // Для большей точности используем dayOffset = 15, и считаем день года.
-        // Учтем високосный год — но для простоты используем фиксированный 365, 
-        // погрешность в високосный год ≤ 0.3%, что допустимо.
+        // level(day) = (1 - cos(2π * (day - 15) / 365)) / 2
+        // где day — день года (1 января = 1, 15 января = 15)
+        //
+        // Производная по дню:
+        //   d/d(day) level = (2π / 365) * sin(2π * (day - 15) / 365) / 2
+        //                  = (π / 365) * sin(2π * (day - 15) / 365)
+        //
+        // Знак производной:
+        //   > 0 — лето возрастает
+        //   < 0 — лето убывает
+        //   ≈ 0 — пик (15 июля) или минимум (15 января)
+        //
+        // Величина производной в %/сутки = производная * 100.
 
-        function getSummerLevel(dateObj) {
-            // Копируем дату, чтобы не мутировать
+        const DAYS_IN_YEAR = 365;
+        const OFFSET = 15; // 15 января — минимум
+
+        function getDayOfYear(dateObj) {
             const d = new Date(dateObj);
-            // День года: 1-365 (для невисокосного)
             const start = new Date(d.getFullYear(), 0, 0);
             const diff = d - start;
             const oneDay = 86400000;
-            let dayOfYear = Math.floor(diff / oneDay); // 1-365 (0-364)
-            // для 15 января dayOfYear = 15 (так как 1 января = 1)
-            // но из-за смещения start new Date(year,0,0) даёт 31 декабря предыдущего года, 
-            // поэтому 1 января = 1, 15 января = 15.
-            // Формула: level = (1 - cos(2π * (dayOfYear - 15) / 365)) / 2
-            const rad = (2 * Math.PI * (dayOfYear - 15)) / 365;
+            return Math.floor(diff / oneDay); // 1..365
+        }
+
+        function getSummerLevel(dateObj) {
+            const dayOfYear = getDayOfYear(dateObj);
+            const rad = (2 * Math.PI * (dayOfYear - OFFSET)) / DAYS_IN_YEAR;
             let level = (1 - Math.cos(rad)) / 2;
-            // Из-за округления может быть -0.000 или 1.000, ограничим
             if (level < 0) level = 0;
             if (level > 1) level = 1;
             return level;
+        }
+
+        // Производная в долях единицы на сутки
+        function getSummerDerivative(dateObj) {
+            const dayOfYear = getDayOfYear(dateObj);
+            const rad = (2 * Math.PI * (dayOfYear - OFFSET)) / DAYS_IN_YEAR;
+            return (Math.PI / DAYS_IN_YEAR) * Math.sin(rad);
+        }
+
+        // Производная в %/сутки
+        function getSummerSpeedPercent(dateObj) {
+            return getSummerDerivative(dateObj) * 100;
+        }
+
+        // Классификация направления
+        function getSummerTrend(dateObj) {
+            const speed = getSummerSpeedPercent(dateObj);
+            const EPS = 0.005; // меньше 0.005 %/сутки считаем нулём
+            if (Math.abs(speed) < EPS) {
+                const level = getSummerLevel(dateObj);
+                if (level > 0.5) return 'peak';   // пик лета
+                return 'trough';                   // минимум лета
+            }
+            return speed > 0 ? 'rising' : 'falling';
+        }
+
+        // Человекочитаемое описание скорости
+        function formatSpeed(dateObj) {
+            const speed = getSummerSpeedPercent(dateObj);
+            const trend = getSummerTrend(dateObj);
+            const absSpeed = Math.abs(speed).toFixed(2);
+
+            let arrow, text, cls;
+            if (trend === 'rising') {
+                arrow = '↗️';
+                text = `Возрастающее лето (+${absSpeed}%/сутки)`;
+                cls = 'rising';
+            } else if (trend === 'falling') {
+                arrow = '↘️';
+                text = `Убывающее лето (−${absSpeed}%/сутки)`;
+                cls = 'falling';
+            } else if (trend === 'peak') {
+                arrow = '⛰️';
+                text = `Пик лета (${speed >= 0 ? '+' : '−'}${absSpeed}%/сутки)`;
+                cls = 'peak';
+            } else {
+                arrow = '❄️';
+                text = `Минимум лета (${speed >= 0 ? '+' : '−'}${absSpeed}%/сутки)`;
+                cls = 'peak';
+            }
+            return { arrow, text, cls, speed, trend };
         }
 
         // ---------- Вспомогательные функции ----------
@@ -300,55 +461,98 @@
             return `${dd}.${mm}.${yyyy}`;
         }
 
+        function toInputValue(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function parseInputValue(val) {
+            const parts = val.split('-');
+            return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        }
+
         // ---------- UI обновление ----------
         const meterFill = document.getElementById('meterFill');
         const valueLabel = document.getElementById('valueLabel');
         const dateInfo = document.getElementById('dateInfo');
+        const speedInfo = document.getElementById('speedInfo');
+        const speedArrow = document.getElementById('speedArrow');
+        const speedText = document.getElementById('speedText');
         const customDateInput = document.getElementById('customDate');
         const todayRadio = document.querySelector('input[name="mode"][value="today"]');
         const customRadio = document.querySelector('input[name="mode"][value="custom"]');
         const applyBtn = document.getElementById('applyDateBtn');
         const resetBtn = document.getElementById('resetTodayBtn');
+        const forecastList = document.getElementById('forecastList');
 
-        // текущий режим: 'today' или 'custom'
         let currentMode = 'today';
-        // дата, которая сейчас отображается (объект Date)
-        let displayDate = new Date(); // сегодня
+        let displayDate = new Date();
 
         function updateDisplay() {
             const level = getSummerLevel(displayDate);
             const percent = Math.round(level * 100);
-            // Обновляем полосу
+
             meterFill.style.width = percent + '%';
             meterFill.textContent = percent + '%';
-            // Обновляем цифру
             valueLabel.innerHTML = percent + '<span>%</span>';
 
-            // Формируем дату в удобном формате
-            const dateStr = formatDate(displayDate);
-            // Дополнительно покажем день недели (опционально)
             const weekdays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
             const wd = weekdays[displayDate.getDay()];
-            // индикатор режима
-            let modeText = (currentMode === 'today') ? '📍 сегодня' : '📌 выбранная дата';
-            dateInfo.textContent = `${dateStr} (${wd}) · ${modeText}`;
+            const modeText = (currentMode === 'today') ? '📍 сегодня' : '📌 выбранная дата';
+            dateInfo.textContent = `${formatDate(displayDate)} (${wd}) · ${modeText}`;
 
-            // синхронизируем поле ввода даты, если режим custom — ставим значение
+            // Скорость
+            const sp = formatSpeed(displayDate);
+            speedArrow.textContent = sp.arrow;
+            speedText.textContent = sp.text;
+            speedInfo.classList.remove('rising', 'falling', 'peak');
+            speedInfo.classList.add(sp.cls);
+
             if (currentMode === 'custom') {
-                const year = displayDate.getFullYear();
-                const month = String(displayDate.getMonth() + 1).padStart(2, '0');
-                const day = String(displayDate.getDate()).padStart(2, '0');
-                customDateInput.value = `${year}-${month}-${day}`;
-            } else {
-                // если сегодня, то поле ввода можно оставить как есть (не мешаем)
-                // но при желании можно синхронизировать: не будем, чтобы не сбивать.
+                customDateInput.value = toInputValue(displayDate);
+            }
+
+            renderForecast();
+        }
+
+        // Список на 14 дней, начиная с displayDate
+        function renderForecast() {
+            forecastList.innerHTML = '';
+            const base = new Date(displayDate);
+            base.setHours(0, 0, 0, 0);
+
+            for (let i = 0; i < 14; i++) {
+                const d = new Date(base);
+                d.setDate(base.getDate() + i);
+
+                const level = getSummerLevel(d);
+                const percent = Math.round(level * 100);
+                const sp = formatSpeed(d);
+
+                const li = document.createElement('li');
+                if (i === 0) li.classList.add('today');
+
+                const absSpeed = Math.abs(sp.speed).toFixed(2);
+                let speedStr;
+                if (sp.trend === 'rising') speedStr = `↗ +${absSpeed}%/сут`;
+                else if (sp.trend === 'falling') speedStr = `↘ −${absSpeed}%/сут`;
+                else if (sp.trend === 'peak') speedStr = `⛰ пик`;
+                else speedStr = `❄ минимум`;
+
+                li.innerHTML = `
+                    <span class="fl-date">${formatDate(d)}</span>
+                    <span class="fl-level">${percent}%</span>
+                    <span class="fl-speed ${sp.cls}">${speedStr}</span>
+                    <span class="fl-tag">${i === 0 ? 'сейчас' : '+' + i + 'д'}</span>
+                `;
+                forecastList.appendChild(li);
             }
         }
 
-        // Установить дату отображения
         function setDisplayDate(dateObj, mode) {
             displayDate = new Date(dateObj);
-            // очищаем время
             displayDate.setHours(0, 0, 0, 0);
             if (mode) {
                 currentMode = mode;
@@ -362,86 +566,66 @@
         }
 
         // ---------- Обработчики ----------
-        // Переключение режимов (radio)
         document.querySelectorAll('input[name="mode"]').forEach(radio => {
-            radio.addEventListener('change', function(e) {
+            radio.addEventListener('change', function() {
                 if (this.value === 'today') {
                     currentMode = 'today';
-                    // устанавливаем сегодняшнюю дату
-                    const now = new Date();
-                    setDisplayDate(now, 'today');
+                    setDisplayDate(new Date(), 'today');
                 } else {
                     currentMode = 'custom';
-                    // берем дату из поля ввода
                     const val = customDateInput.value;
                     if (val) {
-                        const parts = val.split('-');
-                        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                        const d = parseInputValue(val);
                         if (!isNaN(d.getTime())) {
                             setDisplayDate(d, 'custom');
                         } else {
-                            // если невалидная, ставим сегодня
-                            const now = new Date();
-                            setDisplayDate(now, 'custom');
+                            setDisplayDate(new Date(), 'custom');
                         }
                     } else {
-                        // если пусто, ставим сегодня
-                        const now = new Date();
-                        setDisplayDate(now, 'custom');
+                        setDisplayDate(new Date(), 'custom');
                     }
                 }
             });
         });
 
-        // Кнопка "Показать" (применить выбранную дату)
         applyBtn.addEventListener('click', function() {
             const val = customDateInput.value;
             if (!val) {
                 alert('Пожалуйста, выберите дату.');
                 return;
             }
-            const parts = val.split('-');
-            const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            const d = parseInputValue(val);
             if (isNaN(d.getTime())) {
                 alert('Некорректная дата');
                 return;
             }
-            // переключаем в режим custom, если ещё не
             customRadio.checked = true;
             currentMode = 'custom';
             setDisplayDate(d, 'custom');
         });
 
-        // Кнопка "Сегодня"
         resetBtn.addEventListener('click', function() {
             todayRadio.checked = true;
             currentMode = 'today';
-            const now = new Date();
-            setDisplayDate(now, 'today');
+            setDisplayDate(new Date(), 'today');
         });
 
-        // Загрузка: по умолчанию показываем сегодня
-        (function init() {
-            const now = new Date();
-            // устанавливаем сегодня, режим today
-            todayRadio.checked = true;
-            currentMode = 'today';
-            displayDate = new Date(now);
-            displayDate.setHours(0,0,0,0);
-            // установим значение в поле ввода (для удобства)
-            const y = now.getFullYear();
-            const m = String(now.getMonth() + 1).padStart(2, '0');
-            const d = String(now.getDate()).padStart(2, '0');
-            customDateInput.value = `${y}-${m}-${d}`;
-            updateDisplay();
-        })();
-
-        // Дополнительно: если пользователь вводит дату вручную и нажимает Enter (удобство)
         customDateInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 applyBtn.click();
             }
         });
+
+        // Инициализация
+        (function init() {
+            const now = new Date();
+            todayRadio.checked = true;
+            currentMode = 'today';
+            displayDate = new Date(now);
+            displayDate.setHours(0, 0, 0, 0);
+            customDateInput.value = toInputValue(now);
+            updateDisplay();
+        })();
 
     })();
 </script>
