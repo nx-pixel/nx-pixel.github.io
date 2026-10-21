@@ -218,6 +218,19 @@
             ZOOM_MAX: 4.0,
             ZOOM_STEP: 1.15,
             ZOOM_DEFAULT: 0.2,
+
+            // === Оптимизация отрисовки звёзд ===
+            // При зуме ниже STAR_ZOOM_MIN звёзды не рисуются вообще
+            // (при сильном отдалении звёзд слишком много и они тормозят)
+            STAR_ZOOM_MIN: 0.08,
+            // При зуме ниже STAR_ZOOM_THROTTLE рисуется меньше звёзд в ячейке
+            STAR_ZOOM_THROTTLE: 0.2,
+            // Сколько звёзд на ячейку в обычном режиме
+            STAR_PER_CELL_FULL: 4,
+            // Сколько звёзд на ячейку в прореженном режиме
+            STAR_PER_CELL_THROTTLED: 1,
+            // Размер ячейки звёздного поля
+            STAR_CELL_SIZE: 1000,
         };
         // ============================================================
 
@@ -389,16 +402,6 @@
 
             star = { x: 0, y: 0, mass: SETTINGS.STAR_MASS, radius: SETTINGS.STAR_RADIUS };
 
-            // === Планеты с индивидуальными характеристиками ===
-            // Для каждой планеты задаются:
-            //  - color: основной цвет
-            //  - bands: массив цветов горизонтальных полос (атмосферные полосы)
-            //  - spots: массив { angle, size, color } — пятна/континенты/кратеры
-            //  - atmosphere: цвет атмосферы (свечение по краю)
-            //  - ring: наличие кольца
-            //  - ringColor, ringTilt: параметры кольца
-            //  - stormSpot: большое пятно (для Юпитера)
-            // Плутон — на орбите 15500, заметно дальше остальных.
             const planetDefs = [
                 {
                     name: 'Меркурий', orbitR: 1800, mass: 3000, radius: 120,
@@ -496,7 +499,6 @@
                     startAngle: 1.8
                 },
                 {
-                    // Плутон — карликовая планета, далеко за Нептуном
                     name: 'Плутон', orbitR: 15500, mass: 300, radius: 90,
                     color: '#c8b8a8',
                     bands: ['#d0c0b0', '#b8a898', '#e0d0c0', '#a89888'],
@@ -893,15 +895,39 @@
         }
 
         // ============================================================
-        //  Отрисовка
+        //  Отрисовка звёзд — С ОПТИМИЗАЦИЕЙ ПО ЗУМУ
         // ============================================================
         function drawStars() {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            const cellSize = 1000;
+            // При сильном отдалении звёзды не рисуем вообще —
+            // иначе их слишком много и начинаются тормоза.
+            if (camera.zoom < SETTINGS.STAR_ZOOM_MIN) {
+                return;
+            }
+
+            // В промежуточном режиме (zoom между STAR_ZOOM_MIN и STAR_ZOOM_THROTTLE)
+            // рисуем меньше звёзд на ячейку.
+            const throttled = camera.zoom < SETTINGS.STAR_ZOOM_THROTTLE;
+            const starsPerCell = throttled
+                ? SETTINGS.STAR_PER_CELL_THROTTLED
+                : SETTINGS.STAR_PER_CELL_FULL;
+
+            const cellSize = SETTINGS.STAR_CELL_SIZE;
+
+            // Видимая область в мировых координатах
             const viewLeft = camera.x - (canvas.width / 2) / camera.zoom;
             const viewRight = camera.x + (canvas.width / 2) / camera.zoom;
             const viewTop = camera.y - (canvas.height / 2) / camera.zoom;
             const viewBottom = camera.y + (canvas.height / 2) / camera.zoom;
+
+            // Дополнительная защита: если ячеек получается слишком много
+            // (например, при экстремально малом зуме), не рисуем звёзды.
+            const cellsX = (viewRight - viewLeft) / cellSize;
+            const cellsY = (viewBottom - viewTop) / cellSize;
+            const totalCells = cellsX * cellsY;
+            const MAX_CELLS = 4000;
+            if (totalCells * starsPerCell > MAX_CELLS) {
+                return;
+            }
 
             const startCellX = Math.floor(viewLeft / cellSize);
             const endCellX = Math.floor(viewRight / cellSize);
@@ -912,7 +938,7 @@
                 for (let cy = startCellY; cy <= endCellY; cy++) {
                     let s = (cx * 73856093) ^ (cy * 19349663);
                     function r() { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }
-                    for (let i = 0; i < 4; i++) {
+                    for (let i = 0; i < starsPerCell; i++) {
                         const wx = cx * cellSize + r() * cellSize;
                         const wy = cy * cellSize + r() * cellSize;
                         const size = (r() * 3 + 1) * camera.zoom;
@@ -928,18 +954,15 @@
             }
         }
 
-        // === Красивая планета с полосами, пятнами, атмосферой и кольцом ===
         function drawDetailedPlanet(p, glowColor, extraGlow) {
             const sp = worldToScreen(p.x, p.y);
             const r = p.radius * camera.zoom;
 
-            // Пропускаем, если далеко за пределами экрана
             if (sp.x + r * 2.5 < 0 || sp.x - r * 2.5 > canvas.width ||
                 sp.y + r * 2.5 < 0 || sp.y - r * 2.5 > canvas.height) {
                 return;
             }
 
-            // 1. Атмосферное свечение (внешний ореол)
             if (p.atmosphere) {
                 ctx.save();
                 const atmGrad = ctx.createRadialGradient(sp.x, sp.y, r * 0.9, sp.x, sp.y, r * 1.5);
@@ -952,7 +975,6 @@
                 ctx.restore();
             }
 
-            // 2. Свечение для сфотографированных
             if (extraGlow) {
                 ctx.save();
                 ctx.shadowColor = '#ffff44';
@@ -964,18 +986,15 @@
                 ctx.restore();
             }
 
-            // 3. Кольцо САТУРНА/УРАНА (сзади — часть, которая за планетой)
             if (p.ring) {
                 drawRing(p, sp, r, true);
             }
 
-            // 4. Основной диск планеты (с обрезкой по кругу)
             ctx.save();
             ctx.beginPath();
             ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
             ctx.clip();
 
-            // 4a. Базовый градиент (освещение с одной стороны)
             const baseGrad = ctx.createRadialGradient(
                 sp.x - r * 0.4, sp.y - r * 0.4, r * 0.1,
                 sp.x, sp.y, r * 1.1
@@ -986,33 +1005,25 @@
             ctx.fillStyle = baseGrad;
             ctx.fillRect(sp.x - r, sp.y - r, r * 2, r * 2);
 
-            // 4b. Горизонтальные полосы (атмосферные пояса)
             if (p.bands && p.bands.length > 0) {
                 const bandCount = p.bands.length;
                 const bandHeight = (r * 2) / bandCount;
                 for (let i = 0; i < bandCount; i++) {
                     ctx.fillStyle = p.bands[i];
                     ctx.globalAlpha = 0.35;
-                    // Полосы слегка изогнуты — как на сфере
                     ctx.fillRect(sp.x - r, sp.y - r + i * bandHeight, r * 2, bandHeight);
                 }
                 ctx.globalAlpha = 1;
             }
 
-            // 4c. Пятна/континенты/кратеры (вращаются вместе с планетой)
             if (p.spots && p.spots.length > 0) {
                 for (let spot of p.spots) {
-                    // Позиция пятна на сфере с учётом вращения планеты
                     const spotAngle = spot.angle + p.angle;
-                    // Пятно видно только на "лицевой" стороне (cos > -0.2)
                     const face = Math.cos(spotAngle);
-                    if (face < -0.3) continue; // сзади
-                    // Горизонтальная позиция на диске
+                    if (face < -0.3) continue;
                     const spotX = sp.x + Math.sin(spotAngle) * r * 0.85;
-                    // Вертикальная позиция — фиксированная (пятно "привязано" к широте)
                     const spotY = sp.y + (spot.size - 0.5) * r * 1.0;
                     const spotSize = spot.size * r;
-                    // Сжатие по горизонтали для перспективы
                     const scaleX = Math.max(0.3, Math.abs(face));
                     ctx.save();
                     ctx.globalAlpha = 0.55 * Math.min(1, (face + 0.3) / 1.3);
@@ -1024,7 +1035,6 @@
                 }
             }
 
-            // 4d. Большое пятно (шторм) для Юпитера
             if (p.stormSpot) {
                 const stormAngle = p.stormSpot.angle + p.angle;
                 const face = Math.cos(stormAngle);
@@ -1042,7 +1052,6 @@
                 }
             }
 
-            // 4e. Терминатор — затемнение с одной стороны (эффект освещения)
             const termGrad = ctx.createRadialGradient(
                 sp.x - r * 0.5, sp.y - r * 0.5, r * 0.2,
                 sp.x - r * 0.5, sp.y - r * 0.5, r * 1.8
@@ -1053,7 +1062,6 @@
             ctx.fillStyle = termGrad;
             ctx.fillRect(sp.x - r, sp.y - r, r * 2, r * 2);
 
-            // 4f. Блик (spotlight) — яркое пятно со стороны звезды
             const highlightGrad = ctx.createRadialGradient(
                 sp.x - r * 0.45, sp.y - r * 0.45, 0,
                 sp.x - r * 0.45, sp.y - r * 0.45, r * 0.8
@@ -1064,22 +1072,19 @@
             ctx.fillStyle = highlightGrad;
             ctx.fillRect(sp.x - r, sp.y - r, r * 2, r * 2);
 
-            ctx.restore(); // снимаем clip
+            ctx.restore();
 
-            // 5. Контур планеты
             ctx.beginPath();
             ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
             ctx.lineWidth = Math.max(0.5, 1 * camera.zoom);
             ctx.stroke();
 
-            // 6. Кольцо (передняя часть — та, что перед планетой)
             if (p.ring) {
                 drawRing(p, sp, r, false);
             }
         }
 
-        // Отрисовка кольца: back=true — часть за планетой, back=false — перед
         function drawRing(p, sp, r, back) {
             ctx.save();
             ctx.translate(sp.x, sp.y);
@@ -1087,12 +1092,9 @@
 
             const ringW = (p.ringWidth || 2.0) * r;
             const ringH = ringW * 0.28;
-
-            // Градиент кольца
             const ringColor = p.ringColor || 'rgba(220, 200, 150, 0.7)';
 
             if (back) {
-                // Задняя половина кольца (верхняя дуга в повёрнутой системе)
                 ctx.beginPath();
                 ctx.ellipse(0, 0, ringW, ringH, 0, Math.PI, Math.PI * 2);
                 ctx.strokeStyle = ringColor;
@@ -1100,13 +1102,11 @@
                 ctx.lineWidth = Math.max(1.5, 2.5 * camera.zoom);
                 ctx.stroke();
 
-                // Второе (внутреннее) кольцо
                 ctx.beginPath();
                 ctx.ellipse(0, 0, ringW * 0.78, ringH * 0.78, 0, Math.PI, Math.PI * 2);
                 ctx.globalAlpha = 0.35;
                 ctx.stroke();
             } else {
-                // Передняя половина кольца (нижняя дуга)
                 ctx.beginPath();
                 ctx.ellipse(0, 0, ringW, ringH, 0, 0, Math.PI);
                 ctx.strokeStyle = ringColor;
@@ -1122,12 +1122,10 @@
             ctx.restore();
         }
 
-        // Звезда — рисуем с деталями: ядро, свечение, лучи
         function drawStar() {
             const sp = worldToScreen(star.x, star.y);
             const r = star.radius * camera.zoom;
 
-            // Внешнее свечение
             ctx.save();
             const coronaGrad = ctx.createRadialGradient(sp.x, sp.y, r * 0.8, sp.x, sp.y, r * 2.5);
             coronaGrad.addColorStop(0, 'rgba(255, 240, 180, 0.6)');
@@ -1139,7 +1137,6 @@
             ctx.fill();
             ctx.restore();
 
-            // Ядро звезды с градиентом
             const coreGrad = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, r);
             coreGrad.addColorStop(0, '#ffffff');
             coreGrad.addColorStop(0.4, '#fff8c0');
@@ -1150,7 +1147,6 @@
             ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
             ctx.fill();
 
-            // Лучи (корона)
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
             const t = performance.now() * 0.001;
@@ -1226,7 +1222,7 @@
             }
             ctx.restore();
 
-            // Зона возврата к Земле
+            // Зона возврата
             {
                 const sp = worldToScreen(earth.x, earth.y);
                 const returnR = earth.radius * SETTINGS.RETURN_RADIUS_FACTOR * camera.zoom;
@@ -1240,19 +1236,15 @@
                 ctx.restore();
             }
 
-            // Звезда
             drawStar();
 
-            // Планеты (сначала кольца сзади — внутри функции)
             for (let p of planets) {
                 const done = photographed.has(p.name);
                 drawDetailedPlanet(p, null, done);
             }
 
-            // Подписи планет
             for (let p of planets) drawPlanetLabel(p);
 
-            // Астероиды
             for (let ast of asteroids) {
                 const sp = worldToScreen(ast.x, ast.y);
                 const r = ast.radius * camera.zoom;
@@ -1266,7 +1258,6 @@
                 ctx.stroke();
             }
 
-            // Ракета
             if (!gameOver) {
                 const rsp = worldToScreen(rocket.x, rocket.y);
                 const scale = camera.zoom;
@@ -1321,7 +1312,6 @@
                 ctx.restore();
             }
 
-            // Вспышка фото
             if (photoFlash) {
                 const fsp = worldToScreen(photoFlash.x, photoFlash.y);
                 const t = photoFlash.t / 0.5;
@@ -1340,7 +1330,6 @@
                 ctx.restore();
             }
 
-            // Взрыв
             if (explosion) {
                 const esp = worldToScreen(explosion.x, explosion.y);
                 const flashT = Math.max(0, 1 - explosion.t * 2);
@@ -1373,7 +1362,6 @@
                 ctx.restore();
             }
 
-            // Индикатор зума
             ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
             ctx.font = '12px monospace';
             ctx.fillText(`Zoom: ${camera.zoom.toFixed(3)}x`, 20, canvas.height - 20);
