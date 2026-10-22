@@ -48,7 +48,7 @@
             backdrop-filter: blur(5px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             font-size: 14px;
-            min-width: 220px;
+            min-width: 240px;
         }
         #hud .row {
             display: flex;
@@ -159,12 +159,12 @@
         <p>Курсор — направление сопла · ЛКМ — двигатель</p>
         <p>Колесо — масштаб · ПКМ — режим обзора</p>
         <p style="color:#ffcc44">Следите за топливом!</p>
-        <p style="color:#88ccff; font-size:12px">Физика согласована: планеты движутся по гравитации звезды.</p>
+        <p style="color:#88ccff; font-size:12px">Зонд оснащён ионным двигателем — он позволяет быстро перемещаться между планетами.</p>
     </div>
 
     <div id="hud">
         <div class="row"><span class="label">Снимки</span><span class="value" id="hudPhotos">0 / 8</span></div>
-        <div class="row"><span class="label">Время</span><span class="value" id="hudTime">0.0 с</span></div>
+        <div class="row"><span class="label">Время</span><span class="value" id="hudTime">0 дней</span></div>
         <div class="row"><span class="label">Топливо</span><span class="value" id="hudFuel">100%</span></div>
         <div class="fuelBarWrap"><div class="fuelBar" id="fuelBar" style="width:100%"></div></div>
         <div id="godBadge">⚡ РЕЖИМ БОГА</div>
@@ -219,20 +219,79 @@
             ZOOM_STEP: 1.15,
             ZOOM_DEFAULT: 0.2,
 
+            // === Масштаб времени ===
+            // 1 год = период обращения Земли вокруг звезды в игре.
+            // Значение вычисляется динамически при инициализации (см. initGame).
+            SECONDS_PER_YEAR: 60,  // будет перезаписано
+
             // === Оптимизация отрисовки звёзд ===
-            // При зуме ниже STAR_ZOOM_MIN звёзды не рисуются вообще
-            // (при сильном отдалении звёзд слишком много и они тормозят)
             STAR_ZOOM_MIN: 0.08,
-            // При зуме ниже STAR_ZOOM_THROTTLE рисуется меньше звёзд в ячейке
             STAR_ZOOM_THROTTLE: 0.2,
-            // Сколько звёзд на ячейку в обычном режиме
             STAR_PER_CELL_FULL: 4,
-            // Сколько звёзд на ячейку в прореженном режиме
             STAR_PER_CELL_THROTTLED: 1,
-            // Размер ячейки звёздного поля
             STAR_CELL_SIZE: 1000,
         };
         // ============================================================
+
+        // ============================================================
+        //  Форматирование времени миссии
+        //  1 год = период Земли (SECONDS_PER_YEAR секунд)
+        //  1 год = 12 месяцев, 1 месяц = 30 дней
+        //  Вывод: "5 мес. 12 дн.", "1 г. 3 мес. 8 дн."
+        // ============================================================
+        const DAYS_PER_MONTH = 30;
+        const MONTHS_PER_YEAR = 12;
+        const DAYS_PER_YEAR = DAYS_PER_MONTH * MONTHS_PER_YEAR; // 360
+
+        function gameSecondsToDays(sec) {
+            return (sec / SETTINGS.SECONDS_PER_YEAR) * DAYS_PER_YEAR;
+        }
+
+        // Склонение: "день/дня/дней", "месяц/месяца/месяцев", "год/года/лет"
+        function plural(n, one, few, many) {
+            const abs = Math.abs(Math.floor(n));
+            const lastTwo = abs % 100;
+            const lastOne = abs % 10;
+            if (lastTwo >= 11 && lastTwo <= 14) return many;
+            if (lastOne === 1) return one;
+            if (lastOne >= 2 && lastOne <= 4) return few;
+            return many;
+        }
+
+        function formatMissionTime(sec) {
+            const totalDays = Math.floor(gameSecondsToDays(sec));
+            if (totalDays < 1) {
+                // Меньше дня — показываем часы
+                const totalHours = Math.floor(sec / SETTINGS.SECONDS_PER_YEAR * DAYS_PER_YEAR * 24);
+                if (totalHours < 1) {
+                    return '0 дн.';
+                }
+                return `${totalHours} ч.`;
+            }
+
+            const years = Math.floor(totalDays / DAYS_PER_YEAR);
+            const remainingAfterYears = totalDays - years * DAYS_PER_YEAR;
+            const months = Math.floor(remainingAfterYears / DAYS_PER_MONTH);
+            const days = remainingAfterYears - months * DAYS_PER_MONTH;
+
+            const parts = [];
+
+            if (years > 0) {
+                parts.push(`${years} ${plural(years, 'год', 'года', 'лет')}`);
+            }
+            if (months > 0) {
+                parts.push(`${months} ${plural(months, 'мес.', 'мес.', 'мес.')}`);
+            }
+            if (days > 0) {
+                parts.push(`${days} ${plural(days, 'день', 'дня', 'дней')}`);
+            }
+
+            if (parts.length === 0) {
+                return '0 дней';
+            }
+
+            return parts.join(' ');
+        }
 
         document.getElementById('closeInfo').addEventListener('click', () => {
             document.getElementById('info').classList.add('hidden');
@@ -523,6 +582,10 @@
             earth = planets.find(p => p.name === 'Земля');
             targetPlanets = planets.filter(p => p.name !== 'Земля');
 
+            // === 1 год миссии = период обращения Земли вокруг звезды ===
+            SETTINGS.SECONDS_PER_YEAR = earth.period;
+            console.log('1 год миссии =', earth.period.toFixed(1), 'секунд =', (earth.period / 60).toFixed(2), 'минут');
+
             asteroids = [];
             let seed = 12345;
             function rand() {
@@ -607,7 +670,7 @@
 
         function updateHUD() {
             hudPhotos.textContent = `${photographed.size} / ${targetPlanets.length}`;
-            hudTime.textContent = `${gameTime.toFixed(1)} с`;
+            hudTime.textContent = formatMissionTime(gameTime);
             const pct = Math.max(0, fuel / SETTINGS.FUEL_MAX);
             hudFuel.textContent = `${Math.round(pct * 100)}%`;
             fuelBar.style.width = (pct * 100) + '%';
@@ -712,7 +775,7 @@
             endScreen.classList.add('visible', 'lose');
             endTitle.textContent = '💥 ВЗРЫВ';
             endSubtitle.textContent = 'Зонд столкнулся с небесным телом';
-            endScore.textContent = `Снимков сделано: ${photographed.size} из ${targetPlanets.length} · Время: ${gameTime.toFixed(1)} с`;
+            endScore.textContent = `Снимков сделано: ${photographed.size} из ${targetPlanets.length} · Время: ${formatMissionTime(gameTime)}`;
         }
 
         function triggerWin() {
@@ -730,7 +793,7 @@
             } else {
                 endSubtitle.textContent = `Зонд вернулся на Землю. Сфотографировано планет: ${done} из ${total}.`;
             }
-            endScore.textContent = `Время: ${gameTime.toFixed(1)} с · Остаток топлива: ${Math.round(fuel)}%`;
+            endScore.textContent = `Время: ${formatMissionTime(gameTime)} · Остаток топлива: ${Math.round(fuel)}%`;
         }
 
         // ============================================================
@@ -895,17 +958,11 @@
         }
 
         // ============================================================
-        //  Отрисовка звёзд — С ОПТИМИЗАЦИЕЙ ПО ЗУМУ
+        //  Отрисовка звёзд
         // ============================================================
         function drawStars() {
-            // При сильном отдалении звёзды не рисуем вообще —
-            // иначе их слишком много и начинаются тормоза.
-            if (camera.zoom < SETTINGS.STAR_ZOOM_MIN) {
-                return;
-            }
+            if (camera.zoom < SETTINGS.STAR_ZOOM_MIN) return;
 
-            // В промежуточном режиме (zoom между STAR_ZOOM_MIN и STAR_ZOOM_THROTTLE)
-            // рисуем меньше звёзд на ячейку.
             const throttled = camera.zoom < SETTINGS.STAR_ZOOM_THROTTLE;
             const starsPerCell = throttled
                 ? SETTINGS.STAR_PER_CELL_THROTTLED
@@ -913,21 +970,16 @@
 
             const cellSize = SETTINGS.STAR_CELL_SIZE;
 
-            // Видимая область в мировых координатах
             const viewLeft = camera.x - (canvas.width / 2) / camera.zoom;
             const viewRight = camera.x + (canvas.width / 2) / camera.zoom;
             const viewTop = camera.y - (canvas.height / 2) / camera.zoom;
             const viewBottom = camera.y + (canvas.height / 2) / camera.zoom;
 
-            // Дополнительная защита: если ячеек получается слишком много
-            // (например, при экстремально малом зуме), не рисуем звёзды.
             const cellsX = (viewRight - viewLeft) / cellSize;
             const cellsY = (viewBottom - viewTop) / cellSize;
             const totalCells = cellsX * cellsY;
             const MAX_CELLS = 4000;
-            if (totalCells * starsPerCell > MAX_CELLS) {
-                return;
-            }
+            if (totalCells * starsPerCell > MAX_CELLS) return;
 
             const startCellX = Math.floor(viewLeft / cellSize);
             const endCellX = Math.floor(viewRight / cellSize);
@@ -1194,7 +1246,6 @@
 
             drawStars();
 
-            // Орбиты
             ctx.strokeStyle = 'rgba(80, 120, 200, 0.12)';
             ctx.lineWidth = 1;
             for (let p of planets) {
@@ -1204,7 +1255,6 @@
                 ctx.stroke();
             }
 
-            // Зоны фотографирования
             ctx.save();
             ctx.setLineDash([6, 6]);
             ctx.lineWidth = 1;
@@ -1222,7 +1272,6 @@
             }
             ctx.restore();
 
-            // Зона возврата
             {
                 const sp = worldToScreen(earth.x, earth.y);
                 const returnR = earth.radius * SETTINGS.RETURN_RADIUS_FACTOR * camera.zoom;
