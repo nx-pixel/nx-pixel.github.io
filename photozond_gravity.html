@@ -1,0 +1,3278 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Фотозонд: Гравитация</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 40px 10px 20px;
+            border-radius: 8px;
+            z-index: 10;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 400px;
+        }
+        #info h2 { margin: 0 0 8px 0; font-size: 18px; }
+        #info p { margin: 4px 0; font-size: 14px; }
+        #info.hidden { display: none; }
+        #closeInfo {
+            position: absolute; top: 6px; right: 8px;
+            width: 22px; height: 22px; border: none;
+            background: rgba(255, 255, 255, 0.15); color: white;
+            border-radius: 50%; font-size: 16px; line-height: 1;
+            cursor: pointer; display: flex; align-items: center;
+            justify-content: center; padding: 0; transition: background 0.2s;
+        }
+        #closeInfo:hover { background: rgba(255, 80, 80, 0.7); }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 12px 18px;
+            border-radius: 8px;
+            z-index: 10;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 14px;
+            min-width: 260px;
+        }
+        #hud .row {
+            display: flex;
+            justify-content: space-between;
+            margin: 6px 0;
+        }
+        #hud .label { color: #aaa; }
+        #hud .value { color: #fff; font-weight: bold; }
+        #hud .cometRow .value { color: #88ddff; }
+        #hud .asteroidRow .value { color: #ffbb88; }
+        #godBadge {
+            display: none;
+            margin-top: 8px;
+            padding: 4px 8px;
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid rgba(255, 215, 0, 0.6);
+            border-radius: 4px;
+            color: #ffd700;
+            font-size: 12px;
+            text-align: center;
+            font-weight: bold;
+        }
+        #godBadge.visible { display: block; }
+        .fuelBarWrap {
+            height: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .fuelBar {
+            height: 100%;
+            background: linear-gradient(90deg, #4aff4a, #ffaa00, #ff4444);
+            background-size: 300% 100%;
+            background-position: 0% 0;
+            transition: width 0.1s, background-position 0.3s;
+            border-radius: 5px;
+        }
+        #modeIndicator {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 10;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+        }
+        #modeIndicator.overview {
+            background: rgba(200, 100, 0, 0.7);
+            border-color: rgba(255, 200, 100, 0.5);
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #ccc;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 10;
+            backdrop-filter: blur(3px);
+        }
+        #topButtons {
+            position: absolute;
+            bottom: 60px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+        #topButtons button {
+            padding: 8px 16px;
+            background: rgba(60, 90, 180, 0.5);
+            color: white;
+            border: 1px solid rgba(120, 180, 255, 0.4);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            backdrop-filter: blur(5px);
+            transition: background 0.15s;
+        }
+        #topButtons button:hover {
+            background: rgba(80, 120, 220, 0.7);
+        }
+        #topButtons button.active {
+            background: rgba(80, 200, 100, 0.6);
+            border-color: rgba(120, 255, 140, 0.7);
+        }
+        #topButtons button.paused {
+            background: rgba(220, 180, 40, 0.6);
+            border-color: rgba(255, 220, 80, 0.7);
+        }
+
+        #endScreen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; align-items: center; justify-content: center;
+            flex-direction: column; z-index: 100;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            color: white; text-align: center;
+        }
+        #endScreen.visible { display: flex; }
+        #endScreen h1 {
+            font-size: 72px; margin: 0 0 20px 0;
+            text-shadow: 0 0 30px currentColor;
+        }
+        #endScreen.win h1 { color: #4aff4a; }
+        #endScreen.lose h1 { color: #ff4444; }
+        #endScreen p { font-size: 20px; margin: 8px 0; color: #ddd; }
+        #endScreen .score { font-size: 28px; color: #ffcc44; margin: 16px 0; }
+        #restartBtn {
+            margin-top: 30px; padding: 15px 40px; font-size: 20px;
+            background: #4a9eff; color: white; border: none;
+            border-radius: 10px; cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            font-family: inherit;
+        }
+        #restartBtn:hover { background: #6ab0ff; }
+        #restartBtn:active { transform: scale(0.97); }
+
+        #showPhotosBtn {
+            margin-top: 16px; padding: 12px 30px; font-size: 18px;
+            background: rgba(80, 180, 100, 0.6); color: white;
+            border: 1px solid rgba(120, 255, 140, 0.7);
+            border-radius: 10px; cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            font-family: inherit;
+            display: none;
+        }
+        #showPhotosBtn.visible { display: inline-block; }
+        #showPhotosBtn:hover { background: rgba(100, 220, 120, 0.8); }
+        #showPhotosBtn:active { transform: scale(0.97); }
+
+        #gallery {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; z-index: 200;
+            background: rgba(0, 0, 0, 0.92);
+            overflow: hidden;
+        }
+        #gallery.visible { display: block; }
+        #galleryCanvas {
+            position: absolute; top: 0; left: 0;
+            display: block;
+            cursor: grab;
+        }
+        #galleryCanvas:active { cursor: grabbing; }
+        #galleryHeader {
+            position: absolute; top: 0; left: 0; width: 100%;
+            padding: 14px 20px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
+            color: white;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            z-index: 2;
+        }
+        #galleryHeader .title {
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        #galleryHeader .hint {
+            font-size: 13px;
+            color: #aaa;
+            font-weight: normal;
+        }
+        #closeGalleryBtn {
+            position: absolute; top: 14px; right: 20px;
+            padding: 8px 16px;
+            background: rgba(180, 60, 60, 0.6);
+            color: white;
+            border: 1px solid rgba(255, 120, 120, 0.6);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 3;
+            transition: background 0.15s;
+            font-family: inherit;
+        }
+        #closeGalleryBtn:hover { background: rgba(220, 80, 80, 0.8); }
+        #galleryFooter {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            padding: 10px 20px;
+            background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
+            color: #aaa;
+            font-size: 13px;
+            text-align: center;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        canvas { display: block; cursor: crosshair; }
+        canvas.overview { cursor: grab; }
+        canvas.overview:active { cursor: grabbing; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <button id="closeInfo" title="Закрыть">✕</button>
+        <h2>🛰 Фотозонд: Гравитация</h2>
+        <p>Цель: сфотографировать планеты и <b>вернуться к Земле</b>.</p>
+        <p>Снимок делается автоматически, когда зонд пролетает близко к объекту.</p>
+        <p>Миссия завершается, когда зонд приближается к Земле.</p>
+        <p style="color:#88ddff">Кометы — бонусные цели. Их 4.</p>
+        <p style="color:#ffbb88">Астероиды — бонусные цели. Их 6.</p>
+        <p>Курсор — направление сопла · ЛКМ — двигатель</p>
+        <p>Колесо — масштаб · ПКМ — режим обзора</p>
+        <p style="color:#ffcc44">Следите за топливом!</p>
+    </div>
+
+    <div id="hud">
+        <div class="row"><span class="label">Снимки планет</span><span class="value" id="hudPhotos">0 / 8</span></div>
+        <div class="row cometRow"><span class="label">Снимки комет</span><span class="value" id="hudComets">0 / 4</span></div>
+        <div class="row asteroidRow"><span class="label">Снимки астероидов</span><span class="value" id="hudAsteroids">0 / 6</span></div>
+        <div class="row"><span class="label">Время</span><span class="value" id="hudTime">0 дней</span></div>
+        <div class="row"><span class="label">Топливо</span><span class="value" id="hudFuel">100%</span></div>
+        <div class="fuelBarWrap"><div class="fuelBar" id="fuelBar" style="width:100%"></div></div>
+        <div id="godBadge">⚡ РЕЖИМ БОГА</div>
+    </div>
+
+    <div id="controls">Гравитация: F = G·M·m / r²</div>
+    <div id="modeIndicator">Режим: управление</div>
+
+    <div id="topButtons">
+        <button id="pauseBtn" title="Пауза (P)">⏸ Пауза</button>
+        <button id="spaceSoundsBtn" class="active" title="Звуки космоса">🔊 Звуки космоса</button>
+    </div>
+
+    <div id="endScreen">
+        <h1 id="endTitle"></h1>
+        <p id="endSubtitle"></p>
+        <div class="score" id="endScore"></div>
+        <button id="showPhotosBtn" class="visible">📸 Посмотреть фото объектов?</button>
+        <button id="restartBtn">Играть снова</button>
+    </div>
+
+    <div id="gallery">
+        <canvas id="galleryCanvas"></canvas>
+        <div id="galleryHeader">
+            <div class="title">📸 Снимки зонда</div>
+            <div class="hint">Колесо — масштаб · ЛКМ — перетаскивание · Esc — закрыть</div>
+        </div>
+        <button id="closeGalleryBtn">✕ Закрыть</button>
+        <div id="galleryFooter">Снимки идут в порядке фотографирования</div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // ============================================================
+        //  НАСТРОЙКИ
+        // ============================================================
+        const SETTINGS = {
+            G: 200,
+            THRUST: 25,
+
+            FUEL_MAX: 100,
+            FUEL_BURN_PER_SEC: 0.3,
+
+            PHOTO_RADIUS_FACTOR: 2,
+            PHOTO_COOLDOWN: 0.5,
+
+            RETURN_RADIUS_FACTOR: 1.5,
+
+            GOD_MODE: false,
+
+            STAR_MASS: 80000,
+            STAR_RADIUS: 60,
+
+            EARTH_ORBIT_R: 4000,
+            EARTH_RADIUS: 180,
+            ROCKET_START_ORBIT_R: 1200,
+
+            ASTEROID_COUNT: 120,
+            ASTEROID_BELT_R: 6000,
+            ASTEROID_BELT_SPREAD: 400,
+            ASTEROID_MASS: 500,
+
+            COMET_COUNT: 4,
+            COMET_MASS: 800,
+            COMET_RADIUS: 22,
+            COMET_PHOTO_RADIUS: 90,
+
+            BONUS_ASTEROID_COUNT: 6,
+            BONUS_ASTEROID_MASS: 200,
+            BONUS_ASTEROID_RADIUS: 28,
+            BONUS_ASTEROID_PHOTO_RADIUS: 80,
+
+            SPACE_SOUND_PLANET_RADIUS: 1800,
+            SPACE_SOUND_COMET_RADIUS: 1200,
+            SPACE_SOUND_ASTEROID_RADIUS: 1000,
+            SPACE_SOUND_STAR_RADIUS: 2200,
+            SPACE_SOUND_MAX_VOLUME: 0.65,
+            SPACE_SOUND_MAX_SIMULTANEOUS: 5,
+
+            ZOOM_MIN: 0.02,
+            ZOOM_MAX: 4.0,
+            ZOOM_STEP: 1.15,
+            ZOOM_DEFAULT: 0.2,
+
+            SECONDS_PER_YEAR: 60,
+
+            STAR_ZOOM_MIN: 0.08,
+            STAR_ZOOM_THROTTLE: 0.2,
+            STAR_PER_CELL_FULL: 4,
+            STAR_PER_CELL_THROTTLED: 1,
+            STAR_CELL_SIZE: 1000,
+
+            // === Параметры наложения текста на снимки в галерее ===
+            GALLERY_TEXT_DISTORTION_PLANET: 50,
+            GALLERY_TEXT_DISTORTION_COMET: 38,
+            GALLERY_TEXT_DISTORTION_ASTEROID: 33,
+            GALLERY_TEXT_BLUR: 3,
+            GALLERY_TEXT_WARP: 5,
+            GALLERY_TEXT_OPACITY: 53,
+            GALLERY_TEXT_SIZE: 75,
+        };
+        // ============================================================
+
+        // ============================================================
+        //  Форматирование времени
+        // ============================================================
+        const DAYS_PER_MONTH = 30;
+        const MONTHS_PER_YEAR = 12;
+        const DAYS_PER_YEAR = DAYS_PER_MONTH * MONTHS_PER_YEAR;
+
+        function gameSecondsToDays(sec) {
+            return (sec / SETTINGS.SECONDS_PER_YEAR) * DAYS_PER_YEAR;
+        }
+
+        function plural(n, one, few, many) {
+            const abs = Math.abs(Math.floor(n));
+            const lastTwo = abs % 100;
+            const lastOne = abs % 10;
+            if (lastTwo >= 11 && lastTwo <= 14) return many;
+            if (lastOne === 1) return one;
+            if (lastOne >= 2 && lastOne <= 4) return few;
+            return many;
+        }
+
+        function formatMissionTime(sec) {
+            const totalDays = Math.floor(gameSecondsToDays(sec));
+            if (totalDays < 1) {
+                const totalHours = Math.floor(sec / SETTINGS.SECONDS_PER_YEAR * DAYS_PER_YEAR * 24);
+                if (totalHours < 1) return '0 дн.';
+                return `${totalHours} ч.`;
+            }
+            const years = Math.floor(totalDays / DAYS_PER_YEAR);
+            const rem = totalDays - years * DAYS_PER_YEAR;
+            const months = Math.floor(rem / DAYS_PER_MONTH);
+            const days = rem - months * DAYS_PER_MONTH;
+            const parts = [];
+            if (years > 0) parts.push(`${years} ${plural(years, 'год', 'года', 'лет')}`);
+            if (months > 0) parts.push(`${months} ${plural(months, 'мес.', 'мес.', 'мес.')}`);
+            if (days > 0) parts.push(`${days} ${plural(days, 'день', 'дня', 'дней')}`);
+            if (parts.length === 0) return '0 дней';
+            return parts.join(' ');
+        }
+
+        document.getElementById('closeInfo').addEventListener('click', () => {
+            document.getElementById('info').classList.add('hidden');
+        });
+
+        // ============================================================
+        //  СЛОВАРЬ ДЛЯ ТЕКСТА НА СНИМКАХ
+        // ============================================================
+        const GALLERY_WORDS = [
+            'Космос', 'Звезда', 'Планета', 'Орбита', 'Галактика', 'Туманность',
+            'Квазар', 'Пульсар', 'Астероид', 'Комета', 'Метеор', 'Спутник',
+            'Солнце', 'Луна', 'Марс', 'Юпитер', 'Сатурн', 'Венера', 'Меркурий',
+            'Нептун', 'Уран', 'Плутон', 'Церера', 'Веста', 'Паллада',
+            'Эклиптика', 'Перигей', 'Апогей', 'Перицентр', 'Апоцентр',
+            'Гравитация', 'Притяжение', 'Ускорение', 'Импульс', 'Траектория',
+            'Сингулярность', 'Горизонт', 'Событие', 'Вакуум', 'Плазма',
+            'Энергия', 'Масса', 'Скорость', 'Светило', 'Созвездие',
+            'Красный', 'Синий', 'Белый', 'Жёлтый', 'Голубой', 'Огромный',
+            'Маленький', 'Далёкий', 'Близкий', 'Холодный', 'Горячий',
+            'Яркий', 'Тёмный', 'Тусклый', 'Быстрый', 'Медленный',
+            'Древний', 'Молодой', 'Таинственный', 'Загадочный',
+            'Пятно', 'Кольцо', 'Хвост', 'Ядро', 'Кора', 'Атмосфера',
+            'Полюс', 'Экватор', 'Вихрь', 'Буря', 'Ветер', 'Лёд',
+            'Пыль', 'Газ', 'Металл', 'Камень', 'Океан', 'Материк',
+            'Гора', 'Кратер', 'Долина', 'Пустыня', 'Ледник', 'Облако',
+            'Тайна', 'Загадка', 'Тишина', 'Пустота', 'Бесконечность',
+            'Вечность', 'Начало', 'Конец', 'Путь', 'Свет', 'Тень',
+            'Мечта', 'Надежда', 'Страх', 'Восторг', 'Трепет',
+			'Ведическая', 'Веды', 'Правь', 'Явь', 'Навь', 'Род', 'Рожаницы',
+			'Волхвы', 'Волхв', 'Кудесник', 'Ведун', 'Ведунья', 'Знамение',
+			'Источник', 'Исток', 'Родник', 'Криница', 'Ключ', 'Ключевая',
+			'Королева', 'Царица', 'Владычица', 'Госпожа', 'Хранительница',
+			'Снежана', 'Лада', 'Мокошь', 'Мара', 'Морена', 'Жива', 'Дива',
+			'Тёмная', 'Светлая', 'Ясная', 'Тайная', 'Древняя', 'Изначальная',
+			'Медведи', 'Медведь', 'Бурый', 'Косматый', 'Хозяин', 'Лесной',
+			'Мухомор', 'Гриб', 'Дурман', 'Зелье', 'Трава', 'Корень', 'Цвет',
+			'Русь', 'Славяне', 'Русичи', 'Предки', 'Родные', 'Пращуры',
+			'Берегиня', 'Лель', 'Ладо', 'Перун', 'Велес', 'Стрибог', 'Даждьбог',
+			'Сварог', 'Сварга', 'Ирий', 'Вырий', 'Коло', 'Коловрат', 'Солнцеворот',
+			'Оберег', 'Обряд', 'Капище', 'Святилище', 'Требище', 'Алтарь',
+			'Свиток', 'Письмо', 'Слово', 'Речь', 'Язык', 'Молва', 'Сказ',
+			'Былина', 'Сказание', 'Предание', 'Завет', 'Заповедь', 'Наказ',
+			'Звезда', 'Зорька', 'Заря', 'Зарница', 'Полынь', 'Пламень',
+			'Дух', 'Душа', 'Дыхание', 'Свет', 'Тень', 'Мрак', 'Сумрак',
+			'Сила', 'Мощь', 'Воля', 'Власть', 'Дар', 'Благодать', 'Милость',
+			'Клятва', 'Обет', 'Зарок', 'Испытание', 'Судьба', 'Доля', 'Удел',
+			'Круг', 'Спираль', 'Лабиринт', 'Путь', 'Дорога', 'Странник',
+			'Мудрость', 'Знание', 'Тайна', 'Загадка', 'Откровение', 'Прозрение',
+			'Время', 'Вечность', 'Начало', 'Конец', 'Коловерть', 'Круговерть',
+			'Память', 'Наследие', 'Родство', 'Единство', 'Соборность', 'Лад',
+			'Мир', 'Покой', 'Тишина', 'Безмолвие', 'Глас', 'Зов', 'Клич',
+			'Огонь', 'Пламя', 'Искра', 'Уголь', 'Пепел', 'Дым', 'Жар',
+			'Вода', 'Река', 'Озеро', 'Море', 'Океан', 'Волна', 'Глубина',
+			'Земля', 'Мать', 'Макошь', 'Родина', 'Отчизна', 'Простор',
+			'Ветер', 'Вихрь', 'Буря', 'Метель', 'Пурга', 'Снег', 'Лёд',
+			'Камень', 'Гора', 'Скала', 'Утёс', 'Холм', 'Курган', 'Пещера',
+			'Дуб', 'Берёза', 'Сосна', 'Кедр', 'Ива', 'Рябина', 'Калина',
+			'Волк', 'Ворон', 'Сокол', 'Орёл', 'Лебедь', 'Голубь', 'Змей',
+			'Конь', 'Тур', 'Зубр', 'Олень', 'Лось', 'Рысь', 'Соболь',
+			'Луна', 'Месяц', 'Ночь', 'Полночь', 'Рассвет', 'Закат', 'Полдень',
+			// === Ведическое / индийское ===
+			'Дхарма', 'Карма', 'Сансара', 'Мокша', 'Майя', 'Атман', 'Брахман',
+			'Брахма', 'Вишну', 'Шива', 'Кришна', 'Рама', 'Ганеша', 'Хануман',
+			'Шакти', 'Шиваи', 'Кали', 'Дурга', 'Лакшми', 'Сарасвати', 'Парвати',
+			'Индра', 'Агни', 'Варуна', 'Ваю', 'Сурья', 'Чандра', 'Яма',
+			'Праана', 'Прана', 'Кундалини', 'Чакра', 'Сахасрара', 'Аджна',
+			'Мантра', 'Тантра', 'Янтра', 'Мудра', 'Асана', 'Дхьяна', 'Самадхи',
+			'Пранава', 'Ом', 'Аум', 'Хум', 'Сохам', 'Тат', 'Твам',
+			'Веданта', 'Упанишада', 'Бхагавад', 'Гита', 'Пурана', 'Рамаяна',
+			'Ригведа', 'Самаведа', 'Яджурведа', 'Атхарваведа', 'Смрити', 'Шрути',
+			'Риши', 'Рши', 'Гуру', 'Саду', 'Садху', 'Йогин', 'Йог',
+			'Ашрам', 'Мандала', 'Ступа', 'Пагода', 'Храм', 'Тиртха', 'Ганг',
+			'Кала', 'Калачакра', 'Юга', 'Кальпа', 'Манвантара', 'Пралайя',
+			'Шунья', 'Шуньята', 'Нирвана', 'Бодхи', 'Будда', 'Бодхисаттва',
+			'Агни', 'Сома', 'Амрита', 'Кальпа', 'Рудра', 'Маруты', 'Ашвины',
+			'Пракрити', 'Пуруша', 'Пуруша', 'Гуна', 'Саттва', 'Раджас', 'Тамас',
+			'Ахамкара', 'Буддхи', 'Манас', 'Индии', 'Индра', 'Ваджра',
+			'Дэва', 'Дэви', 'Асура', 'Ракшаса', 'Пишача', 'Нага', 'Гаруда',
+			'Садхана', 'Сиддхи', 'Риддхи', 'Вибхути', 'Майя', 'Лила', 'Лила',
+			'Сутра', 'Шастра', 'Слока', 'Гатха', 'Стути', 'Стотра', 'Киртан',
+			'Бхакти', 'Джняна', 'Карма', 'Раджа', 'Хатха', 'Крия', 'Кундалини',
+			'Чакра', 'Падма', 'Ваджра', 'Гханта', 'Даммару', 'Шанкха', 'Мала',
+			'Тилак', 'Бинди', 'Кумкум', 'Синдур', 'Халди', 'Чандан', 'Агхара',
+			'Дивали', 'Холи', 'Наваратри', 'Махашиваратри', 'Кумбха', 'Пуджа',
+			'Прасад', 'Бхога', 'Найведья', 'Арати', 'Дхуп', 'Дипа', 'Джйоти',
+			'Шанти', 'Ахимса', 'Сатья', 'Дхана', 'Дхарма', 'Кшама', 'Дайя',
+			 // === Прилагательные (ведические / эзотерические) ===
+			'Вечная', 'Бескрайняя', 'Небесная', 'Звёздная', 'Лунная', 'Солнечная',
+			'Огненная', 'Водная', 'Земная', 'Воздушная', 'Эфирная', 'Тонкая',
+			'Плотная', 'Скрытая', 'Явная', 'Незримая', 'Зримая', 'Внутренняя',
+			'Внешняя', 'Высшая', 'Низшая', 'Срединная', 'Пограничная', 'Запредельная',
+			'Безмолвная', 'Говорящая', 'Поющая', 'Звенящая', 'Гудящая', 'Шепчущая',
+			'Мудрая', 'Древняя', 'Первородная', 'Изначальная', 'Несотворённая',
+			'Рождённая', 'Нерождённая', 'Бессмертная', 'Смертная', 'Живая',
+			'Мёртвая', 'Спящая', 'Бодрствующая', 'Пробуждённая', 'Свободная',
+			'Связанная', 'Чистая', 'Осквернённая', 'Святая', 'Грешная',
+			'Светоносная', 'Теневая', 'Огнезрачная', 'Златокудрая', 'Среброликая',
+			'Белоснежная', 'Чернобровая', 'Красноликая', 'Синеокая', 'Зелёноглазая',
+			'Многоликая', 'Единоликая', 'Двуликая', 'Тысячеликая', 'Безликая',
+			'Всевидящая', 'Всеслышащая', 'Всезнающая', 'Всемогущая', 'Вездесущая',
+			'Крылатая', 'Пернатая', 'Хвостатая', 'Рогатая', 'Зубастая',
+			'Косматая', 'Лохматая', 'Гладкая', 'Шершавая', 'Бархатная',
+			'Студёная', 'Знойная', 'Морозная', 'Пламенная', 'Тлеющая',
+			'Гремящая', 'Тихая', 'Гулкая', 'Звонкая', 'Глухая',
+			'Далёкая', 'Близкая', 'Заветная', 'Сокровенная', 'Потаённая',
+			'Явленная', 'Скрываемая', 'Открытая', 'Закрытая', 'Запечатанная',
+			'Раскрытая', 'Проявленная', 'Непроявленная', 'Грядущая', 'Ушедшая',
+			'Настоящая', 'Будущая', 'Прошлая', 'Вневеременная', 'Внепространственная',
+
+			// === Глаголы (ведические / эзотерические) ===
+			'Пробудись', 'Вспомни', 'Узнай', 'Пойми', 'Услышь', 'Увидь',
+			'Почувствуй', 'Прими', 'Отдай', 'Отпусти', 'Верни', 'Найди',
+			'Потеряй', 'Сбереги', 'Сохрани', 'Защити', 'Спаси', 'Исцели',
+			'Очисти', 'Освяти', 'Благослови', 'Прокляни', 'Накажи', 'Помилуй',
+			'Прости', 'Забудь', 'Помни', 'Жди', 'Спеши', 'Медли',
+			'Иди', 'Стой', 'Беги', 'Лети', 'Плыви', 'Падай',
+			'Восстань', 'Взойди', 'Спустись', 'Вернись', 'Уйди', 'Приди',
+			'Открой', 'Закрой', 'Запри', 'Отвори', 'Впусти', 'Выпусти',
+			'Позови', 'Отзови', 'Преклонись', 'Возвысься', 'Смирись', 'Восстань',
+			'Молчи', 'Говори', 'Пой', 'Плачь', 'Смейся', 'Вздыхай',
+			'Твори', 'Разрушай', 'Созидай', 'Ломай', 'Строй', 'Рушь',
+			'Сей', 'Жни', 'Жни', 'Пожинай', 'Взращивай', 'Вскармливай',
+			'Люби', 'Ненавидь', 'Жалей', 'Губи', 'Храни', 'Теряй',
+			'Верь', 'Сомневайся', 'Знай', 'Не знай', 'Ищи', 'Обрети',
+			'Смотри', 'Внемли', 'Внимай', 'Внемли', 'Взирай', 'Зри',
+			'Помни', 'Забудь', 'Вспомни', 'Прозрей', 'Ослепни', 'Узри',
+			'Шепчи', 'Кричи', 'Воззови', 'Воззови', 'Призови', 'Отзовись',
+			'Бодрствуй', 'Спи', 'Пробудись', 'Усни', 'Очнись', 'Забудься',
+			'Летай', 'Плыви', 'Скользи', 'Мчись', 'Стремись', 'Достигни',
+			'Жди', 'Встречай', 'Провожай', 'Обними', 'Отпусти', 'Держи',
+
+			// === Уфология ===
+			'Контактор', 'Контакт', 'Контактакт', 'Похищение', 'Абдукция',
+			'Абдуктор', 'Пришелец', 'Пришельцы', 'Чужой', 'Чужие', 'Инопланетянин',
+			'Инопланетный', 'НЛО', 'УФО', 'Тарелка', 'Летающая', 'Диск',
+			'Треугольник', 'Сигара', 'Шар', 'Сфера', 'Орб', 'Огни',
+			'Круги', 'Круги', 'Пиктограммы', 'Агроглифы', 'Кропциркл',
+			'Серый', 'Серые', 'Серый', 'Рептилоид', 'Рептилоиды', 'Плеядеанец',
+			'Плеядеанцы', 'Арктурианец', 'Арктурианцы', 'Сириусец', 'Сириусцы',
+			'Орионец', 'Орионцы', 'Драконианец', 'Драконианцы', 'Нордик',
+			'Нордики', 'Блондин', 'Блондины', 'Высокие', 'Низкие', 'Малые',
+			'Зелёные', 'Серо-зелёные', 'Гуманоид', 'Гуманоиды', 'Андроид',
+			'Киборг', 'Биоробот', 'Клон', 'Клоны', 'Гибрид', 'Гибриды',
+			'Похищенный', 'Похищенная', 'Контактер', 'Контактерша', 'Свидетель',
+			'Свидетельница', 'Очевидец', 'Абдукция', 'Абдукция', 'Имплант',
+			'Импланты', 'Метка', 'Метки', 'Клеймо', 'Знак', 'Символ',
+			'Телепортация', 'Телепорт', 'Материализация', 'Дематериализация',
+			'Левитация', 'Полёт', 'Световой', 'Луч', 'Луч', 'Пучок',
+			'Аннигиляция', 'Варп', 'Гиперпространство', 'Гипердвигатель',
+			'Червоточина', 'Портал', 'Портал', 'Тоннель', 'Переход',
+			'Зона', 'Зона-51', 'Зона-51', 'Секретный', 'Секретная', 'Военный',
+			'Военная', 'Правительство', 'Правительственный', 'Сокрытие',
+			'Заговор', 'Заговорщик', 'Секрет', 'Секреты', 'Утечка',
+			'Рассекречивание', 'Разоблачение', 'Правда', 'Правда', 'Ложь',
+			'Обман', 'Мистификация', 'Фальсификация', 'Документ', 'Документы',
+			'Архив', 'Архивы', 'База', 'Данные', 'Сигнал', 'Сигналы',
+			'Передача', 'Приём', 'Связь', 'Канал', 'Частота', 'Диапазон',
+			'Помехи', 'Шум', 'Код', 'Шифр', 'Дешифровка', 'Расшифровка',
+			'Послание', 'Послания', 'Сообщение', 'Сообщения', 'Приветствие',
+			'Предупреждение', 'Угроза', 'Обещание', 'Пророчество', 'Предсказание',
+
+			// === Нью-эйдж ===
+			'Вознесение', 'Вознесённый', 'Вознесённые', 'Учитель', 'Учителя',
+			'Мастер', 'Мастера', 'Владыка', 'Владыки', 'Иерархия', 'Белое',
+			'Братство', 'Братство', 'Света', 'Свет', 'Любовь', 'Любовь',
+			'Мудрость', 'Мудрость', 'Истина', 'Истина', 'Свобода', 'Свобода',
+			'Единство', 'Единство', 'Гармония', 'Гармония', 'Баланс', 'Баланс',
+			'Энергия', 'Энергии', 'Вибрация', 'Вибрации', 'Частота', 'Частоты',
+			'Поле', 'Поля', 'Аура', 'Ауры', 'Чакра', 'Чакры', 'Меридиан',
+			'Меридианы', 'Нади', 'Нади', 'Кундалини', 'Кундалини', 'Прана',
+			'Прана', 'Ци', 'Ци', 'Ки', 'Ки', 'Оргон', 'Оргон', 'Эфир',
+			'Эфир', 'Акаша', 'Акаша', 'Хроники', 'Акаши', 'Хроники',
+			'Медитация', 'Медитации', 'Мантра', 'Мантры', 'Аффирмация',
+			'Аффирмации', 'Визуализация', 'Визуализации', 'Намерение', 'Намерения',
+			'Проявление', 'Проявления', 'Манифестация', 'Манифестации',
+			'Изобилие', 'Изобилие', 'Процветание', 'Процветание', 'Богатство',
+			'Богатство', 'Успех', 'Успех', 'Удача', 'Удача', 'Судьба',
+			'Судьба', 'Карма', 'Карма', 'Реинкарнация', 'Реинкарнации',
+			'Перевоплощение', 'Перевоплощения', 'Прошлая', 'Прошлые', 'Жизнь',
+			'Жизни', 'Смерть', 'Смерти', 'Переход', 'Переходы', 'Тонкий',
+			'Тонкие', 'План', 'Планы', 'Астрал', 'Астральный', 'Ментал',
+			'Ментальный', 'Эфирный', 'Физический', 'Духовный', 'Духовные',
+			'Проводник', 'Проводники', 'Гид', 'Гиды', 'Ангел', 'Ангелы',
+			'Архангел', 'Архангелы', 'Хранитель', 'Хранители', 'Наставник',
+			'Наставники', 'Дух', 'Духи', 'Душа', 'Души', 'Род', 'Рода',
+			'Предки', 'Предки', 'Родовой', 'Родовые', 'Карма', 'Кармы',
+			'Исцеление', 'Исцеления', 'Целитель', 'Целители', 'Целительство',
+			'Рейки', 'Рейки', 'Практик', 'Практики', 'Сеанс', 'Сеансы',
+			'Кристалл', 'Кристаллы', 'Аметист', 'Аметисты', 'Кварц', 'Кварц',
+			'Горный', 'Горный', 'Розовый', 'Розовый', 'Лунный', 'Лунный',
+			'Солнечный', 'Солнечный', 'Обсидиан', 'Обсидиан', 'Турмалин',
+			'Турмалин', 'Талисман', 'Талисманы', 'Амулет', 'Амулеты',
+			'Оберег', 'Обереги', 'Руна', 'Руны', 'Рунический', 'Рунические',
+			'Символ', 'Символы', 'Знак', 'Знаки', 'Печать', 'Печати',
+			'Мандала', 'Мандалы', 'Янтра', 'Янтры', 'Пентаграмма', 'Пентаграмма',
+			'Гексаграмма', 'Гексаграмма', 'Звезда', 'Звезда', 'Давида',
+			'Крест', 'Кресты', 'Анкх', 'Анкх', 'Ом', 'Ом', 'Лотос',
+			'Лотос', 'Спираль', 'Спирали', 'Лабиринт', 'Лабиринты',
+			'Портал', 'Порталы', 'Врата', 'Врата', 'Дверь', 'Двери',
+			'Ключ', 'Ключи', 'Код', 'Коды', 'Шифр', 'Шифры'
+        ];
+
+        function generateOneWord() {
+            return GALLERY_WORDS[Math.floor(Math.random() * GALLERY_WORDS.length)];
+        }
+
+        // ============================================================
+        //  Состояние
+        // ============================================================
+        let rocket, star, planets, asteroids, comets, bonusAsteroids, earth, camera, mouse;
+        let overviewMode = false;
+        let dragStart = null;
+        let gameOver = false;
+        let gameWin = false;
+        let gamePaused = false;
+        let gameTime = 0;
+        let explosion = null;
+        let photoFlash = null;
+        let fuel = SETTINGS.FUEL_MAX;
+        let photoCooldown = 0;
+        let photographed = new Set();
+        let photographedComets = new Set();
+        let photographedAsteroids = new Set();
+        let targetPlanets = [];
+
+        let photoLog = [];
+
+        let spaceSoundsEnabled = true;
+        let spaceSoundNodes = [];
+
+        const modeIndicator = document.getElementById('modeIndicator');
+        const endScreen = document.getElementById('endScreen');
+        const endTitle = document.getElementById('endTitle');
+        const endSubtitle = document.getElementById('endSubtitle');
+        const endScore = document.getElementById('endScore');
+        const hudPhotos = document.getElementById('hudPhotos');
+        const hudComets = document.getElementById('hudComets');
+        const hudAsteroids = document.getElementById('hudAsteroids');
+        const hudTime = document.getElementById('hudTime');
+        const hudFuel = document.getElementById('hudFuel');
+        const fuelBar = document.getElementById('fuelBar');
+        const godBadge = document.getElementById('godBadge');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const spaceSoundsBtn = document.getElementById('spaceSoundsBtn');
+        const showPhotosBtn = document.getElementById('showPhotosBtn');
+
+        let lastTime = performance.now();
+        let animationFrameId;
+
+        // ============================================================
+        //  АУДИО
+        // ============================================================
+        let audioCtx = null;
+        let thrustOsc = null;
+        let thrustGain = null;
+        let spaceMasterGain = null;
+
+        function initAudio() {
+            if (audioCtx) return;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                spaceMasterGain = audioCtx.createGain();
+                spaceMasterGain.gain.value = 1;
+                spaceMasterGain.connect(audioCtx.destination);
+            } catch (e) { console.warn('Web Audio API не поддерживается', e); }
+        }
+
+        function makeNoiseBuffer(duration) {
+            const bufferSize = audioCtx.sampleRate * duration;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            return buffer;
+        }
+
+        function createSpaceSoundForObject(obj, type) {
+            const oscs = [];
+            const master = audioCtx.createGain();
+            master.gain.value = 0;
+
+            let panner = null;
+            if (audioCtx.createStereoPanner) {
+                panner = audioCtx.createStereoPanner();
+                panner.pan.value = 0;
+                master.connect(panner).connect(spaceMasterGain);
+            } else {
+                master.connect(spaceMasterGain);
+            }
+
+            if (type === 'star') {
+                const sub = audioCtx.createOscillator();
+                sub.type = 'sine';
+                sub.frequency.value = 55;
+                const subGain = audioCtx.createGain();
+                subGain.gain.value = 0.4;
+                sub.connect(subGain).connect(master);
+                sub.start();
+                oscs.push(sub);
+
+                const shimmer = audioCtx.createOscillator();
+                shimmer.type = 'sine';
+                shimmer.frequency.value = 440;
+                const shGain = audioCtx.createGain();
+                shGain.gain.value = 0.03;
+                const shLfo = audioCtx.createOscillator();
+                shLfo.type = 'sine';
+                shLfo.frequency.value = 0.7;
+                const shLfoGain = audioCtx.createGain();
+                shLfoGain.gain.value = 0.025;
+                shLfo.connect(shLfoGain).connect(shGain.gain);
+                shLfo.start();
+                shimmer.connect(shGain).connect(master);
+                shimmer.start();
+                oscs.push(shimmer, shLfo);
+            } else if (type === 'planet') {
+                const name = obj.name;
+                const baseFreqs = {
+                    'Меркурий': 110, 'Венера': 165, 'Земля': 220,
+                    'Марс': 98, 'Юпитер': 55, 'Сатурн': 65,
+                    'Уран': 120, 'Нептун': 70, 'Плутон': 660,
+                };
+                const baseFreq = baseFreqs[name] || 100;
+
+                const o = audioCtx.createOscillator();
+                o.type = name === 'Меркурий' ? 'triangle' : 'sine';
+                o.frequency.value = baseFreq;
+                const og = audioCtx.createGain();
+                og.gain.value = 0.35;
+                o.connect(og).connect(master);
+                o.start();
+                oscs.push(o);
+
+                if (name === 'Земля' || name === 'Венера' || name === 'Марс' || name === 'Нептун') {
+                    const n = audioCtx.createBufferSource();
+                    n.buffer = makeNoiseBuffer(4);
+                    n.loop = true;
+                    const nf = audioCtx.createBiquadFilter();
+                    nf.type = 'bandpass';
+                    nf.frequency.value = name === 'Земля' ? 2000 :
+                                         name === 'Марс' ? 800 :
+                                         name === 'Венера' ? 600 : 400;
+                    nf.Q.value = 2;
+                    const ng = audioCtx.createGain();
+                    ng.gain.value = 0.06;
+                    n.connect(nf).connect(ng).connect(master);
+                    n.start();
+                    oscs.push(n);
+                }
+
+                if (name === 'Сатурн') {
+                    const bell = audioCtx.createOscillator();
+                    bell.type = 'sine';
+                    bell.frequency.value = 1200;
+                    const bg = audioCtx.createGain();
+                    bg.gain.value = 0.04;
+                    const blfo = audioCtx.createOscillator();
+                    blfo.type = 'sine';
+                    blfo.frequency.value = 0.5;
+                    const blg = audioCtx.createGain();
+                    blg.gain.value = 0.03;
+                    blfo.connect(blg).connect(bg.gain);
+                    blfo.start();
+                    bell.connect(bg).connect(master);
+                    bell.start();
+                    oscs.push(bell, blfo);
+                }
+
+                if (name === 'Юпитер') {
+                    const storm = audioCtx.createOscillator();
+                    storm.type = 'sawtooth';
+                    storm.frequency.value = 40;
+                    const stGain = audioCtx.createGain();
+                    stGain.gain.value = 0.08;
+                    const stFilter = audioCtx.createBiquadFilter();
+                    stFilter.type = 'lowpass';
+                    stFilter.frequency.value = 200;
+                    storm.connect(stFilter).connect(stGain).connect(master);
+                    storm.start();
+                    oscs.push(storm);
+                }
+            } else if (type === 'comet') {
+                const whistle = audioCtx.createOscillator();
+                whistle.type = 'sine';
+                whistle.frequency.value = 1800;
+                const wg = audioCtx.createGain();
+                wg.gain.value = 0.15;
+                whistle.connect(wg).connect(master);
+                whistle.start();
+                oscs.push(whistle);
+
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = makeNoiseBuffer(4);
+                noise.loop = true;
+                const nf = audioCtx.createBiquadFilter();
+                nf.type = 'bandpass';
+                nf.frequency.value = 1500;
+                nf.Q.value = 3;
+                const ng = audioCtx.createGain();
+                ng.gain.value = 0.05;
+                noise.connect(nf).connect(ng).connect(master);
+                noise.start();
+                oscs.push(noise);
+            } else if (type === 'asteroid') {
+                const o = audioCtx.createOscillator();
+                o.type = 'triangle';
+                o.frequency.value = 140 + (obj.id || 0) * 30;
+                const og = audioCtx.createGain();
+                og.gain.value = 0.25;
+                o.connect(og).connect(master);
+                o.start();
+                oscs.push(o);
+
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = makeNoiseBuffer(3);
+                noise.loop = true;
+                const nf = audioCtx.createBiquadFilter();
+                nf.type = 'bandpass';
+                nf.frequency.value = 600;
+                nf.Q.value = 2;
+                const ng = audioCtx.createGain();
+                ng.gain.value = 0.05;
+                noise.connect(nf).connect(ng).connect(master);
+                noise.start();
+                oscs.push(noise);
+            }
+
+            return { oscs, master, panner };
+        }
+
+        function initSpaceSounds() {
+            if (!audioCtx) return;
+            spaceSoundNodes = [];
+
+            const starSound = createSpaceSoundForObject(star, 'star');
+            spaceSoundNodes.push({ type: 'star', id: 'star', object: star, ...starSound, hearRadius: SETTINGS.SPACE_SOUND_STAR_RADIUS });
+
+            for (let p of planets) {
+                const s = createSpaceSoundForObject(p, 'planet');
+                spaceSoundNodes.push({ type: 'planet', id: p.name, object: p, ...s, hearRadius: SETTINGS.SPACE_SOUND_PLANET_RADIUS });
+            }
+
+            for (let c of comets) {
+                const s = createSpaceSoundForObject(c, 'comet');
+                spaceSoundNodes.push({ type: 'comet', id: c.id, object: c, ...s, hearRadius: SETTINGS.SPACE_SOUND_COMET_RADIUS });
+            }
+
+            for (let a of bonusAsteroids) {
+                const s = createSpaceSoundForObject(a, 'asteroid');
+                spaceSoundNodes.push({ type: 'asteroid', id: a.id, object: a, ...s, hearRadius: SETTINGS.SPACE_SOUND_ASTEROID_RADIUS });
+            }
+        }
+
+        function stopAllSpaceSounds() {
+            for (let n of spaceSoundNodes) {
+                for (let o of n.oscs) {
+                    try { o.stop(); } catch(e) {}
+                }
+                try { n.master.disconnect(); } catch(e) {}
+            }
+            spaceSoundNodes = [];
+        }
+
+        // Отключение звуков космоса (плавно уводим мастер-гейн в 0)
+        function fadeOutSpaceSounds() {
+            if (spaceMasterGain && audioCtx) {
+                try {
+                    spaceMasterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.15);
+                } catch(e) {}
+            }
+        }
+
+        // Восстановление звуков космоса (если пользователь их не отключал)
+        function fadeInSpaceSounds() {
+            if (spaceMasterGain && audioCtx && spaceSoundsEnabled) {
+                try {
+                    spaceMasterGain.gain.setTargetAtTime(1, audioCtx.currentTime, 0.15);
+                } catch(e) {}
+            }
+        }
+
+        function updateSpaceSounds() {
+            if (!audioCtx || spaceSoundNodes.length === 0) return;
+            const now = audioCtx.currentTime;
+            const maxSim = Math.max(1, SETTINGS.SPACE_SOUND_MAX_SIMULTANEOUS);
+
+            const candidates = [];
+            for (let n of spaceSoundNodes) {
+                const obj = n.object;
+                const dx = obj.x - rocket.x;
+                const dy = obj.y - rocket.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < n.hearRadius) {
+                    candidates.push({ n, dx, dy, dist });
+                }
+            }
+
+            candidates.sort((a, b) => a.dist - b.dist);
+
+            const activeSet = new Set();
+            for (let i = 0; i < Math.min(maxSim, candidates.length); i++) {
+                activeSet.add(candidates[i].n);
+            }
+
+            for (let n of spaceSoundNodes) {
+                let vol = 0;
+                let pan = 0;
+
+                if (activeSet.has(n)) {
+                    const cand = candidates.find(c => c.n === n);
+                    if (cand) {
+                        vol = SETTINGS.SPACE_SOUND_MAX_VOLUME * (1 - cand.dist / n.hearRadius);
+                        pan = Math.max(-1, Math.min(1, cand.dx / n.hearRadius * 2));
+                    }
+                }
+
+                n.master.gain.setTargetAtTime(vol, now, 0.15);
+                if (n.panner) {
+                    n.panner.pan.setTargetAtTime(pan, now, 0.15);
+                }
+            }
+        }
+
+        function startThrustSound() {
+            if (!audioCtx || thrustOsc) return;
+            thrustOsc = audioCtx.createOscillator();
+            thrustOsc.type = 'sawtooth';
+            thrustOsc.frequency.value = 60;
+            thrustGain = audioCtx.createGain();
+            thrustGain.gain.value = 0.08;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 400;
+            thrustOsc.connect(filter);
+            filter.connect(thrustGain);
+            thrustGain.connect(audioCtx.destination);
+            thrustOsc.start();
+        }
+
+        function stopThrustSound() {
+            if (!thrustOsc) return;
+            try {
+                thrustGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+                const osc = thrustOsc;
+                thrustOsc = null;
+                thrustGain = null;
+                setTimeout(() => { try { osc.stop(); } catch(e) {} }, 100);
+            } catch(e) {}
+        }
+
+        function playTone(freq, duration, type = 'sine', volume = 0.08) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playPhotoSound() {
+            if (!audioCtx) return;
+            playTone(1800, 0.04, 'square', 0.05);
+            setTimeout(() => playTone(2400, 0.05, 'square', 0.04), 40);
+        }
+
+        function playCometPhotoSound() {
+            if (!audioCtx) return;
+            playTone(2200, 0.05, 'triangle', 0.05);
+            setTimeout(() => playTone(2800, 0.06, 'triangle', 0.05), 50);
+            setTimeout(() => playTone(3300, 0.05, 'triangle', 0.04), 110);
+        }
+
+        function playAsteroidPhotoSound() {
+            if (!audioCtx) return;
+            playTone(1200, 0.06, 'sine', 0.05);
+            setTimeout(() => playTone(1600, 0.06, 'sine', 0.05), 60);
+            setTimeout(() => playTone(2000, 0.05, 'sine', 0.04), 120);
+        }
+
+        function playWinSound() {
+            if (!audioCtx) return;
+            const notes = [523, 659, 784, 1047];
+            notes.forEach((f, i) => {
+                setTimeout(() => playTone(f, 0.3, 'triangle', 0.1), i * 150);
+            });
+        }
+
+        function playExplosionSound() {
+            if (!audioCtx) return;
+            const duration = 1.2;
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + duration);
+            const oscGain = audioCtx.createGain();
+            oscGain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(oscGain);
+            oscGain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+
+            const bufferSize = audioCtx.sampleRate * duration;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+            }
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.value = 0.2;
+            const noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.value = 1500;
+            noise.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(audioCtx.destination);
+            noise.start();
+        }
+
+        function unlockAudio() {
+            initAudio();
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        }
+        window.addEventListener('mousedown', unlockAudio, { once: false });
+        window.addEventListener('keydown', unlockAudio, { once: false });
+        window.addEventListener('touchstart', unlockAudio, { once: false });
+
+        // ============================================================
+        //  Кнопки
+        // ============================================================
+        function setPause(on) {
+            gamePaused = on;
+            if (on) {
+                pauseBtn.textContent = '▶ Продолжить';
+                pauseBtn.classList.add('paused');
+                if (rocket && rocket.thrusting && thrustGain) {
+                    thrustGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+                }
+            } else {
+                pauseBtn.textContent = '⏸ Пауза';
+                pauseBtn.classList.remove('paused');
+                if (rocket && rocket.thrusting && thrustGain) {
+                    thrustGain.gain.setTargetAtTime(0.08, audioCtx.currentTime, 0.05);
+                }
+            }
+        }
+
+        pauseBtn.addEventListener('click', () => setPause(!gamePaused));
+
+        function setSpaceSounds(on) {
+            spaceSoundsEnabled = on;
+            if (on) {
+                spaceSoundsBtn.textContent = '🔊 Звуки космоса';
+                spaceSoundsBtn.classList.add('active');
+                // Если игра завершена — не включаем звуки
+                if (spaceMasterGain && !gameOver && !gameWin) {
+                    spaceMasterGain.gain.setTargetAtTime(1, audioCtx.currentTime, 0.1);
+                }
+            } else {
+                spaceSoundsBtn.textContent = '🔇 Звуки космоса';
+                spaceSoundsBtn.classList.remove('active');
+                if (spaceMasterGain) spaceMasterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+            }
+        }
+
+        spaceSoundsBtn.addEventListener('click', () => setSpaceSounds(!spaceSoundsEnabled));
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'p' || e.key === 'P' || e.key === 'з' || e.key === 'З') {
+                setPause(!gamePaused);
+            }
+            if (e.key === 'Escape') {
+                if (galleryVisible) closeGallery();
+            }
+        });
+
+        // ============================================================
+        //  Инициализация
+        // ============================================================
+        function initGame() {
+            if (spaceSoundNodes.length > 0) stopAllSpaceSounds();
+
+            gameOver = false;
+            gameWin = false;
+            gamePaused = false;
+            gameTime = 0;
+            explosion = null;
+            photoFlash = null;
+            fuel = SETTINGS.FUEL_MAX;
+            photoCooldown = 0;
+            photographed = new Set();
+            photographedComets = new Set();
+            photographedAsteroids = new Set();
+            photoLog = [];
+            endScreen.classList.remove('visible', 'win', 'lose');
+            showPhotosBtn.classList.remove('visible');
+            closeGallery();
+
+            // Восстанавливаем звуки космоса при рестарте
+            fadeInSpaceSounds();
+
+            pauseBtn.textContent = '⏸ Пауза';
+            pauseBtn.classList.remove('paused');
+
+            if (rocket && rocket.thrusting) stopThrustSound();
+            setOverviewMode(false);
+
+            if (SETTINGS.GOD_MODE) godBadge.classList.add('visible');
+            else godBadge.classList.remove('visible');
+
+            rocket = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, targetAngle: 0, thrusting: false };
+
+            star = { x: 0, y: 0, mass: SETTINGS.STAR_MASS, radius: SETTINGS.STAR_RADIUS };
+
+            const planetDefs = [
+                {
+                    name: 'Меркурий', orbitR: 1800, mass: 30000, radius: 120,
+                    color: '#a89880', bands: ['#b8a890', '#9a8870', '#c0b0a0', '#8a7a68'],
+                    spots: [
+                        { angle: 0.5, size: 0.25, color: '#7a6a58' },
+                        { angle: 2.1, size: 0.18, color: '#6a5a48' },
+                        { angle: 4.0, size: 0.22, color: '#8a7a68' },
+                        { angle: 5.5, size: 0.15, color: '#7a6a58' }
+                    ],
+                    atmosphere: null,
+                    startAngle: 0
+                },
+                {
+                    name: 'Венера', orbitR: 2800, mass: 50000, radius: 160,
+                    color: '#e8c880', bands: ['#f0d890', '#e0c070', '#d8b060', '#e8c880'],
+                    spots: [
+                        { angle: 1.0, size: 0.3, color: '#d0a850' },
+                        { angle: 3.5, size: 0.25, color: '#c89840' }
+                    ],
+                    atmosphere: 'rgba(255, 220, 140, 0.35)',
+                    startAngle: 1.3
+                },
+                {
+                    name: 'Земля', orbitR: SETTINGS.EARTH_ORBIT_R, mass: 70000, radius: SETTINGS.EARTH_RADIUS,
+                    color: '#4a9eff', bands: ['#4a9eff', '#3a8eef', '#5aaaFF', '#4a9eff'],
+                    spots: [
+                        { angle: 0.4, size: 0.35, color: '#3a8a3a' },
+                        { angle: 1.8, size: 0.25, color: '#2a7a2a' },
+                        { angle: 3.2, size: 0.3, color: '#4a9a4a' },
+                        { angle: 4.8, size: 0.2, color: '#2a7a2a' },
+                        { angle: 5.8, size: 0.15, color: '#5aaaFF' }
+                    ],
+                    atmosphere: 'rgba(150, 200, 255, 0.4)',
+                    startAngle: 2.5
+                },
+                {
+                    name: 'Марс', orbitR: 5200, mass: 40000, radius: 140,
+                    color: '#c05030', bands: ['#c85838', '#b84828', '#d06848', '#a84020'],
+                    spots: [
+                        { angle: 0.8, size: 0.25, color: '#8a3018' },
+                        { angle: 2.5, size: 0.2, color: '#a04020' },
+                        { angle: 4.5, size: 0.22, color: '#7a2810' }
+                    ],
+                    atmosphere: 'rgba(255, 150, 100, 0.25)',
+                    startAngle: 4.0
+                },
+                {
+                    name: 'Юпитер', orbitR: 6800, mass: 150000, radius: 280,
+                    color: '#d0a070',
+                    bands: ['#d8b080', '#c09060', '#e0c090', '#b08050', '#d8b080', '#c8a070'],
+                    spots: [
+                        { angle: 0.6, size: 0.12, color: '#a06040' },
+                        { angle: 2.3, size: 0.15, color: '#e0c8a0' },
+                        { angle: 4.1, size: 0.1, color: '#b07850' }
+                    ],
+                    stormSpot: { angle: 3.2, size: 0.35, color: '#c05030' },
+                    atmosphere: 'rgba(255, 200, 150, 0.25)',
+                    startAngle: 5.2
+                },
+                {
+                    name: 'Сатурн', orbitR: 8600, mass: 120000, radius: 240,
+                    color: '#e0d0a0',
+                    bands: ['#e8d8a8', '#d8c890', '#f0e0b0', '#d0c088', '#e8d8a8'],
+                    spots: [
+                        { angle: 1.0, size: 0.1, color: '#c8b880' },
+                        { angle: 3.8, size: 0.12, color: '#d0c090' }
+                    ],
+                    atmosphere: 'rgba(255, 240, 200, 0.2)',
+                    ring: true, ringColor: 'rgba(220, 200, 150, 0.7)',
+                    ringTilt: 0.45, ringWidth: 2.2,
+                    startAngle: 0.7
+                },
+                {
+                    name: 'Уран', orbitR: 10200, mass: 90000, radius: 200,
+                    color: '#90e0e0',
+                    bands: ['#a0e8e8', '#80d8d8', '#b0f0f0', '#70c8c8'],
+                    spots: [
+                        { angle: 2.0, size: 0.15, color: '#60b8b8' }
+                    ],
+                    atmosphere: 'rgba(150, 230, 230, 0.35)',
+                    ring: true, ringColor: 'rgba(150, 230, 230, 0.5)',
+                    ringTilt: 1.2, ringWidth: 1.8,
+                    startAngle: 3.1
+                },
+                {
+                    name: 'Нептун', orbitR: 11800, mass: 100000, radius: 210,
+                    color: '#4060c0',
+                    bands: ['#5070d0', '#3050b0', '#6080e0', '#2848a0'],
+                    spots: [
+                        { angle: 1.5, size: 0.2, color: '#2038a0' },
+                        { angle: 4.0, size: 0.15, color: '#3050b0' }
+                    ],
+                    atmosphere: 'rgba(100, 140, 255, 0.35)',
+                    startAngle: 1.8
+                },
+                {
+                    name: 'Плутон', orbitR: 15500, mass: 3000, radius: 90,
+                    color: '#c8b8a8',
+                    bands: ['#d0c0b0', '#b8a898', '#e0d0c0', '#a89888'],
+                    spots: [
+                        { angle: 0.5, size: 0.3, color: '#8a7a6a' },
+                        { angle: 2.8, size: 0.25, color: '#7a6a5a' },
+                        { angle: 4.5, size: 0.35, color: '#a89888' }
+                    ],
+                    atmosphere: 'rgba(200, 180, 160, 0.2)',
+                    startAngle: 5.0
+                },
+            ];
+
+            planets = planetDefs.map(def => {
+                const omega = Math.sqrt(
+                    SETTINGS.G * SETTINGS.STAR_MASS / Math.pow(def.orbitR, 3)
+                );
+                const T = (2 * Math.PI) / omega;
+                return { ...def, angle: def.startAngle, omega, period: T, x: 0, y: 0 };
+            });
+
+            earth = planets.find(p => p.name === 'Земля');
+            targetPlanets = planets.filter(p => p.name !== 'Земля');
+
+            SETTINGS.SECONDS_PER_YEAR = earth.period;
+
+            comets = [];
+            const cometOrbitDefs = [
+                { name: 'Галлея', r_p: 1500, r_a: 12000, orient: 0.3, M0: 0.0, color: '#aae0ff' },
+                { name: 'Энке', r_p: 2500, r_a: 20000, orient: 1.7, M0: 2.1, color: '#c0e8ff' },
+                { name: 'Хейла-Боппа', r_p: 800, r_a: 8000, orient: 3.5, M0: 4.0, color: '#d0f0ff' },
+                { name: 'Чурюмова-Герасименко', r_p: 4000, r_a: 35000, orient: 5.2, M0: 1.0, color: '#b0e0ff' },
+            ];
+            for (let i = 0; i < SETTINGS.COMET_COUNT; i++) {
+                const def = cometOrbitDefs[i % cometOrbitDefs.length];
+                const a = (def.r_p + def.r_a) / 2;
+                const e = (def.r_a - def.r_p) / (def.r_a + def.r_p);
+                const T = 2 * Math.PI * Math.sqrt(Math.pow(a, 3) / (SETTINGS.G * SETTINGS.STAR_MASS));
+                comets.push({
+                    id: i, name: def.name,
+                    a, e, T,
+                    orient: def.orient, M0: def.M0, color: def.color,
+                    mass: SETTINGS.COMET_MASS, radius: SETTINGS.COMET_RADIUS,
+                    x: 0, y: 0, vx: 0, vy: 0, r: 0, angle: 0,
+                });
+            }
+            for (let c of comets) updateCometPosition(c, 0);
+
+            bonusAsteroids = [];
+            const bonusAsteroidDefs = [
+                { name: 'Церера', orbitR: 4500, mass: 200, radius: 32, color: '#c8b8a0', startAngle: 0.5 },
+                { name: 'Паллада', orbitR: 5800, mass: 180, radius: 28, color: '#b8a890', startAngle: 2.1 },
+                { name: 'Юнона', orbitR: 6200, mass: 150, radius: 24, color: '#a89880', startAngle: 4.0 },
+                { name: 'Веста', orbitR: 5400, mass: 220, radius: 30, color: '#d0c0a8', startAngle: 5.5 },
+                { name: 'Ида', orbitR: 7000, mass: 120, radius: 22, color: '#a89078', startAngle: 1.2 },
+                { name: 'Гидальго', orbitR: 8000, mass: 100, radius: 20, color: '#988870', startAngle: 3.8 },
+            ];
+            for (let i = 0; i < SETTINGS.BONUS_ASTEROID_COUNT; i++) {
+                const def = bonusAsteroidDefs[i % bonusAsteroidDefs.length];
+                const omega = Math.sqrt(
+                    SETTINGS.G * SETTINGS.STAR_MASS / Math.pow(def.orbitR, 3)
+                );
+                bonusAsteroids.push({
+                    id: i, name: def.name,
+                    orbitR: def.orbitR, angle: def.startAngle, omega,
+                    mass: def.mass, radius: def.radius, color: def.color,
+                    x: 0, y: 0,
+                });
+            }
+
+            asteroids = [];
+            let seed = 12345;
+            function rand() {
+                seed = (seed * 1664525 + 1013904223) >>> 0;
+                return seed / 4294967296;
+            }
+            for (let i = 0; i < SETTINGS.ASTEROID_COUNT; i++) {
+                const orbitR = SETTINGS.ASTEROID_BELT_R + (rand() * 2 - 1) * SETTINGS.ASTEROID_BELT_SPREAD;
+                const radius = 6 + rand() * 14;
+                const omega = Math.sqrt(
+                    SETTINGS.G * SETTINGS.STAR_MASS / Math.pow(orbitR, 3)
+                );
+                asteroids.push({
+                    orbitR, radius,
+                    angle: rand() * Math.PI * 2,
+                    omega,
+                    mass: SETTINGS.ASTEROID_MASS,
+                    color: `hsl(${20 + rand() * 40}, ${20 + rand() * 20}%, ${40 + rand() * 20}%)`,
+                    x: 0, y: 0
+                });
+            }
+
+            const earthAngle = earth.startAngle;
+            earth.x = star.x + Math.cos(earthAngle) * earth.orbitR;
+            earth.y = star.y + Math.sin(earthAngle) * earth.orbitR;
+
+            const orbitR = SETTINGS.ROCKET_START_ORBIT_R;
+            rocket.x = earth.x + Math.cos(earthAngle) * orbitR;
+            rocket.y = earth.y + Math.sin(earthAngle) * orbitR;
+            rocket.angle = earthAngle;
+            rocket.targetAngle = earthAngle;
+
+            const earthOrbitV = Math.sqrt(SETTINGS.G * SETTINGS.STAR_MASS / earth.orbitR);
+            const eVx = -Math.sin(earthAngle) * earthOrbitV;
+            const eVy =  Math.cos(earthAngle) * earthOrbitV;
+
+            const rocketOrbitV = Math.sqrt(
+                SETTINGS.G * earth.mass / orbitR
+            );
+            const relVx = -Math.sin(earthAngle) * rocketOrbitV;
+            const relVy =  Math.cos(earthAngle) * rocketOrbitV;
+
+            rocket.vx = eVx + relVx;
+            rocket.vy = eVy + relVy;
+
+            camera = {
+                x: rocket.x, y: rocket.y,
+                zoom: SETTINGS.ZOOM_DEFAULT,
+                targetZoom: SETTINGS.ZOOM_DEFAULT
+            };
+
+            mouse = { x: canvas.width / 2, y: canvas.height / 2, down: false };
+
+            if (audioCtx) {
+                initSpaceSounds();
+                if (!spaceSoundsEnabled && spaceMasterGain) {
+                    spaceMasterGain.gain.value = 0;
+                }
+            }
+
+            updateHUD();
+        }
+
+        // ============================================================
+        //  Орбитальная механика кометы
+        // ============================================================
+        function solveKepler(M, e) {
+            M = M % (2 * Math.PI);
+            if (M > Math.PI) M -= 2 * Math.PI;
+            if (M < -Math.PI) M += 2 * Math.PI;
+            let E = M;
+            for (let i = 0; i < 12; i++) {
+                const dE = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+                E -= dE;
+                if (Math.abs(dE) < 1e-8) break;
+            }
+            return E;
+        }
+
+        function updateCometPosition(c, t) {
+            const M = c.M0 + 2 * Math.PI * t / c.T;
+            const E = solveKepler(M, c.e);
+            const nu = 2 * Math.atan2(
+                Math.sqrt(1 + c.e) * Math.sin(E / 2),
+                Math.sqrt(1 - c.e) * Math.cos(E / 2)
+            );
+            const r = c.a * (1 - c.e * Math.cos(E));
+            const localX = r * Math.cos(nu);
+            const localY = r * Math.sin(nu);
+            const cosO = Math.cos(c.orient);
+            const sinO = Math.sin(c.orient);
+            c.x = star.x + localX * cosO - localY * sinO;
+            c.y = star.y + localX * sinO + localY * cosO;
+            c.r = r;
+            c.angle = nu;
+        }
+
+        // ============================================================
+        //  Камера / HUD
+        // ============================================================
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function screenToWorld(sx, sy) {
+            return {
+                x: (sx - canvas.width / 2) / camera.zoom + camera.x,
+                y: (sy - canvas.height / 2) / camera.zoom + camera.y
+            };
+        }
+        function worldToScreen(wx, wy) {
+            return {
+                x: (wx - camera.x) * camera.zoom + canvas.width / 2,
+                y: (wy - camera.y) * camera.zoom + canvas.height / 2
+            };
+        }
+
+        function updateHUD() {
+            hudPhotos.textContent = `${photographed.size} / ${targetPlanets.length}`;
+            hudComets.textContent = `${photographedComets.size} / ${comets.length}`;
+            hudAsteroids.textContent = `${photographedAsteroids.size} / ${bonusAsteroids.length}`;
+            hudTime.textContent = formatMissionTime(gameTime);
+            const pct = Math.max(0, fuel / SETTINGS.FUEL_MAX);
+            hudFuel.textContent = `${Math.round(pct * 100)}%`;
+            fuelBar.style.width = (pct * 100) + '%';
+            fuelBar.style.backgroundPosition = `${(1 - pct) * 100}% 0`;
+        }
+
+        // ============================================================
+        //  Обзор
+        // ============================================================
+        function setOverviewMode(on) {
+            overviewMode = on;
+            if (on) {
+                if (rocket && rocket.thrusting) { rocket.thrusting = false; stopThrustSound(); }
+                if (mouse) mouse.down = false;
+                dragStart = null;
+                canvas.classList.add('overview');
+                modeIndicator.textContent = 'Режим: обзор карты (ПКМ — выйти)';
+                modeIndicator.classList.add('overview');
+            } else {
+                canvas.classList.remove('overview');
+                modeIndicator.textContent = 'Режим: управление';
+                modeIndicator.classList.remove('overview');
+            }
+        }
+
+        // ============================================================
+        //  Ввод
+        // ============================================================
+        function updateMousePosition(e) {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (gameOver || gameWin) return;
+            updateMousePosition(e);
+            if (overviewMode && dragStart && mouse.down) {
+                const dx = mouse.x - dragStart.mouseX;
+                const dy = mouse.y - dragStart.mouseY;
+                camera.x = dragStart.camX - dx / camera.zoom;
+                camera.y = dragStart.camY - dy / camera.zoom;
+            }
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (gameOver || gameWin) return;
+            updateMousePosition(e);
+            if (e.button === 2) {
+                setOverviewMode(!overviewMode);
+                e.preventDefault();
+                return;
+            }
+            if (e.button === 0) {
+                mouse.down = true;
+                if (overviewMode) {
+                    dragStart = { mouseX: mouse.x, mouseY: mouse.y, camX: camera.x, camY: camera.y };
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (e.button === 0) { mouse.down = false; dragStart = null; }
+        });
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 0) { mouse.down = false; dragStart = null; }
+        });
+
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? SETTINGS.ZOOM_STEP : 1 / SETTINGS.ZOOM_STEP;
+            camera.targetZoom = Math.max(SETTINGS.ZOOM_MIN, Math.min(SETTINGS.ZOOM_MAX, camera.targetZoom * factor));
+        }, { passive: false });
+
+        // ============================================================
+        //  Взрыв / победа
+        // ============================================================
+        function triggerExplosion(x, y) {
+            if (gameOver || gameWin) return;
+            gameOver = true;
+            if (rocket.thrusting) { rocket.thrusting = false; stopThrustSound(); }
+            // Отключаем звуки космоса при завершении миссии
+            fadeOutSpaceSounds();
+            playExplosionSound();
+
+            const particles = [];
+            for (let i = 0; i < 80; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 50 + Math.random() * 300;
+                particles.push({
+                    x, y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 0.6 + Math.random() * 1.2,
+                    maxLife: 1.8,
+                    size: 2 + Math.random() * 5,
+                    hue: 20 + Math.random() * 40
+                });
+            }
+            explosion = { x, y, t: 0, particles };
+
+            endScreen.classList.add('visible', 'lose');
+            endTitle.textContent = '💥 ВЗРЫВ';
+            endSubtitle.textContent = 'Зонд столкнулся с небесным телом';
+            endScore.textContent = `Планет: ${photographed.size} из ${targetPlanets.length} · Кометы: ${photographedComets.size} из ${comets.length} · Астероиды: ${photographedAsteroids.size} из ${bonusAsteroids.length} · Время: ${formatMissionTime(gameTime)}`;
+            showPhotosBtn.classList.remove('visible');
+        }
+
+        function triggerWin() {
+            if (gameOver || gameWin) return;
+            gameWin = true;
+            if (rocket.thrusting) { rocket.thrusting = false; stopThrustSound(); }
+            // Отключаем звуки космоса при завершении миссии
+            fadeOutSpaceSounds();
+            playWinSound();
+
+            endScreen.classList.add('visible', 'win');
+            endTitle.textContent = '🏆 МИССИЯ ЗАВЕРШЕНА';
+            const total = targetPlanets.length;
+            const done = photographed.size;
+            const totalComets = comets.length;
+            const doneComets = photographedComets.size;
+            const totalAst = bonusAsteroids.length;
+            const doneAst = photographedAsteroids.size;
+
+            let subtitle = `Зонд вернулся на Землю. Планет: ${done} из ${total}.`;
+            if (doneComets > 0 || doneAst > 0) {
+                subtitle += ` Кометы: ${doneComets} из ${totalComets}. Астероиды: ${doneAst} из ${totalAst}.`;
+            }
+            endSubtitle.textContent = subtitle;
+            endScore.textContent = `Время: ${formatMissionTime(gameTime)} · Остаток топлива: ${Math.round(fuel)}%`;
+
+            if (photoLog.length > 0) {
+                showPhotosBtn.classList.add('visible');
+            } else {
+                showPhotosBtn.classList.remove('visible');
+            }
+        }
+
+        // ============================================================
+        //  Физика
+        // ============================================================
+        function update(dt) {
+            if (gameOver || gameWin) {
+                if (explosion) {
+                    explosion.t += dt;
+                    for (let p of explosion.particles) {
+                        p.x += p.vx * dt; p.y += p.vy * dt;
+                        p.vx *= 0.98; p.vy *= 0.98;
+                        p.life -= dt;
+                    }
+                }
+                if (photoFlash) {
+                    photoFlash.t += dt;
+                    if (photoFlash.t > 0.5) photoFlash = null;
+                }
+                return;
+            }
+
+            if (gamePaused) return;
+
+            gameTime += dt;
+            if (photoCooldown > 0) photoCooldown -= dt;
+
+            for (let p of planets) {
+                p.angle += p.omega * dt;
+                p.x = star.x + Math.cos(p.angle) * p.orbitR;
+                p.y = star.y + Math.sin(p.angle) * p.orbitR;
+            }
+            for (let a of asteroids) {
+                a.angle += a.omega * dt;
+                a.x = star.x + Math.cos(a.angle) * a.orbitR;
+                a.y = star.y + Math.sin(a.angle) * a.orbitR;
+            }
+            for (let a of bonusAsteroids) {
+                a.angle += a.omega * dt;
+                a.x = star.x + Math.cos(a.angle) * a.orbitR;
+                a.y = star.y + Math.sin(a.angle) * a.orbitR;
+            }
+            for (let c of comets) {
+                updateCometPosition(c, gameTime);
+            }
+
+            let ax = 0, ay = 0;
+            let dx = star.x - rocket.x, dy = star.y - rocket.y;
+            let distSq = dx * dx + dy * dy;
+            if (distSq < 1) distSq = 1;
+            let dist = Math.sqrt(distSq);
+            let a = SETTINGS.G * star.mass / distSq;
+            ax += (dx / dist) * a;
+            ay += (dy / dist) * a;
+
+            for (let p of planets) {
+                let pdx = p.x - rocket.x, pdy = p.y - rocket.y;
+                let pdistSq = pdx * pdx + pdy * pdy;
+                if (pdistSq < 1) pdistSq = 1;
+                let pdist = Math.sqrt(pdistSq);
+                let pa = SETTINGS.G * p.mass / pdistSq;
+                ax += (pdx / pdist) * pa;
+                ay += (pdy / pdist) * pa;
+            }
+            for (let ast of asteroids) {
+                let adx = ast.x - rocket.x, ady = ast.y - rocket.y;
+                let adistSq = adx * adx + ady * ady;
+                if (adistSq < 1) adistSq = 1;
+                let adist = Math.sqrt(adistSq);
+                let aa = SETTINGS.G * ast.mass / adistSq;
+                ax += (adx / adist) * aa;
+                ay += (ady / adist) * aa;
+            }
+            for (let c of comets) {
+                let cdx = c.x - rocket.x, cdy = c.y - rocket.y;
+                let cdistSq = cdx * cdx + cdy * cdy;
+                if (cdistSq < 1) cdistSq = 1;
+                let cdist = Math.sqrt(cdistSq);
+                let ca = SETTINGS.G * c.mass / cdistSq;
+                ax += (cdx / cdist) * ca;
+                ay += (cdy / cdist) * ca;
+            }
+            for (let a of bonusAsteroids) {
+                let adx = a.x - rocket.x, ady = a.y - rocket.y;
+                let adistSq = adx * adx + ady * ady;
+                if (adistSq < 1) adistSq = 1;
+                let adist = Math.sqrt(adistSq);
+                let aa = SETTINGS.G * a.mass / adistSq;
+                ax += (adx / adist) * aa;
+                ay += (ady / adist) * aa;
+            }
+
+            rocket.vx += ax * dt;
+            rocket.vy += ay * dt;
+
+            if (!overviewMode) {
+                let mouseWorld = screenToWorld(mouse.x, mouse.y);
+                let targetDx = mouseWorld.x - rocket.x;
+                let targetDy = mouseWorld.y - rocket.y;
+                rocket.targetAngle = Math.atan2(targetDy, targetDx) + Math.PI;
+                let angleDiff = rocket.targetAngle - rocket.angle;
+                while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+                rocket.angle += angleDiff * 0.15;
+            }
+
+            if (SETTINGS.GOD_MODE && fuel <= 0) {
+                fuel = SETTINGS.FUEL_MAX;
+            }
+
+            const wantThrust = !overviewMode && mouse.down && fuel > 0;
+            if (wantThrust) {
+                rocket.vx += Math.cos(rocket.angle) * SETTINGS.THRUST * dt;
+                rocket.vy += Math.sin(rocket.angle) * SETTINGS.THRUST * dt;
+                fuel = Math.max(0, fuel - SETTINGS.FUEL_BURN_PER_SEC * dt);
+                if (!rocket.thrusting) { rocket.thrusting = true; startThrustSound(); }
+            } else {
+                if (rocket.thrusting) { rocket.thrusting = false; stopThrustSound(); }
+            }
+            updateHUD();
+
+            rocket.x += rocket.vx * dt;
+            rocket.y += rocket.vy * dt;
+
+            if (audioCtx) updateSpaceSounds();
+
+            const earthDist = Math.hypot(rocket.x - earth.x, rocket.y - earth.y);
+            const returnRadius = earth.radius * SETTINGS.RETURN_RADIUS_FACTOR;
+            if (earthDist < returnRadius) {
+                triggerWin();
+                return;
+            }
+
+            if (checkFatalCollision(star)) return;
+            for (let p of planets) if (checkFatalCollision(p)) return;
+            for (let ast of asteroids) if (checkFatalCollision(ast)) return;
+            for (let c of comets) if (checkFatalCollision(c)) return;
+            for (let a of bonusAsteroids) if (checkFatalCollision(a)) return;
+
+            if (photoCooldown <= 0) {
+                for (let p of targetPlanets) {
+                    if (photographed.has(p.name)) continue;
+                    const pdx = p.x - rocket.x;
+                    const pdy = p.y - rocket.y;
+                    const pd = Math.sqrt(pdx * pdx + pdy * pdy);
+                    const photoR = p.radius * SETTINGS.PHOTO_RADIUS_FACTOR;
+                    if (pd < photoR) {
+                        photographed.add(p.name);
+                        photoCooldown = SETTINGS.PHOTO_COOLDOWN;
+                        playPhotoSound();
+                        photoFlash = { x: p.x, y: p.y, t: 0, radius: p.radius };
+                        photoLog.push({
+                            kind: 'planet',
+                            name: p.name,
+                            color: p.color,
+                            radius: p.radius,
+                            data: p,
+                            text: generateOneWord()
+                        });
+                        updateHUD();
+                        break;
+                    }
+                }
+            }
+
+            if (photoCooldown <= 0) {
+                for (let c of comets) {
+                    if (photographedComets.has(c.id)) continue;
+                    const cdx = c.x - rocket.x;
+                    const cdy = c.y - rocket.y;
+                    const cd = Math.sqrt(cdx * cdx + cdy * cdy);
+                    if (cd < SETTINGS.COMET_PHOTO_RADIUS) {
+                        photographedComets.add(c.id);
+                        photoCooldown = SETTINGS.PHOTO_COOLDOWN;
+                        playCometPhotoSound();
+                        photoFlash = { x: c.x, y: c.y, t: 0, radius: c.radius };
+                        photoLog.push({
+                            kind: 'comet',
+                            name: c.name,
+                            color: c.color,
+                            radius: c.radius,
+                            data: c,
+                            text: generateOneWord()
+                        });
+                        updateHUD();
+                        break;
+                    }
+                }
+            }
+
+            if (photoCooldown <= 0) {
+                for (let a of bonusAsteroids) {
+                    if (photographedAsteroids.has(a.id)) continue;
+                    const adx = a.x - rocket.x;
+                    const ady = a.y - rocket.y;
+                    const ad = Math.sqrt(adx * adx + ady * ady);
+                    if (ad < SETTINGS.BONUS_ASTEROID_PHOTO_RADIUS) {
+                        photographedAsteroids.add(a.id);
+                        photoCooldown = SETTINGS.PHOTO_COOLDOWN;
+                        playAsteroidPhotoSound();
+                        photoFlash = { x: a.x, y: a.y, t: 0, radius: a.radius };
+                        photoLog.push({
+                            kind: 'asteroid',
+                            name: a.name,
+                            color: a.color,
+                            radius: a.radius,
+                            data: a,
+                            text: generateOneWord()
+                        });
+                        updateHUD();
+                        break;
+                    }
+                }
+            }
+
+            if (!overviewMode) {
+                camera.x += (rocket.x - camera.x) * 0.1;
+                camera.y += (rocket.y - camera.y) * 0.1;
+            }
+            camera.zoom += (camera.targetZoom - camera.zoom) * 0.15;
+
+            if (photoFlash) {
+                photoFlash.t += dt;
+                if (photoFlash.t > 0.5) photoFlash = null;
+            }
+        }
+
+        const ROCKET_WIDTH_HALF = 12;
+
+        function checkFatalCollision(body) {
+            let dx = rocket.x - body.x, dy = rocket.y - body.y;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+            const minDist = body.radius + ROCKET_WIDTH_HALF;
+            if (dist < minDist && dist > 0.001) {
+                if (SETTINGS.GOD_MODE) {
+                    let overlap = minDist - dist;
+                    let nx = dx / dist;
+                    let ny = dy / dist;
+                    rocket.x += nx * overlap;
+                    rocket.y += ny * overlap;
+                    let dot = rocket.vx * nx + rocket.vy * ny;
+                    if (dot < 0) {
+                        rocket.vx -= dot * nx;
+                        rocket.vy -= dot * ny;
+                    }
+                    return false;
+                }
+                triggerExplosion(rocket.x, rocket.y);
+                return true;
+            }
+            return false;
+        }
+
+        // ============================================================
+        //  Отрисовка
+        // ============================================================
+        function drawStars() {
+            if (camera.zoom < SETTINGS.STAR_ZOOM_MIN) return;
+
+            const throttled = camera.zoom < SETTINGS.STAR_ZOOM_THROTTLE;
+            const starsPerCell = throttled
+                ? SETTINGS.STAR_PER_CELL_THROTTLED
+                : SETTINGS.STAR_PER_CELL_FULL;
+
+            const cellSize = SETTINGS.STAR_CELL_SIZE;
+
+            const viewLeft = camera.x - (canvas.width / 2) / camera.zoom;
+            const viewRight = camera.x + (canvas.width / 2) / camera.zoom;
+            const viewTop = camera.y - (canvas.height / 2) / camera.zoom;
+            const viewBottom = camera.y + (canvas.height / 2) / camera.zoom;
+
+            const cellsX = (viewRight - viewLeft) / cellSize;
+            const cellsY = (viewBottom - viewTop) / cellSize;
+            const totalCells = cellsX * cellsY;
+            const MAX_CELLS = 4000;
+            if (totalCells * starsPerCell > MAX_CELLS) return;
+
+            const startCellX = Math.floor(viewLeft / cellSize);
+            const endCellX = Math.floor(viewRight / cellSize);
+            const startCellY = Math.floor(viewTop / cellSize);
+            const endCellY = Math.floor(viewBottom / cellSize);
+
+            for (let cx = startCellX; cx <= endCellX; cx++) {
+                for (let cy = startCellY; cy <= endCellY; cy++) {
+                    let s = (cx * 73856093) ^ (cy * 19349663);
+                    function r() { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }
+                    for (let i = 0; i < starsPerCell; i++) {
+                        const wx = cx * cellSize + r() * cellSize;
+                        const wy = cy * cellSize + r() * cellSize;
+                        const size = (r() * 3 + 1) * camera.zoom;
+                        const alpha = r() * 0.6 + 0.4;
+                        const sp = worldToScreen(wx, wy);
+                        if (sp.x < -10 || sp.x > canvas.width + 10 || sp.y < -10 || sp.y > canvas.height + 10) continue;
+                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                        ctx.beginPath();
+                        ctx.arc(sp.x, sp.y, Math.max(0.3, size), 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        function drawDetailedPlanet(p, glowColor, extraGlow) {
+            const sp = worldToScreen(p.x, p.y);
+            const r = p.radius * camera.zoom;
+
+            if (sp.x + r * 2.5 < 0 || sp.x - r * 2.5 > canvas.width ||
+                sp.y + r * 2.5 < 0 || sp.y - r * 2.5 > canvas.height) {
+                return;
+            }
+
+            if (p.atmosphere) {
+                ctx.save();
+                const atmGrad = ctx.createRadialGradient(sp.x, sp.y, r * 0.9, sp.x, sp.y, r * 1.5);
+                atmGrad.addColorStop(0, p.atmosphere);
+                atmGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = atmGrad;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, r * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            if (extraGlow) {
+                ctx.save();
+                ctx.shadowColor = '#ffff44';
+                ctx.shadowBlur = 40 * camera.zoom;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0,0,0,0)';
+                ctx.fill();
+                ctx.restore();
+            }
+
+            if (p.ring) {
+                drawRing(p, sp, r, true);
+            }
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
+            ctx.clip();
+
+            const baseGrad = ctx.createRadialGradient(
+                sp.x - r * 0.4, sp.y - r * 0.4, r * 0.1,
+                sp.x, sp.y, r * 1.1
+            );
+            baseGrad.addColorStop(0, shade(p.color, 1.5));
+            baseGrad.addColorStop(0.5, p.color);
+            baseGrad.addColorStop(1, shade(p.color, 0.35));
+            ctx.fillStyle = baseGrad;
+            ctx.fillRect(sp.x - r, sp.y - r, r * 2, r * 2);
+
+            if (p.bands && p.bands.length > 0) {
+                const bandCount = p.bands.length;
+                const bandHeight = (r * 2) / bandCount;
+                for (let i = 0; i < bandCount; i++) {
+                    ctx.fillStyle = p.bands[i];
+                    ctx.globalAlpha = 0.35;
+                    ctx.fillRect(sp.x - r, sp.y - r + i * bandHeight, r * 2, bandHeight);
+                }
+                ctx.globalAlpha = 1;
+            }
+
+            if (p.spots && p.spots.length > 0) {
+                for (let spot of p.spots) {
+                    const spotAngle = spot.angle + p.angle;
+                    const face = Math.cos(spotAngle);
+                    if (face < -0.3) continue;
+                    const spotX = sp.x + Math.sin(spotAngle) * r * 0.85;
+                    const spotY = sp.y + (spot.size - 0.5) * r * 1.0;
+                    const spotSize = spot.size * r;
+                    const scaleX = Math.max(0.3, Math.abs(face));
+                    ctx.save();
+                    ctx.globalAlpha = 0.55 * Math.min(1, (face + 0.3) / 1.3);
+                    ctx.fillStyle = spot.color;
+                    ctx.beginPath();
+                    ctx.ellipse(spotX, spotY, spotSize * scaleX, spotSize * 0.7, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            if (p.stormSpot) {
+                const stormAngle = p.stormSpot.angle + p.angle;
+                const face = Math.cos(stormAngle);
+                if (face > -0.2) {
+                    const stormX = sp.x + Math.sin(stormAngle) * r * 0.7;
+                    const stormY = sp.y + (p.stormSpot.size - 0.5) * r * 1.0;
+                    const stormSize = p.stormSpot.size * r;
+                    ctx.save();
+                    ctx.globalAlpha = 0.8 * Math.min(1, (face + 0.2) / 1.2);
+                    ctx.fillStyle = p.stormSpot.color;
+                    ctx.beginPath();
+                    ctx.ellipse(stormX, stormY, stormSize * Math.max(0.3, face), stormSize * 0.55, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            const termGrad = ctx.createRadialGradient(
+                sp.x - r * 0.5, sp.y - r * 0.5, r * 0.2,
+                sp.x - r * 0.5, sp.y - r * 0.5, r * 1.8
+            );
+            termGrad.addColorStop(0, 'rgba(0,0,0,0)');
+            termGrad.addColorStop(0.6, 'rgba(0,0,0,0)');
+            termGrad.addColorStop(1, 'rgba(0,0,0,0.55)');
+            ctx.fillStyle = termGrad;
+            ctx.fillRect(sp.x - r, sp.y - r, r * 2, r * 2);
+
+            const highlightGrad = ctx.createRadialGradient(
+                sp.x - r * 0.45, sp.y - r * 0.45, 0,
+                sp.x - r * 0.45, sp.y - r * 0.45, r * 0.8
+            );
+            highlightGrad.addColorStop(0, 'rgba(255,255,255,0.35)');
+            highlightGrad.addColorStop(0.5, 'rgba(255,255,255,0.05)');
+            highlightGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = highlightGrad;
+            ctx.fillRect(sp.x - r, sp.y - r, r * 2, r * 2);
+
+            ctx.restore();
+
+            ctx.beginPath();
+            ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = Math.max(0.5, 1 * camera.zoom);
+            ctx.stroke();
+
+            if (p.ring) {
+                drawRing(p, sp, r, false);
+            }
+        }
+
+        function drawRing(p, sp, r, back) {
+            ctx.save();
+            ctx.translate(sp.x, sp.y);
+            ctx.rotate(p.ringTilt || 0.4);
+
+            const ringW = (p.ringWidth || 2.0) * r;
+            const ringH = ringW * 0.28;
+            const ringColor = p.ringColor || 'rgba(220, 200, 150, 0.7)';
+
+            if (back) {
+                ctx.beginPath();
+                ctx.ellipse(0, 0, ringW, ringH, 0, Math.PI, Math.PI * 2);
+                ctx.strokeStyle = ringColor;
+                ctx.globalAlpha = 0.5;
+                ctx.lineWidth = Math.max(1.5, 2.5 * camera.zoom);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.ellipse(0, 0, ringW * 0.78, ringH * 0.78, 0, Math.PI, Math.PI * 2);
+                ctx.globalAlpha = 0.35;
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.ellipse(0, 0, ringW, ringH, 0, 0, Math.PI);
+                ctx.strokeStyle = ringColor;
+                ctx.globalAlpha = 0.7;
+                ctx.lineWidth = Math.max(1.5, 2.5 * camera.zoom);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.ellipse(0, 0, ringW * 0.78, ringH * 0.78, 0, 0, Math.PI);
+                ctx.globalAlpha = 0.5;
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawStar() {
+            const sp = worldToScreen(star.x, star.y);
+            const r = star.radius * camera.zoom;
+
+            ctx.save();
+            const coronaGrad = ctx.createRadialGradient(sp.x, sp.y, r * 0.8, sp.x, sp.y, r * 2.5);
+            coronaGrad.addColorStop(0, 'rgba(255, 240, 180, 0.6)');
+            coronaGrad.addColorStop(0.3, 'rgba(255, 200, 80, 0.25)');
+            coronaGrad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            ctx.fillStyle = coronaGrad;
+            ctx.beginPath();
+            ctx.arc(sp.x, sp.y, r * 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            const coreGrad = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, r);
+            coreGrad.addColorStop(0, '#ffffff');
+            coreGrad.addColorStop(0.4, '#fff8c0');
+            coreGrad.addColorStop(0.8, '#ffcc44');
+            coreGrad.addColorStop(1, '#ff8800');
+            ctx.fillStyle = coreGrad;
+            ctx.beginPath();
+            ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            const t = performance.now() * 0.001;
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2 + t * 0.1;
+                const len = r * (1.2 + Math.sin(t * 2 + i) * 0.15);
+                ctx.strokeStyle = `rgba(255, 220, 100, ${0.15 + Math.sin(t * 3 + i) * 0.05})`;
+                ctx.lineWidth = Math.max(1, 3 * camera.zoom);
+                ctx.beginPath();
+                ctx.moveTo(sp.x + Math.cos(angle) * r * 0.95, sp.y + Math.sin(angle) * r * 0.95);
+                ctx.lineTo(sp.x + Math.cos(angle) * len, sp.y + Math.sin(angle) * len);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawComet(c, isDone) {
+            const sp = worldToScreen(c.x, c.y);
+            const starSp = worldToScreen(star.x, star.y);
+            const r = c.radius * camera.zoom;
+
+            if (sp.x + r * 20 < 0 || sp.x - r * 20 > canvas.width ||
+                sp.y + r * 20 < 0 || sp.y - r * 20 > canvas.height) {
+                return;
+            }
+
+            const dx = sp.x - starSp.x;
+            const dy = sp.y - starSp.y;
+            const len = Math.hypot(dx, dy);
+            if (len > 0.001) {
+                const nx = dx / len;
+                const ny = dy / len;
+
+                const rPeri = c.a * (1 - c.e);
+                const rApo = c.a * (1 + c.e);
+                const closeness = Math.max(0, Math.min(1, (rApo - c.r) / (rApo - rPeri)));
+                const tailLen = (12 + 50 * closeness) * r;
+
+                const px = -ny;
+                const py = nx;
+
+                const outerHalf = r * 3.5;
+                const outerGrad = ctx.createLinearGradient(sp.x, sp.y,
+                    sp.x + nx * tailLen * 1.2, sp.y + ny * tailLen * 1.2);
+                const outerAlpha = 0.06 + 0.14 * closeness;
+                outerGrad.addColorStop(0, `rgba(120, 200, 255, ${outerAlpha})`);
+                outerGrad.addColorStop(0.5, `rgba(100, 180, 255, ${outerAlpha * 0.5})`);
+                outerGrad.addColorStop(1, 'rgba(80, 150, 255, 0)');
+
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.fillStyle = outerGrad;
+                ctx.beginPath();
+                ctx.moveTo(sp.x + px * outerHalf, sp.y + py * outerHalf);
+                ctx.lineTo(sp.x + nx * tailLen * 1.2, sp.y + ny * tailLen * 1.2);
+                ctx.lineTo(sp.x - px * outerHalf, sp.y - py * outerHalf);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+
+                const midHalf = r * 1.6;
+                const midGrad = ctx.createLinearGradient(sp.x, sp.y,
+                    sp.x + nx * tailLen, sp.y + ny * tailLen);
+                const midAlpha = 0.18 + 0.32 * closeness;
+                midGrad.addColorStop(0, `rgba(180, 225, 255, ${midAlpha})`);
+                midGrad.addColorStop(0.4, `rgba(140, 200, 255, ${midAlpha * 0.7})`);
+                midGrad.addColorStop(1, 'rgba(100, 170, 255, 0)');
+
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.fillStyle = midGrad;
+                ctx.beginPath();
+                ctx.moveTo(sp.x + px * midHalf, sp.y + py * midHalf);
+                ctx.lineTo(sp.x + nx * tailLen, sp.y + ny * tailLen);
+                ctx.lineTo(sp.x - px * midHalf, sp.y - py * midHalf);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+
+                const coreHalf = r * 0.6;
+                const coreGrad = ctx.createLinearGradient(sp.x, sp.y,
+                    sp.x + nx * tailLen * 0.8, sp.y + ny * tailLen * 0.8);
+                const coreAlpha = 0.4 + 0.4 * closeness;
+                coreGrad.addColorStop(0, `rgba(255, 255, 255, ${coreAlpha})`);
+                coreGrad.addColorStop(0.3, `rgba(220, 240, 255, ${coreAlpha * 0.8})`);
+                coreGrad.addColorStop(1, 'rgba(180, 220, 255, 0)');
+
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.fillStyle = coreGrad;
+                ctx.beginPath();
+                ctx.moveTo(sp.x + px * coreHalf, sp.y + py * coreHalf);
+                ctx.lineTo(sp.x + nx * tailLen * 0.8, sp.y + ny * tailLen * 0.8);
+                ctx.lineTo(sp.x - px * coreHalf, sp.y - py * coreHalf);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+
+                if (closeness > 0.3) {
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    const sparkCount = Math.floor(3 + 6 * closeness);
+                    for (let i = 0; i < sparkCount; i++) {
+                        const t = Math.random();
+                        const sparkDist = t * tailLen * 0.5;
+                        const sparkSpread = (Math.random() - 0.5) * r * 1.5 * (1 - t);
+                        const sx = sp.x + nx * sparkDist + px * sparkSpread;
+                        const sy = sp.y + ny * sparkDist + py * sparkSpread;
+                        const sparkAlpha = (1 - t) * 0.5 * closeness;
+                        ctx.fillStyle = `rgba(200, 235, 255, ${sparkAlpha})`;
+                        ctx.beginPath();
+                        ctx.arc(sx, sy, Math.max(0.5, r * 0.25 * (1 - t)), 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                }
+            }
+
+            ctx.save();
+            if (isDone) {
+                ctx.shadowColor = '#88ff88';
+                ctx.shadowBlur = 25 * camera.zoom;
+            } else {
+                ctx.shadowColor = c.color;
+                ctx.shadowBlur = 25 * camera.zoom;
+            }
+            const coreGrad = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, r);
+            coreGrad.addColorStop(0, '#ffffff');
+            coreGrad.addColorStop(0.4, c.color);
+            coreGrad.addColorStop(1, 'rgba(100, 180, 255, 0.2)');
+            ctx.fillStyle = coreGrad;
+            ctx.beginPath();
+            ctx.arc(sp.x, sp.y, Math.max(0.8, r), 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            if (isDone) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(100, 255, 100, 0.8)';
+                ctx.lineWidth = Math.max(1, 1.5 * camera.zoom);
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, r + 6, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(100, 255, 100, 0.9)';
+                ctx.font = `${Math.max(10, 13 * camera.zoom)}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.fillText('📷', sp.x, sp.y - r - 12);
+                ctx.textAlign = 'left';
+                ctx.restore();
+            }
+        }
+
+        function drawBonusAsteroid(a, isDone) {
+            const sp = worldToScreen(a.x, a.y);
+            const r = a.radius * camera.zoom;
+
+            if (sp.x + r * 2 < 0 || sp.x - r * 2 > canvas.width ||
+                sp.y + r * 2 < 0 || sp.y - r * 2 > canvas.height) {
+                return;
+            }
+
+            if (isDone) {
+                ctx.save();
+                ctx.shadowColor = '#88ff88';
+                ctx.shadowBlur = 30 * camera.zoom;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0,0,0,0)';
+                ctx.fill();
+                ctx.restore();
+            }
+
+            ctx.save();
+            const points = 9;
+            ctx.beginPath();
+            for (let i = 0; i < points; i++) {
+                const angle = (i / points) * Math.PI * 2;
+                const wobble = 1 + 0.18 * Math.sin(i * 2.7 + a.id * 1.3);
+                const px = sp.x + Math.cos(angle) * r * wobble;
+                const py = sp.y + Math.sin(angle) * r * wobble;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+
+            const baseGrad = ctx.createRadialGradient(
+                sp.x - r * 0.3, sp.y - r * 0.3, r * 0.1,
+                sp.x, sp.y, r * 1.1
+            );
+            baseGrad.addColorStop(0, shade(a.color, 1.4));
+            baseGrad.addColorStop(0.6, a.color);
+            baseGrad.addColorStop(1, shade(a.color, 0.5));
+            ctx.fillStyle = baseGrad;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = Math.max(0.5, 1 * camera.zoom);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.save();
+            ctx.globalAlpha = 0.45;
+            ctx.fillStyle = shade(a.color, 0.4);
+            for (let i = 0; i < 5; i++) {
+                const ca = (i / 5) * Math.PI * 2 + a.id * 0.7;
+                const cd = r * (0.2 + 0.45 * ((i * 37 + a.id * 13) % 100) / 100);
+                const cx = sp.x + Math.cos(ca) * cd;
+                const cy = sp.y + Math.sin(ca) * cd;
+                const cr = r * (0.08 + 0.12 * ((i * 53 + a.id * 7) % 100) / 100);
+                ctx.beginPath();
+                ctx.arc(cx, cy, Math.max(0.3, cr), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
+            ctx.clip();
+            const termGrad = ctx.createRadialGradient(
+                sp.x - r * 0.4, sp.y - r * 0.4, r * 0.2,
+                sp.x - r * 0.4, sp.y - r * 0.4, r * 1.8
+            );
+            termGrad.addColorStop(0, 'rgba(0,0,0,0)');
+            termGrad.addColorStop(0.6, 'rgba(0,0,0,0)');
+            termGrad.addColorStop(1, 'rgba(0,0,0,0.5)');
+            ctx.fillStyle = termGrad;
+            ctx.fillRect(sp.x - r, sp.y - r, r * 2, r * 2);
+            ctx.restore();
+
+            if (isDone) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(100, 255, 100, 0.8)';
+                ctx.lineWidth = Math.max(1, 1.5 * camera.zoom);
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, r + 6, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(100, 255, 100, 0.9)';
+                ctx.font = `${Math.max(10, 13 * camera.zoom)}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.fillText('📷', sp.x, sp.y - r - 12);
+                ctx.textAlign = 'left';
+                ctx.restore();
+            }
+        }
+
+        function drawPlanetLabel(p) {
+            const sp = worldToScreen(p.x, p.y);
+            const r = p.radius * camera.zoom;
+            const isTarget = targetPlanets.includes(p);
+            const isDone = photographed.has(p.name);
+            ctx.font = `bold ${Math.max(11, 14 * Math.min(camera.zoom, 1.5))}px 'Segoe UI', sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            const labelY = sp.y - r - 8;
+            ctx.fillText(p.name, sp.x + 1, labelY + 1);
+            if (isDone) ctx.fillStyle = '#4aff4a';
+            else if (isTarget) ctx.fillStyle = '#ffffff';
+            else ctx.fillStyle = '#4a9eff';
+            ctx.fillText(p.name, sp.x, labelY);
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
+        }
+
+        function drawCometLabel(c, isDone) {
+            const sp = worldToScreen(c.x, c.y);
+            const r = c.radius * camera.zoom;
+            ctx.font = `italic bold ${Math.max(10, 12 * Math.min(camera.zoom, 1.5))}px 'Segoe UI', sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            const labelY = sp.y - r - 8;
+            ctx.fillText(c.name, sp.x + 1, labelY + 1);
+            if (isDone) ctx.fillStyle = '#4aff4a';
+            else ctx.fillStyle = '#88ddff';
+            ctx.fillText(c.name, sp.x, labelY);
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
+        }
+
+        function drawBonusAsteroidLabel(a, isDone) {
+            const sp = worldToScreen(a.x, a.y);
+            const r = a.radius * camera.zoom;
+            ctx.font = `bold ${Math.max(10, 12 * Math.min(camera.zoom, 1.5))}px 'Segoe UI', sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            const labelY = sp.y - r - 8;
+            ctx.fillText(a.name, sp.x + 1, labelY + 1);
+            if (isDone) ctx.fillStyle = '#4aff4a';
+            else ctx.fillStyle = '#ffbb88';
+            ctx.fillText(a.name, sp.x, labelY);
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
+        }
+
+        function draw() {
+            const gradient = ctx.createRadialGradient(
+                canvas.width/2, canvas.height/2, 0,
+                canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height)
+            );
+            gradient.addColorStop(0, '#0a0a20');
+            gradient.addColorStop(1, '#000000');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawStars();
+
+            ctx.strokeStyle = 'rgba(80, 120, 200, 0.12)';
+            ctx.lineWidth = 1;
+            for (let p of planets) {
+                const center = worldToScreen(star.x, star.y);
+                ctx.beginPath();
+                ctx.arc(center.x, center.y, p.orbitR * camera.zoom, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            ctx.save();
+            ctx.setLineDash([3, 6]);
+            ctx.lineWidth = 1;
+            for (let c of comets) {
+                const center = worldToScreen(star.x, star.y);
+                const a = c.a * camera.zoom;
+                const b = c.a * Math.sqrt(1 - c.e * c.e) * camera.zoom;
+                const cx = (c.a * c.e) * camera.zoom;
+                ctx.save();
+                ctx.translate(center.x, center.y);
+                ctx.rotate(c.orient);
+                ctx.beginPath();
+                ctx.ellipse(cx, 0, a, b, 0, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(120, 180, 255, 0.12)';
+                ctx.stroke();
+                ctx.restore();
+            }
+            ctx.restore();
+
+            ctx.save();
+            ctx.setLineDash([2, 8]);
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(255, 180, 100, 0.1)';
+            for (let a of bonusAsteroids) {
+                const center = worldToScreen(star.x, star.y);
+                ctx.beginPath();
+                ctx.arc(center.x, center.y, a.orbitR * camera.zoom, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            ctx.save();
+            ctx.setLineDash([6, 6]);
+            ctx.lineWidth = 1;
+            for (let p of targetPlanets) {
+                if (photographed.has(p.name)) {
+                    ctx.strokeStyle = 'rgba(100, 255, 100, 0.25)';
+                } else {
+                    ctx.strokeStyle = 'rgba(255, 255, 100, 0.15)';
+                }
+                const sp = worldToScreen(p.x, p.y);
+                const photoR = p.radius * SETTINGS.PHOTO_RADIUS_FACTOR * camera.zoom;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, photoR, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            for (let c of comets) {
+                if (photographedComets.has(c.id)) {
+                    ctx.strokeStyle = 'rgba(100, 255, 100, 0.2)';
+                } else {
+                    ctx.strokeStyle = 'rgba(100, 200, 255, 0.15)';
+                }
+                const sp = worldToScreen(c.x, c.y);
+                const photoR = SETTINGS.COMET_PHOTO_RADIUS * camera.zoom;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, photoR, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            for (let a of bonusAsteroids) {
+                if (photographedAsteroids.has(a.id)) {
+                    ctx.strokeStyle = 'rgba(100, 255, 100, 0.18)';
+                } else {
+                    ctx.strokeStyle = 'rgba(255, 200, 120, 0.12)';
+                }
+                const sp = worldToScreen(a.x, a.y);
+                const photoR = SETTINGS.BONUS_ASTEROID_PHOTO_RADIUS * camera.zoom;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, photoR, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            {
+                const sp = worldToScreen(earth.x, earth.y);
+                const returnR = earth.radius * SETTINGS.RETURN_RADIUS_FACTOR * camera.zoom;
+                ctx.save();
+                ctx.setLineDash([4, 8]);
+                ctx.strokeStyle = 'rgba(100, 255, 255, 0.35)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, returnR, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            drawStar();
+
+            for (let c of comets) {
+                drawComet(c, photographedComets.has(c.id));
+            }
+            for (let p of planets) {
+                drawDetailedPlanet(p, null, photographed.has(p.name));
+            }
+            for (let a of bonusAsteroids) {
+                drawBonusAsteroid(a, photographedAsteroids.has(a.id));
+            }
+
+            for (let p of planets) drawPlanetLabel(p);
+            for (let c of comets) drawCometLabel(c, photographedComets.has(c.id));
+            for (let a of bonusAsteroids) drawBonusAsteroidLabel(a, photographedAsteroids.has(a.id));
+
+            for (let ast of asteroids) {
+                const sp = worldToScreen(ast.x, ast.y);
+                const r = ast.radius * camera.zoom;
+                if (sp.x + r < 0 || sp.x - r > canvas.width || sp.y + r < 0 || sp.y - r > canvas.height) continue;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, Math.max(0.5, r), 0, Math.PI * 2);
+                ctx.fillStyle = ast.color;
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.lineWidth = Math.max(0.3, 1 * camera.zoom);
+                ctx.stroke();
+            }
+
+            if (!gameOver) {
+                const rsp = worldToScreen(rocket.x, rocket.y);
+                const scale = camera.zoom;
+                ctx.save();
+                ctx.translate(rsp.x, rsp.y);
+                ctx.rotate(rocket.angle);
+                ctx.scale(scale, scale);
+                if (overviewMode) { ctx.shadowColor = '#ffff00'; ctx.shadowBlur = 20; }
+                else { ctx.shadowColor = 'rgba(0, 0, 0, 0.7)'; ctx.shadowBlur = 10; }
+
+                ctx.beginPath();
+                ctx.moveTo(12, 0);
+                ctx.lineTo(-12, -18);
+                ctx.lineTo(-12, 18);
+                ctx.closePath();
+                ctx.fillStyle = '#e0e0e0';
+                ctx.fill();
+                ctx.strokeStyle = '#888';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(6, 0, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#4a9eff';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.fillStyle = '#555';
+                ctx.fillRect(-16, -6, 6, 12);
+
+                if (rocket.thrusting) {
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#ffaa00';
+                    ctx.beginPath();
+                    ctx.moveTo(-16, -8);
+                    ctx.lineTo(-32 - Math.random() * 10, 0);
+                    ctx.lineTo(-16, 8);
+                    ctx.closePath();
+                    ctx.fillStyle = '#ff8800';
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(-16, -4);
+                    ctx.lineTo(-27 - Math.random() * 5, 0);
+                    ctx.lineTo(-16, 4);
+                    ctx.closePath();
+                    ctx.fillStyle = '#ffff00';
+                    ctx.fill();
+                }
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
+
+            if (photoFlash) {
+                const fsp = worldToScreen(photoFlash.x, photoFlash.y);
+                const t = photoFlash.t / 0.5;
+                const alpha = 1 - t;
+                const r = (photoFlash.radius * 1.2 + t * 300) * camera.zoom;
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                const g = ctx.createRadialGradient(fsp.x, fsp.y, 0, fsp.x, fsp.y, r);
+                g.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+                g.addColorStop(0.5, `rgba(255, 255, 150, ${alpha * 0.5})`);
+                g.addColorStop(1, 'rgba(255, 255, 150, 0)');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(fsp.x, fsp.y, r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            if (explosion) {
+                const esp = worldToScreen(explosion.x, explosion.y);
+                const flashT = Math.max(0, 1 - explosion.t * 2);
+                if (flashT > 0) {
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    const flashR = 120 * camera.zoom * (1 + explosion.t * 2);
+                    const flashGrad = ctx.createRadialGradient(esp.x, esp.y, 0, esp.x, esp.y, flashR);
+                    flashGrad.addColorStop(0, `rgba(255, 255, 200, ${flashT})`);
+                    flashGrad.addColorStop(0.4, `rgba(255, 150, 50, ${flashT * 0.6})`);
+                    flashGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
+                    ctx.fillStyle = flashGrad;
+                    ctx.beginPath();
+                    ctx.arc(esp.x, esp.y, flashR, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                for (let p of explosion.particles) {
+                    if (p.life <= 0) continue;
+                    const psp = worldToScreen(p.x, p.y);
+                    const alpha = Math.max(0, p.life / p.maxLife);
+                    const size = Math.max(0.5, p.size * camera.zoom * (p.life / p.maxLife));
+                    ctx.fillStyle = `hsla(${p.hue}, 100%, 60%, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(psp.x, psp.y, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.font = '12px monospace';
+            ctx.fillText(`Zoom: ${camera.zoom.toFixed(3)}x`, 20, canvas.height - 20);
+
+            if (gamePaused && !gameOver && !gameWin) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ffdd44';
+                ctx.font = 'bold 72px "Segoe UI", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⏸ ПАУЗА', canvas.width / 2, canvas.height / 2 - 20);
+                ctx.font = '20px "Segoe UI", sans-serif';
+                ctx.fillStyle = '#cccccc';
+                ctx.fillText('Нажмите P или кнопку «Продолжить»', canvas.width / 2, canvas.height / 2 + 60);
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'alphabetic';
+                ctx.restore();
+            }
+        }
+
+        function shade(hex, factor) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
+            return `rgb(${clamp(r * factor)}, ${clamp(g * factor)}, ${clamp(b * factor)})`;
+        }
+
+        // ============================================================
+        //  Цикл
+        // ============================================================
+        function animate(now) {
+            const dt = Math.min((now - lastTime) / 1000, 0.05);
+            lastTime = now;
+            update(dt);
+            draw();
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // ============================================================
+        //  ГАЛЕРЕЯ СНИМКОВ
+        // ============================================================
+        let galleryVisible = false;
+        let galleryZoom = 1.0;
+        let galleryOffsetX = 0;
+        let galleryOffsetY = 0;
+        let galleryDragging = false;
+        let galleryDragStartX = 0;
+        let galleryDragStartY = 0;
+        let galleryBaseOffsetX = 0;
+        let galleryBaseOffsetY = 0;
+
+        const galleryEl = document.getElementById('gallery');
+        const galleryCanvas = document.getElementById('galleryCanvas');
+        const galleryCtx = galleryCanvas.getContext('2d');
+        const closeGalleryBtn = document.getElementById('closeGalleryBtn');
+
+        const CARD_W = 260;
+        const CARD_H = 320;
+        const CARD_GAP = 30;
+        const CARD_R = 22;
+
+        function openGallery() {
+            if (photoLog.length === 0) return;
+            galleryVisible = true;
+            galleryZoom = 1.0;
+            galleryOffsetX = 0;
+            galleryOffsetY = 0;
+            galleryEl.classList.add('visible');
+            resizeGalleryCanvas();
+            drawGallery();
+        }
+
+        function closeGallery() {
+            galleryVisible = false;
+            galleryEl.classList.remove('visible');
+        }
+
+        function resizeGalleryCanvas() {
+            galleryCanvas.width = window.innerWidth;
+            galleryCanvas.height = window.innerHeight;
+        }
+
+        function getGalleryContentWidth() {
+            const n = photoLog.length;
+            return n * CARD_W + (n - 1) * CARD_GAP;
+        }
+
+        function drawPlanetInCircle(cx, cy, R, p) {
+            const r = R;
+
+            if (p.atmosphere) {
+                const atmGrad = galleryCtx.createRadialGradient(cx, cy, r * 0.9, cx, cy, r * 1.5);
+                atmGrad.addColorStop(0, p.atmosphere);
+                atmGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                galleryCtx.fillStyle = atmGrad;
+                galleryCtx.beginPath();
+                galleryCtx.arc(cx, cy, r * 1.5, 0, Math.PI * 2);
+                galleryCtx.fill();
+            }
+
+            if (p.ring) {
+                galleryCtx.save();
+                galleryCtx.translate(cx, cy);
+                galleryCtx.rotate(p.ringTilt || 0.4);
+                const ringW = (p.ringWidth || 2.0) * r;
+                const ringH = ringW * 0.28;
+                galleryCtx.beginPath();
+                galleryCtx.ellipse(0, 0, ringW, ringH, 0, Math.PI, Math.PI * 2);
+                galleryCtx.strokeStyle = p.ringColor || 'rgba(220, 200, 150, 0.7)';
+                galleryCtx.globalAlpha = 0.5;
+                galleryCtx.lineWidth = 2.5;
+                galleryCtx.stroke();
+                galleryCtx.globalAlpha = 1;
+                galleryCtx.restore();
+            }
+
+            galleryCtx.save();
+            galleryCtx.beginPath();
+            galleryCtx.arc(cx, cy, r, 0, Math.PI * 2);
+            galleryCtx.clip();
+
+            const baseGrad = galleryCtx.createRadialGradient(
+                cx - r * 0.4, cy - r * 0.4, r * 0.1,
+                cx, cy, r * 1.1
+            );
+            baseGrad.addColorStop(0, shade(p.color, 1.5));
+            baseGrad.addColorStop(0.5, p.color);
+            baseGrad.addColorStop(1, shade(p.color, 0.35));
+            galleryCtx.fillStyle = baseGrad;
+            galleryCtx.fillRect(cx - r, cy - r, r * 2, r * 2);
+
+            if (p.bands && p.bands.length > 0) {
+                const bandCount = p.bands.length;
+                const bandHeight = (r * 2) / bandCount;
+                for (let i = 0; i < bandCount; i++) {
+                    galleryCtx.fillStyle = p.bands[i];
+                    galleryCtx.globalAlpha = 0.35;
+                    galleryCtx.fillRect(cx - r, cy - r + i * bandHeight, r * 2, bandHeight);
+                }
+                galleryCtx.globalAlpha = 1;
+            }
+
+            if (p.spots && p.spots.length > 0) {
+                for (let spot of p.spots) {
+                    const spotAngle = spot.angle;
+                    const face = Math.cos(spotAngle);
+                    if (face < -0.3) continue;
+                    const spotX = cx + Math.sin(spotAngle) * r * 0.85;
+                    const spotY = cy + (spot.size - 0.5) * r * 1.0;
+                    const spotSize = spot.size * r;
+                    const scaleX = Math.max(0.3, Math.abs(face));
+                    galleryCtx.save();
+                    galleryCtx.globalAlpha = 0.55 * Math.min(1, (face + 0.3) / 1.3);
+                    galleryCtx.fillStyle = spot.color;
+                    galleryCtx.beginPath();
+                    galleryCtx.ellipse(spotX, spotY, spotSize * scaleX, spotSize * 0.7, 0, 0, Math.PI * 2);
+                    galleryCtx.fill();
+                    galleryCtx.restore();
+                }
+            }
+
+            if (p.stormSpot) {
+                const stormAngle = p.stormSpot.angle;
+                const face = Math.cos(stormAngle);
+                if (face > -0.2) {
+                    const stormX = cx + Math.sin(stormAngle) * r * 0.7;
+                    const stormY = cy + (p.stormSpot.size - 0.5) * r * 1.0;
+                    const stormSize = p.stormSpot.size * r;
+                    galleryCtx.save();
+                    galleryCtx.globalAlpha = 0.8 * Math.min(1, (face + 0.2) / 1.2);
+                    galleryCtx.fillStyle = p.stormSpot.color;
+                    galleryCtx.beginPath();
+                    galleryCtx.ellipse(stormX, stormY, stormSize * Math.max(0.3, face), stormSize * 0.55, 0, 0, Math.PI * 2);
+                    galleryCtx.fill();
+                    galleryCtx.restore();
+                }
+            }
+
+            const termGrad = galleryCtx.createRadialGradient(
+                cx - r * 0.5, cy - r * 0.5, r * 0.2,
+                cx - r * 0.5, cy - r * 0.5, r * 1.8
+            );
+            termGrad.addColorStop(0, 'rgba(0,0,0,0)');
+            termGrad.addColorStop(0.6, 'rgba(0,0,0,0)');
+            termGrad.addColorStop(1, 'rgba(0,0,0,0.55)');
+            galleryCtx.fillStyle = termGrad;
+            galleryCtx.fillRect(cx - r, cy - r, r * 2, r * 2);
+
+            const highlightGrad = galleryCtx.createRadialGradient(
+                cx - r * 0.45, cy - r * 0.45, 0,
+                cx - r * 0.45, cy - r * 0.45, r * 0.8
+            );
+            highlightGrad.addColorStop(0, 'rgba(255,255,255,0.35)');
+            highlightGrad.addColorStop(0.5, 'rgba(255,255,255,0.05)');
+            highlightGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            galleryCtx.fillStyle = highlightGrad;
+            galleryCtx.fillRect(cx - r, cy - r, r * 2, r * 2);
+
+            galleryCtx.restore();
+
+            galleryCtx.beginPath();
+            galleryCtx.arc(cx, cy, r, 0, Math.PI * 2);
+            galleryCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            galleryCtx.lineWidth = 1;
+            galleryCtx.stroke();
+
+            if (p.ring) {
+                galleryCtx.save();
+                galleryCtx.translate(cx, cy);
+                galleryCtx.rotate(p.ringTilt || 0.4);
+                const ringW = (p.ringWidth || 2.0) * r;
+                const ringH = ringW * 0.28;
+                galleryCtx.beginPath();
+                galleryCtx.ellipse(0, 0, ringW, ringH, 0, 0, Math.PI);
+                galleryCtx.strokeStyle = p.ringColor || 'rgba(220, 200, 150, 0.7)';
+                galleryCtx.globalAlpha = 0.7;
+                galleryCtx.lineWidth = 2.5;
+                galleryCtx.stroke();
+                galleryCtx.globalAlpha = 1;
+                galleryCtx.restore();
+            }
+        }
+
+        function drawCometInCircle(cx, cy, R, c) {
+            const r = R;
+            const nx = 1, ny = -0.5;
+            const len = Math.hypot(nx, ny);
+            const ux = nx / len, uy = ny / len;
+            const px = -uy, py = ux;
+            const tailLen = r * 4;
+            const outerHalf = r * 1.2;
+
+            const outerGrad = galleryCtx.createLinearGradient(cx, cy, cx + ux * tailLen, cy + uy * tailLen);
+            outerGrad.addColorStop(0, 'rgba(120, 200, 255, 0.25)');
+            outerGrad.addColorStop(0.5, 'rgba(100, 180, 255, 0.12)');
+            outerGrad.addColorStop(1, 'rgba(80, 150, 255, 0)');
+            galleryCtx.save();
+            galleryCtx.globalCompositeOperation = 'lighter';
+            galleryCtx.fillStyle = outerGrad;
+            galleryCtx.beginPath();
+            galleryCtx.moveTo(cx + px * outerHalf, cy + py * outerHalf);
+            galleryCtx.lineTo(cx + ux * tailLen, cy + uy * tailLen);
+            galleryCtx.lineTo(cx - px * outerHalf, cy - py * outerHalf);
+            galleryCtx.closePath();
+            galleryCtx.fill();
+            galleryCtx.restore();
+
+            const midHalf = r * 0.6;
+            const midGrad = galleryCtx.createLinearGradient(cx, cy, cx + ux * tailLen * 0.8, cy + uy * tailLen * 0.8);
+            midGrad.addColorStop(0, 'rgba(180, 225, 255, 0.55)');
+            midGrad.addColorStop(0.4, 'rgba(140, 200, 255, 0.35)');
+            midGrad.addColorStop(1, 'rgba(100, 170, 255, 0)');
+            galleryCtx.save();
+            galleryCtx.globalCompositeOperation = 'lighter';
+            galleryCtx.fillStyle = midGrad;
+            galleryCtx.beginPath();
+            galleryCtx.moveTo(cx + px * midHalf, cy + py * midHalf);
+            galleryCtx.lineTo(cx + ux * tailLen * 0.8, cy + uy * tailLen * 0.8);
+            galleryCtx.lineTo(cx - px * midHalf, cy - py * midHalf);
+            galleryCtx.closePath();
+            galleryCtx.fill();
+            galleryCtx.restore();
+
+            galleryCtx.save();
+            galleryCtx.shadowColor = c.color;
+            galleryCtx.shadowBlur = 20;
+            const coreGrad = galleryCtx.createRadialGradient(cx, cy, 0, cx, cy, r);
+            coreGrad.addColorStop(0, '#ffffff');
+            coreGrad.addColorStop(0.4, c.color);
+            coreGrad.addColorStop(1, 'rgba(100, 180, 255, 0.2)');
+            galleryCtx.fillStyle = coreGrad;
+            galleryCtx.beginPath();
+            galleryCtx.arc(cx, cy, r, 0, Math.PI * 2);
+            galleryCtx.fill();
+            galleryCtx.restore();
+        }
+
+        function drawAsteroidInCircle(cx, cy, R, a) {
+            const r = R;
+            galleryCtx.save();
+            const points = 9;
+            galleryCtx.beginPath();
+            for (let i = 0; i < points; i++) {
+                const angle = (i / points) * Math.PI * 2;
+                const wobble = 1 + 0.18 * Math.sin(i * 2.7 + a.id * 1.3);
+                const px = cx + Math.cos(angle) * r * wobble;
+                const py = cy + Math.sin(angle) * r * wobble;
+                if (i === 0) galleryCtx.moveTo(px, py);
+                else galleryCtx.lineTo(px, py);
+            }
+            galleryCtx.closePath();
+
+            const baseGrad = galleryCtx.createRadialGradient(
+                cx - r * 0.3, cy - r * 0.3, r * 0.1,
+                cx, cy, r * 1.1
+            );
+            baseGrad.addColorStop(0, shade(a.color, 1.4));
+            baseGrad.addColorStop(0.6, a.color);
+            baseGrad.addColorStop(1, shade(a.color, 0.5));
+            galleryCtx.fillStyle = baseGrad;
+            galleryCtx.fill();
+            galleryCtx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            galleryCtx.lineWidth = 1;
+            galleryCtx.stroke();
+            galleryCtx.restore();
+
+            galleryCtx.save();
+            galleryCtx.globalAlpha = 0.45;
+            galleryCtx.fillStyle = shade(a.color, 0.4);
+            for (let i = 0; i < 5; i++) {
+                const ca = (i / 5) * Math.PI * 2 + a.id * 0.7;
+                const cd = r * (0.2 + 0.45 * ((i * 37 + a.id * 13) % 100) / 100);
+                const ccx = cx + Math.cos(ca) * cd;
+                const ccy = cy + Math.sin(ca) * cd;
+                const cr = r * (0.08 + 0.12 * ((i * 53 + a.id * 7) % 100) / 100);
+                galleryCtx.beginPath();
+                galleryCtx.arc(ccx, ccy, Math.max(0.3, cr), 0, Math.PI * 2);
+                galleryCtx.fill();
+            }
+            galleryCtx.restore();
+
+            galleryCtx.save();
+            galleryCtx.beginPath();
+            galleryCtx.arc(cx, cy, r, 0, Math.PI * 2);
+            galleryCtx.clip();
+            const termGrad = galleryCtx.createRadialGradient(
+                cx - r * 0.4, cy - r * 0.4, r * 0.2,
+                cx - r * 0.4, cy - r * 0.4, r * 1.8
+            );
+            termGrad.addColorStop(0, 'rgba(0,0,0,0)');
+            termGrad.addColorStop(0.6, 'rgba(0,0,0,0)');
+            termGrad.addColorStop(1, 'rgba(0,0,0,0.5)');
+            galleryCtx.fillStyle = termGrad;
+            galleryCtx.fillRect(cx - r, cy - r, r * 2, r * 2);
+            galleryCtx.restore();
+        }
+
+        // ============================================================
+        //  НАЛОЖЕНИЕ ТЕКСТА НА СНИМОК В ГАЛЕРЕЕ
+        //  Статичное: без «дыхания». Искажение, размытие, warp
+        //  и прозрачность — строго из параметров.
+        // ============================================================
+        function applyTextToObject(obj, cx, cy, R, words, distortionAmount, blurAmount, warpAmount, alpha, scale) {
+            if (!words || words.length === 0) return;
+
+            const distNorm = Math.max(0, Math.min(100, distortionAmount)) / 100;
+            const alphaVal = Math.max(0, Math.min(100, alpha)) / 100;
+
+            const pad = R * 0.7 + 30;
+            const size = Math.ceil((R + pad) * 2);
+            const off = document.createElement('canvas');
+            off.width = size;
+            off.height = size;
+            const octx = off.getContext('2d');
+
+            const baseFontSize = words.length === 1
+                ? R * 0.85 * scale
+                : R * 0.6 * scale;
+
+            octx.font = `bold ${baseFontSize}px "Segoe UI", Arial, sans-serif`;
+            octx.textAlign = 'center';
+            octx.textBaseline = 'middle';
+
+            octx.fillStyle = '#ffffff';
+            octx.shadowColor = 'rgba(0,0,0,0.6)';
+            octx.shadowBlur = baseFontSize * 0.15;
+            octx.shadowOffsetX = 0;
+            octx.shadowOffsetY = baseFontSize * 0.06;
+
+            if (words.length === 1) {
+                octx.fillText(words[0], size / 2, size / 2);
+            } else {
+                const lineHeight = baseFontSize * 1.15;
+                const blockTop = size / 2 - lineHeight;
+                octx.fillText(words[0], size / 2, blockTop + lineHeight * 0.5);
+                octx.fillText(words[1], size / 2, blockTop + lineHeight * 1.5);
+            }
+
+            // Статичная трансформация (без «дыхания»)
+            const scaleX = 1 + distNorm * 0.2;
+            const scaleY = 1 - distNorm * 0.12;
+            const rot = distNorm * 0.12;
+
+            const transformed = document.createElement('canvas');
+            transformed.width = size;
+            transformed.height = size;
+            const tctx = transformed.getContext('2d');
+            tctx.save();
+            tctx.translate(size / 2, size / 2);
+            tctx.rotate(rot);
+            tctx.scale(scaleX, scaleY);
+            tctx.drawImage(off, -size / 2, -size / 2);
+            tctx.restore();
+
+            // Размытие — независимое, из настроек
+            let result = transformed;
+            if (blurAmount > 0.1) {
+                const blurred = document.createElement('canvas');
+                blurred.width = size;
+                blurred.height = size;
+                const bctx = blurred.getContext('2d');
+                bctx.filter = `blur(${blurAmount}px)`;
+                bctx.drawImage(transformed, 0, 0);
+                result = blurred;
+            }
+
+            // Волновое искажение — независимое, из настроек
+            if (warpAmount > 0.1) {
+                const warped = document.createElement('canvas');
+                warped.width = size;
+                warped.height = size;
+                const wctx = warped.getContext('2d');
+                try {
+                    const imgData = result.getContext('2d').getImageData(0, 0, size, size);
+                    const src = new Uint8ClampedArray(imgData.data);
+                    const dst = imgData.data;
+                    const waveFreq = 0.04 + distNorm * 0.04;
+                    for (let y = 0; y < size; y++) {
+                        for (let x = 0; x < size; x++) {
+                            const offsetX = Math.sin(y * waveFreq) * warpAmount;
+                            const offsetY = Math.cos(x * waveFreq) * warpAmount;
+                            const sx = Math.max(0, Math.min(size - 1, Math.floor(x + offsetX)));
+                            const sy = Math.max(0, Math.min(size - 1, Math.floor(y + offsetY)));
+                            const si = (sy * size + sx) * 4;
+                            const di = (y * size + x) * 4;
+                            dst[di] = src[si];
+                            dst[di + 1] = src[si + 1];
+                            dst[di + 2] = src[si + 2];
+                            dst[di + 3] = src[si + 3];
+                        }
+                    }
+                    wctx.putImageData(imgData, 0, 0);
+                    result = warped;
+                } catch (e) {
+                    // Пропускаем warp
+                }
+            }
+
+            galleryCtx.save();
+
+            if (obj.isAsteroid || obj.kind === 'asteroid') {
+                const points = 9;
+                galleryCtx.beginPath();
+                for (let i = 0; i < points; i++) {
+                    const angle = (i / points) * Math.PI * 2;
+                    const wobble = 1 + 0.18 * Math.sin(i * 2.7 + (obj.id || 0) * 1.3);
+                    const px = cx + Math.cos(angle) * R * wobble;
+                    const py = cy + Math.sin(angle) * R * wobble;
+                    if (i === 0) galleryCtx.moveTo(px, py);
+                    else galleryCtx.lineTo(px, py);
+                }
+                galleryCtx.closePath();
+            } else {
+                galleryCtx.beginPath();
+                galleryCtx.arc(cx, cy, R, 0, Math.PI * 2);
+            }
+            galleryCtx.clip();
+
+            galleryCtx.globalAlpha = alphaVal;
+            galleryCtx.drawImage(result, cx - size / 2, cy - size / 2, size, size);
+            galleryCtx.globalAlpha = 1;
+
+            galleryCtx.restore();
+        }
+
+        function drawGallery() {
+            if (!galleryVisible) return;
+
+            const W = galleryCanvas.width;
+            const H = galleryCanvas.height;
+
+            galleryCtx.fillStyle = '#050510';
+            galleryCtx.fillRect(0, 0, W, H);
+
+            galleryCtx.fillStyle = 'rgba(255,255,255,0.5)';
+            let seed = 42;
+            function rnd() {
+                seed = (seed * 1664525 + 1013904223) >>> 0;
+                return seed / 4294967296;
+            }
+            for (let i = 0; i < 200; i++) {
+                const x = rnd() * W;
+                const y = rnd() * H;
+                const s = rnd() * 1.2 + 0.3;
+                const a = rnd() * 0.5 + 0.2;
+                galleryCtx.globalAlpha = a;
+                galleryCtx.beginPath();
+                galleryCtx.arc(x, y, s, 0, Math.PI * 2);
+                galleryCtx.fill();
+            }
+            galleryCtx.globalAlpha = 1;
+
+            galleryCtx.save();
+            const contentW = getGalleryContentWidth();
+            const baseX = (W - contentW) / 2;
+            const baseY = H / 2;
+
+            galleryCtx.translate(W / 2 + galleryOffsetX, H / 2 + galleryOffsetY);
+            galleryCtx.scale(galleryZoom, galleryZoom);
+            galleryCtx.translate(-W / 2, -H / 2);
+
+            const startX = baseX;
+            const y = baseY;
+
+            for (let i = 0; i < photoLog.length; i++) {
+                const item = photoLog[i];
+                const x = startX + i * (CARD_W + CARD_GAP);
+
+                galleryCtx.save();
+                galleryCtx.fillStyle = 'rgba(20, 25, 45, 0.85)';
+                galleryCtx.strokeStyle = 'rgba(120, 160, 255, 0.35)';
+                galleryCtx.lineWidth = 2;
+
+                const rx = x, ry = y - CARD_H / 2;
+                const rr = 14;
+                galleryCtx.beginPath();
+                galleryCtx.moveTo(rx + rr, ry);
+                galleryCtx.lineTo(rx + CARD_W - rr, ry);
+                galleryCtx.quadraticCurveTo(rx + CARD_W, ry, rx + CARD_W, ry + rr);
+                galleryCtx.lineTo(rx + CARD_W, ry + CARD_H - rr);
+                galleryCtx.quadraticCurveTo(rx + CARD_W, ry + CARD_H, rx + CARD_W - rr, ry + CARD_H);
+                galleryCtx.lineTo(rx + rr, ry + CARD_H);
+                galleryCtx.quadraticCurveTo(rx, ry + CARD_H, rx, ry + CARD_H - rr);
+                galleryCtx.lineTo(rx, ry + rr);
+                galleryCtx.quadraticCurveTo(rx, ry, rx + rr, ry);
+                galleryCtx.closePath();
+                galleryCtx.fill();
+                galleryCtx.stroke();
+                galleryCtx.restore();
+
+                const objCX = x + CARD_W / 2;
+                const objCY = y - CARD_H / 2 + 110;
+                const R = CARD_R * 2.2;
+
+                galleryCtx.save();
+                galleryCtx.beginPath();
+                galleryCtx.arc(objCX, objCY, R + 8, 0, Math.PI * 2);
+                galleryCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                galleryCtx.fill();
+                galleryCtx.restore();
+
+                if (item.kind === 'planet') {
+                    drawPlanetInCircle(objCX, objCY, R, item.data);
+                } else if (item.kind === 'comet') {
+                    drawCometInCircle(objCX, objCY, R, item.data);
+                } else if (item.kind === 'asteroid') {
+                    drawAsteroidInCircle(objCX, objCY, R, item.data);
+                }
+
+                // === Наложение текста ===
+                let distortion;
+                if (item.kind === 'planet') {
+                    distortion = SETTINGS.GALLERY_TEXT_DISTORTION_PLANET;
+                } else if (item.kind === 'comet') {
+                    distortion = SETTINGS.GALLERY_TEXT_DISTORTION_COMET;
+                } else {
+                    distortion = SETTINGS.GALLERY_TEXT_DISTORTION_ASTEROID;
+                }
+                const textScale = SETTINGS.GALLERY_TEXT_SIZE / 100;
+
+                applyTextToObject(
+                    item.data,
+                    objCX, objCY, R,
+                    [item.text],
+                    distortion,
+                    SETTINGS.GALLERY_TEXT_BLUR,
+                    SETTINGS.GALLERY_TEXT_WARP,
+                    SETTINGS.GALLERY_TEXT_OPACITY,
+                    textScale
+                );
+
+                galleryCtx.save();
+                galleryCtx.fillStyle = 'rgba(100, 200, 255, 0.9)';
+                galleryCtx.font = 'bold 16px "Segoe UI", sans-serif';
+                galleryCtx.textAlign = 'left';
+                galleryCtx.textBaseline = 'top';
+                galleryCtx.fillText(`#${i + 1}`, x + 14, y - CARD_H / 2 + 12);
+                galleryCtx.restore();
+
+                const kindLabel = item.kind === 'planet' ? 'ПЛАНЕТА' :
+                                  item.kind === 'comet' ? 'КОМЕТА' : 'АСТЕРОИД';
+                const kindColor = item.kind === 'planet' ? '#88bbff' :
+                                  item.kind === 'comet' ? '#88ddff' : '#ffbb88';
+                galleryCtx.save();
+                galleryCtx.fillStyle = kindColor;
+                galleryCtx.font = 'bold 11px "Segoe UI", sans-serif';
+                galleryCtx.textAlign = 'right';
+                galleryCtx.textBaseline = 'top';
+                galleryCtx.fillText(kindLabel, x + CARD_W - 14, y - CARD_H / 2 + 14);
+                galleryCtx.restore();
+
+                galleryCtx.save();
+                galleryCtx.fillStyle = '#ffffff';
+                galleryCtx.font = 'bold 18px "Segoe UI", sans-serif';
+                galleryCtx.textAlign = 'center';
+                galleryCtx.textBaseline = 'middle';
+                galleryCtx.fillText(item.name, x + CARD_W / 2, y + CARD_H / 2 - 30);
+                galleryCtx.restore();
+            }
+
+            galleryCtx.restore();
+        }
+
+        showPhotosBtn.addEventListener('click', openGallery);
+        closeGalleryBtn.addEventListener('click', closeGallery);
+
+        galleryEl.addEventListener('wheel', (e) => {
+            if (!galleryVisible) return;
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+            galleryZoom = Math.max(0.2, Math.min(4, galleryZoom * factor));
+            drawGallery();
+        }, { passive: false });
+
+        galleryEl.addEventListener('mousedown', (e) => {
+            if (!galleryVisible) return;
+            if (e.button !== 0) return;
+            if (e.target === closeGalleryBtn) return;
+            galleryDragging = true;
+            galleryDragStartX = e.clientX;
+            galleryDragStartY = e.clientY;
+            galleryBaseOffsetX = galleryOffsetX;
+            galleryBaseOffsetY = galleryOffsetY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!galleryDragging) return;
+            galleryOffsetX = galleryBaseOffsetX + (e.clientX - galleryDragStartX);
+            galleryOffsetY = galleryBaseOffsetY + (e.clientY - galleryDragStartY);
+            drawGallery();
+        });
+
+        window.addEventListener('mouseup', () => {
+            galleryDragging = false;
+        });
+
+        window.addEventListener('resize', () => {
+            if (galleryVisible) {
+                resizeGalleryCanvas();
+                drawGallery();
+            }
+        });
+
+        // ============================================================
+        //  Запуск
+        // ============================================================
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            closeGallery();
+            initGame();
+        });
+
+        initGame();
+        lastTime = performance.now();
+        animationFrameId = requestAnimationFrame(animate);
+
+        window.addEventListener('mousedown', () => {
+            if (audioCtx && spaceSoundNodes.length === 0) {
+                initSpaceSounds();
+                if (!spaceSoundsEnabled && spaceMasterGain) {
+                    spaceMasterGain.gain.value = 0;
+                }
+            }
+        }, { once: true });
+
+        window.addEventListener('beforeunload', () => {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            stopThrustSound();
+            stopAllSpaceSounds();
+        });
+    </script>
+</body>
+</html>
