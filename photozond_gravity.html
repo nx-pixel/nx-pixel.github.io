@@ -89,7 +89,6 @@
             border-radius: 5px;
         }
 
-        /* Переключатель режима управления — в правом нижнем углу */
         #controlModeBtn {
             position: absolute;
             bottom: 20px;
@@ -114,7 +113,6 @@
         }
         #controlModeBtn.nose-mode:hover { background: rgba(220, 150, 80, 0.8); }
 
-        /* Индикатор режима (обзор / автопилот) — по центру снизу */
         #modeIndicator {
             position: absolute;
             bottom: 20px;
@@ -140,7 +138,7 @@
             background: rgba(40, 160, 60, 0.7);
             border-color: rgba(120, 255, 140, 0.6);
         }
-       
+
         #topButtons {
             position: absolute;
             bottom: 60px;
@@ -172,7 +170,6 @@
             border-color: rgba(255, 220, 80, 0.7);
         }
 
-        /* Индикатор гравитации — левый нижний угол */
         #gravityIndicator {
             position: absolute;
             bottom: 20px;
@@ -300,6 +297,57 @@
             z-index: 2;
         }
 
+        /* Секретное меню (Ctrl+\) */
+        #secretMenu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 15, 30, 0.95);
+            border: 1px solid rgba(255, 215, 0, 0.6);
+            border-radius: 10px;
+            padding: 18px 22px;
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 14px;
+            z-index: 300;
+            display: none;
+            min-width: 340px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.25);
+        }
+        #secretMenu.visible { display: block; }
+        #secretMenu .secret-title {
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+            font-size: 16px;
+        }
+        #secretMenu .secret-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 12px 0;
+            cursor: pointer;
+        }
+        #secretMenu .secret-row input[type="range"] { flex: 1; accent-color: #4a9eff; }
+        #secretMenu .secret-row input[type="checkbox"] { accent-color: #4a9eff; width: 16px; height: 16px; }
+        #secretMenu .secret-val {
+            font-family: monospace;
+            color: #8cf;
+            min-width: 55px;
+            text-align: right;
+        }
+        #secretMenu .secret-hint {
+            margin-top: 14px;
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 10px;
+        }
+
         canvas { display: block; cursor: crosshair; }
         canvas.overview { cursor: grab; }
         canvas.overview:active { cursor: grabbing; }
@@ -311,7 +359,7 @@
         <h2>🛰 Фотозонд: Гравитация</h2>
         <p>Цель: сфотографировать планеты и <b>вернуться к Земле</b>.</p>
         <p>Снимок делается автоматически, когда зонд пролетает близко к объекту.</p>
-        <p>Миссия завершается, когда зонд приближается к Земле.</p>
+        <p>Зонд стартует с поверхности Земли. Выйди из атмосферы — и вернись, чтобы завершить миссию.</p>
         <p style="color:#88ddff">Кометы — бонусные цели. Их 4.</p>
         <p style="color:#ffbb88">Астероиды — бонусные цели. Их 6.</p>
         <p>Курсор — направление (зависит от режима) · ЛКМ — двигатель</p>
@@ -344,7 +392,6 @@
         <button id="spaceSoundsBtn" class="active" title="Звуки космоса">🔊 Звуки космоса</button>
     </div>
 
-    <!-- Переключатель режима управления в правом нижнем углу -->
     <button id="controlModeBtn">Режим: сопло</button>
 
     <div id="endScreen">
@@ -363,6 +410,20 @@
         </div>
         <button id="closeGalleryBtn">✕ Закрыть</button>
         <div id="galleryFooter">Снимки идут в порядке фотографирования</div>
+    </div>
+
+    <div id="secretMenu">
+        <div class="secret-title">⚙ Секретное меню</div>
+        <label class="secret-row">
+            <input type="checkbox" id="secretGodMode">
+            <span>Режим бога (GOD_MODE)</span>
+        </label>
+        <label class="secret-row">
+            <span>Множитель тяги</span>
+            <input type="range" id="secretThrustMult" min="1" max="50" step="0.5" value="1">
+            <span class="secret-val" id="secretThrustMultVal">×1.0</span>
+        </label>
+        <div class="secret-hint">Ctrl+Shift+G — закрыть</div>
     </div>
 
     <canvas id="canvas"></canvas>
@@ -412,7 +473,12 @@
             SPACE_SOUND_ASTEROID_RADIUS: 1000,
             SPACE_SOUND_STAR_RADIUS: 2200,
             SPACE_SOUND_MAX_VOLUME: 0.65,
-            SPACE_SOUND_MAX_SIMULTANEOUS: 5,
+            SPACE_SOUND_MAX_SIMULTANEOUS: 3,
+            SPACE_SOUND_MAX_TOTAL_VOLUME: 1.0,
+            SPACE_SOUND_MASTER_GAIN: 0.6,
+
+            // Фоновый трек — WAV-файл
+            AMBIENT_GAIN: 0.07,
 
             ZOOM_MIN: 0.02,
             ZOOM_MAX: 4.0,
@@ -427,7 +493,6 @@
             STAR_PER_CELL_THROTTLED: 1,
             STAR_CELL_SIZE: 1000,
 
-            // Вставь эти строки в блок SETTINGS в игре:
 			GALLERY_TEXT_DISTORTION_PLANET: 36,
 			GALLERY_TEXT_DISTORTION_COMET: 25,
 			GALLERY_TEXT_DISTORTION_ASTEROID: 20,
@@ -435,10 +500,6 @@
 			GALLERY_TEXT_WARP: 3,
 			GALLERY_TEXT_OPACITY: 53,
 			GALLERY_TEXT_SIZE: 75,
-
-			// Если для комет/астероидов нужны свои blur/warp/opacity/size,
-			// их сейчас в игре общие. Измени значения выше — они применятся ко всем.
-			// distortion же задаётся отдельно для каждого типа.
 
             AUTOPILOT_TIMEOUT: 0.4,
             AUTOPILOT_THRUST_TIME: 0.14,
@@ -448,8 +509,11 @@
             AUTOPILOT_ROTATION_SMOOTH: 0.15,
             AUTOPILOT_PICK_RADIUS_FACTOR: 3,
 
-            // Режим управления по умолчанию: 'nozzle' (сопло) или 'nose' (нос)
-            CONTROL_MODE_DEFAULT: 'nozzle'
+            CONTROL_MODE_DEFAULT: 'nozzle',
+
+            // Секретное меню (Ctrl+\): множитель тяги зонда
+            THRUST_MULTIPLIER_DEFAULT: 1.0,
+            THRUST_MULTIPLIER_MAX: 50.0
         };
         // ============================================================
 
@@ -714,7 +778,6 @@
         let spaceSoundsEnabled = true;
         let spaceSoundNodes = [];
 
-        // Автопилот
         let apState = 'IDLE';
         let apCenter = null;
         let apStaticRadius = 0;
@@ -723,11 +786,15 @@
         let apCooldownRemaining = 0;
         let apLastStatus = '—';
 
-        // Режим управления: 'nozzle' (по умолчанию) или 'nose'
         let controlMode = SETTINGS.CONTROL_MODE_DEFAULT;
 
-        // Суммарная гравитация в текущей точке (для индикатора)
         let gravityVector = { x: 0, y: 0, mag: 0 };
+
+        let earthReturnArmed = false;
+
+        // Секретное меню
+        let secretMenuVisible = false;
+        let thrustMultiplier = SETTINGS.THRUST_MULTIPLIER_DEFAULT;
 
         const modeIndicator = document.getElementById('modeIndicator');
         const endScreen = document.getElementById('endScreen');
@@ -750,6 +817,12 @@
         const gravityValue = document.getElementById('gravityValue');
         const gravityArrow = document.getElementById('gravityArrow');
         const gravityCtx = gravityArrow.getContext('2d');
+
+        // Секретное меню
+        const secretMenu = document.getElementById('secretMenu');
+        const secretGodMode = document.getElementById('secretGodMode');
+        const secretThrustMult = document.getElementById('secretThrustMult');
+        const secretThrustMultVal = document.getElementById('secretThrustMultVal');
 
         let lastTime = performance.now();
         let animationFrameId;
@@ -776,8 +849,34 @@
         controlModeBtn.addEventListener('click', toggleControlMode);
 
         // ============================================================
-        //  Индикатор режима (обзор / автопилот)
+        //  Секретное меню (Ctrl+\)
         // ============================================================
+        function toggleSecretMenu() {
+            secretMenuVisible = !secretMenuVisible;
+            if (secretMenuVisible) {
+                secretGodMode.checked = SETTINGS.GOD_MODE;
+                secretThrustMult.value = thrustMultiplier;
+                secretThrustMultVal.textContent = '×' + thrustMultiplier.toFixed(1);
+                secretMenu.classList.add('visible');
+            } else {
+                secretMenu.classList.remove('visible');
+            }
+        }
+
+        secretGodMode.addEventListener('change', () => {
+            SETTINGS.GOD_MODE = secretGodMode.checked;
+            if (SETTINGS.GOD_MODE) {
+                godBadge.classList.add('visible');
+            } else {
+                godBadge.classList.remove('visible');
+            }
+        });
+
+        secretThrustMult.addEventListener('input', () => {
+            thrustMultiplier = parseFloat(secretThrustMult.value);
+            secretThrustMultVal.textContent = '×' + thrustMultiplier.toFixed(1);
+        });
+
         function updateModeIndicator() {
             if (overviewMode) {
                 if (apState !== 'IDLE' && apCenter) {
@@ -801,27 +900,120 @@
         // ============================================================
         //  АУДИО
         // ============================================================
+        const AMBIENT_URL = 'https://nx-pixel.github.io/sound/deep_space_60s.wav';
+
         let audioCtx = null;
         let thrustOsc = null;
         let thrustGain = null;
         let spaceMasterGain = null;
+        let spaceCompressor = null;
+
+        let spaceSoundsInitialized = false;
+        let spaceSoundsInitializing = false;
+
+        let ambientBuffer = null;
+        let ambientSource = null;
+        let ambientGainNode = null;
+        let ambientInitialized = false;
+        let ambientEnabled = true;
 
         function initAudio() {
             if (audioCtx) return;
             try {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
                 spaceMasterGain = audioCtx.createGain();
-                spaceMasterGain.gain.value = 1;
-                spaceMasterGain.connect(audioCtx.destination);
+                spaceMasterGain.gain.value = SETTINGS.SPACE_SOUND_MASTER_GAIN;
+
+                spaceCompressor = audioCtx.createDynamicsCompressor();
+                try {
+                    spaceCompressor.threshold.setValueAtTime(-12, audioCtx.currentTime);
+                    spaceCompressor.knee.setValueAtTime(6, audioCtx.currentTime);
+                    spaceCompressor.ratio.setValueAtTime(12, audioCtx.currentTime);
+                    spaceCompressor.attack.setValueAtTime(0.003, audioCtx.currentTime);
+                    spaceCompressor.release.setValueAtTime(0.25, audioCtx.currentTime);
+                } catch (e) {
+                    spaceCompressor.threshold.value = -12;
+                    spaceCompressor.knee.value = 6;
+                    spaceCompressor.ratio.value = 12;
+                    spaceCompressor.attack.value = 0.003;
+                    spaceCompressor.release.value = 0.25;
+                }
+
+                spaceMasterGain.connect(spaceCompressor);
+                spaceCompressor.connect(audioCtx.destination);
+
+                loadAmbientWav();
             } catch (e) { console.warn('Web Audio API не поддерживается', e); }
         }
 
+        async function loadAmbientWav() {
+            if (!audioCtx || ambientBuffer) return;
+            try {
+                const resp = await fetch(AMBIENT_URL);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const arr = await resp.arrayBuffer();
+                ambientBuffer = await audioCtx.decodeAudioData(arr);
+                console.log('Фоновый трек загружен');
+                if (spaceSoundsInitialized && audioCtx.state === 'running') {
+                    startAmbientWav();
+                }
+            } catch (e) {
+                console.warn('Не удалось загрузить фоновый трек:', e);
+            }
+        }
+
+        function startAmbientWav() {
+            if (!ambientBuffer || !audioCtx || audioCtx.state !== 'running') return false;
+            if (ambientSource) return true;
+
+            try {
+                ambientGainNode = audioCtx.createGain();
+                ambientGainNode.gain.value = (ambientEnabled && spaceSoundsEnabled) ? SETTINGS.AMBIENT_GAIN : 0;
+                ambientGainNode.connect(spaceMasterGain);
+
+                ambientSource = audioCtx.createBufferSource();
+                ambientSource.buffer = ambientBuffer;
+                ambientSource.loop = true;
+                ambientSource.connect(ambientGainNode);
+                ambientSource.start(0);
+
+                ambientInitialized = true;
+                return true;
+            } catch (e) {
+                console.warn('Ошибка запуска фонового трека:', e);
+                return false;
+            }
+        }
+
+        function stopAmbientWav() {
+            if (ambientSource) {
+                try { ambientSource.stop(); } catch(e) {}
+                try { ambientSource.disconnect(); } catch(e) {}
+                ambientSource = null;
+            }
+            if (ambientGainNode) {
+                try { ambientGainNode.disconnect(); } catch(e) {}
+                ambientGainNode = null;
+            }
+            ambientInitialized = false;
+        }
+
+        function setAmbientVolume(on) {
+            ambientEnabled = on;
+            if (!ambientGainNode || !audioCtx) return;
+            try {
+                const target = (on && spaceSoundsEnabled) ? SETTINGS.AMBIENT_GAIN : 0;
+                ambientGainNode.gain.setTargetAtTime(target, audioCtx.currentTime, 0.15);
+            } catch (e) {}
+        }
+
         function makeNoiseBuffer(duration) {
-            const bufferSize = audioCtx.sampleRate * duration;
+            const bufferSize = Math.floor(audioCtx.sampleRate * duration);
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) {
-                data[i] = Math.random() * 2 - 1;
+                data[i] = (Math.random() * 2 - 1) * 0.5;
             }
             return buffer;
         }
@@ -894,7 +1086,7 @@
                                          name === 'Венера' ? 600 : 400;
                     nf.Q.value = 2;
                     const ng = audioCtx.createGain();
-                    ng.gain.value = 0.06;
+                    ng.gain.value = 0.04;
                     n.connect(nf).connect(ng).connect(master);
                     n.start();
                     oscs.push(n);
@@ -949,7 +1141,7 @@
                 nf.frequency.value = 1500;
                 nf.Q.value = 3;
                 const ng = audioCtx.createGain();
-                ng.gain.value = 0.05;
+                ng.gain.value = 0.04;
                 noise.connect(nf).connect(ng).connect(master);
                 noise.start();
                 oscs.push(noise);
@@ -971,35 +1163,55 @@
                 nf.frequency.value = 600;
                 nf.Q.value = 2;
                 const ng = audioCtx.createGain();
-                ng.gain.value = 0.05;
+                ng.gain.value = 0.04;
                 noise.connect(nf).connect(ng).connect(master);
                 noise.start();
                 oscs.push(noise);
             }
 
-            return { oscs, master, panner };
+            return { oscs, master, panner, type, object: obj, targetVol: 0 };
         }
 
         function initSpaceSounds() {
-            if (!audioCtx) return;
-            spaceSoundNodes = [];
+            if (!audioCtx || audioCtx.state !== 'running') return false;
+            if (spaceSoundsInitialized) return true;
+            if (spaceSoundsInitializing) return false;
 
-            const starSound = createSpaceSoundForObject(star, 'star');
-            spaceSoundNodes.push({ type: 'star', id: 'star', object: star, ...starSound, hearRadius: SETTINGS.SPACE_SOUND_STAR_RADIUS });
+            spaceSoundsInitializing = true;
+            try {
+                spaceSoundNodes = [];
 
-            for (let p of planets) {
-                const s = createSpaceSoundForObject(p, 'planet');
-                spaceSoundNodes.push({ type: 'planet', id: p.name, object: p, ...s, hearRadius: SETTINGS.SPACE_SOUND_PLANET_RADIUS });
-            }
+                const starSound = createSpaceSoundForObject(star, 'star');
+                spaceSoundNodes.push({ ...starSound, id: 'star', hearRadius: SETTINGS.SPACE_SOUND_STAR_RADIUS });
 
-            for (let c of comets) {
-                const s = createSpaceSoundForObject(c, 'comet');
-                spaceSoundNodes.push({ type: 'comet', id: c.id, object: c, ...s, hearRadius: SETTINGS.SPACE_SOUND_COMET_RADIUS });
-            }
+                for (let p of planets) {
+                    const s = createSpaceSoundForObject(p, 'planet');
+                    spaceSoundNodes.push({ ...s, id: p.name, hearRadius: SETTINGS.SPACE_SOUND_PLANET_RADIUS });
+                }
 
-            for (let a of bonusAsteroids) {
-                const s = createSpaceSoundForObject(a, 'asteroid');
-                spaceSoundNodes.push({ type: 'asteroid', id: a.id, object: a, ...s, hearRadius: SETTINGS.SPACE_SOUND_ASTEROID_RADIUS });
+                for (let c of comets) {
+                    const s = createSpaceSoundForObject(c, 'comet');
+                    spaceSoundNodes.push({ ...s, id: c.id, hearRadius: SETTINGS.SPACE_SOUND_COMET_RADIUS });
+                }
+
+                for (let a of bonusAsteroids) {
+                    const s = createSpaceSoundForObject(a, 'asteroid');
+                    spaceSoundNodes.push({ ...s, id: a.id, hearRadius: SETTINGS.SPACE_SOUND_ASTEROID_RADIUS });
+                }
+
+                spaceSoundsInitialized = true;
+
+                if (ambientBuffer) {
+                    startAmbientWav();
+                }
+
+                return true;
+            } catch (e) {
+                console.warn('Ошибка инициализации звуков космоса:', e);
+                spaceSoundsInitialized = false;
+                return false;
+            } finally {
+                spaceSoundsInitializing = false;
             }
         }
 
@@ -1011,6 +1223,9 @@
                 try { n.master.disconnect(); } catch(e) {}
             }
             spaceSoundNodes = [];
+            spaceSoundsInitialized = false;
+
+            stopAmbientWav();
         }
 
         function fadeOutSpaceSounds() {
@@ -1024,9 +1239,17 @@
         function fadeInSpaceSounds() {
             if (spaceMasterGain && audioCtx && spaceSoundsEnabled) {
                 try {
-                    spaceMasterGain.gain.setTargetAtTime(1, audioCtx.currentTime, 0.15);
+                    spaceMasterGain.gain.setTargetAtTime(SETTINGS.SPACE_SOUND_MASTER_GAIN, audioCtx.currentTime, 0.15);
                 } catch(e) {}
             }
+        }
+
+        function normalizeVolumes(vols) {
+            let total = 0;
+            for (const v of vols) total += v;
+            if (total <= SETTINGS.SPACE_SOUND_MAX_TOTAL_VOLUME) return vols.slice();
+            const k = SETTINGS.SPACE_SOUND_MAX_TOTAL_VOLUME / total;
+            return vols.map(v => v * k);
         }
 
         function updateSpaceSounds() {
@@ -1052,10 +1275,10 @@
                 activeSet.add(candidates[i].n);
             }
 
+            const desired = [];
             for (let n of spaceSoundNodes) {
                 let vol = 0;
                 let pan = 0;
-
                 if (activeSet.has(n)) {
                     const cand = candidates.find(c => c.n === n);
                     if (cand) {
@@ -1063,11 +1286,22 @@
                         pan = Math.max(-1, Math.min(1, cand.dx / n.hearRadius * 2));
                     }
                 }
+                desired.push({ node: n, vol, pan });
+            }
 
-                n.master.gain.setTargetAtTime(vol, now, 0.15);
-                if (n.panner) {
-                    n.panner.pan.setTargetAtTime(pan, now, 0.15);
-                }
+            const vols = desired.map(d => d.vol);
+            const normalized = normalizeVolumes(vols);
+
+            for (let i = 0; i < desired.length; i++) {
+                const d = desired[i];
+                const v = normalized[i];
+                d.node.targetVol = v;
+                try {
+                    d.node.master.gain.setTargetAtTime(v, now, 0.15);
+                    if (d.node.panner) {
+                        d.node.panner.pan.setTargetAtTime(d.pan, now, 0.15);
+                    }
+                } catch (e) {}
             }
         }
 
@@ -1174,11 +1408,28 @@
             noise.start();
         }
 
-        function unlockAudio() {
-            initAudio();
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        async function unlockAudio() {
+            if (!audioCtx) initAudio();
+            if (!audioCtx) return;
+
+            if (audioCtx.state === 'suspended') {
+                try { await audioCtx.resume(); } catch (e) {}
+            }
+
+            if (audioCtx.state === 'running' && !spaceSoundsInitialized && !spaceSoundsInitializing) {
+                initSpaceSounds();
+                if (spaceSoundsInitialized && !spaceSoundsEnabled && spaceMasterGain) {
+                    try { spaceMasterGain.gain.value = 0; } catch (e) {}
+                }
+            }
+
+            if (audioCtx.state === 'running' && ambientBuffer && !ambientInitialized) {
+                startAmbientWav();
+                setAmbientVolume(spaceSoundsEnabled);
+            }
         }
         window.addEventListener('mousedown', unlockAudio, { once: false });
+        window.addEventListener('pointerdown', unlockAudio, { once: false });
         window.addEventListener('keydown', unlockAudio, { once: false });
         window.addEventListener('touchstart', unlockAudio, { once: false });
 
@@ -1209,13 +1460,17 @@
             if (on) {
                 spaceSoundsBtn.textContent = '🔊 Звуки космоса';
                 spaceSoundsBtn.classList.add('active');
-                if (spaceMasterGain && !gameOver && !gameWin) {
-                    spaceMasterGain.gain.setTargetAtTime(1, audioCtx.currentTime, 0.1);
+                if (spaceMasterGain && audioCtx && !gameOver && !gameWin) {
+                    spaceMasterGain.gain.setTargetAtTime(SETTINGS.SPACE_SOUND_MASTER_GAIN, audioCtx.currentTime, 0.1);
                 }
+                setAmbientVolume(true);
             } else {
                 spaceSoundsBtn.textContent = '🔇 Звуки космоса';
                 spaceSoundsBtn.classList.remove('active');
-                if (spaceMasterGain) spaceMasterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+                if (spaceMasterGain && audioCtx) {
+                    spaceMasterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+                }
+                setAmbientVolume(false);
             }
         }
 
@@ -1230,13 +1485,18 @@
             }
             if (e.key === 'Escape') {
                 if (galleryVisible) closeGallery();
+                if (secretMenuVisible) toggleSecretMenu();
             }
+            // Ctrl+Shift+G — секретное меню
+			if (e.ctrlKey && e.shiftKey && (e.key === 'G' || e.key === 'g' || e.code === 'KeyG')) {
+				e.preventDefault();
+				toggleSecretMenu();
+			}
         });
 
         // ============================================================
         //  АВТОПИЛОТ
         // ============================================================
-
         function normalizeAngle(a) {
             while (a > Math.PI) a -= 2 * Math.PI;
             while (a < -Math.PI) a += 2 * Math.PI;
@@ -1422,8 +1682,8 @@
             const angleOk = angleDiff < SETTINGS.AUTOPILOT_ANGLE_TOL;
 
             if (angleOk) {
-                rocket.vx += Math.cos(rocket.angle) * SETTINGS.THRUST * dt;
-                rocket.vy += Math.sin(rocket.angle) * SETTINGS.THRUST * dt;
+                rocket.vx += Math.cos(rocket.angle) * SETTINGS.THRUST * thrustMultiplier * dt;
+                rocket.vy += Math.sin(rocket.angle) * SETTINGS.THRUST * thrustMultiplier * dt;
                 fuel = Math.max(0, fuel - SETTINGS.FUEL_BURN_PER_SEC * dt);
                 if (!rocket.thrusting) { rocket.thrusting = true; startThrustSound(); }
                 hudAutopilot.textContent = apLastStatus;
@@ -1442,7 +1702,7 @@
         }
 
         // ============================================================
-        //  Инициализация
+        //  Инициализация игры
         // ============================================================
         function initGame() {
             if (spaceSoundNodes.length > 0) stopAllSpaceSounds();
@@ -1465,6 +1725,8 @@
             showPhotosBtn.classList.remove('visible');
             closeGallery();
 
+            earthReturnArmed = false;
+
             fadeInSpaceSounds();
 
             pauseBtn.textContent = '⏸ Пауза';
@@ -1473,8 +1735,15 @@
             if (rocket && rocket.thrusting) stopThrustSound();
             setOverviewMode(false);
 
-            // Восстанавливаем режим управления
             setControlMode(SETTINGS.CONTROL_MODE_DEFAULT);
+
+            // Сброс секретного меню
+            thrustMultiplier = SETTINGS.THRUST_MULTIPLIER_DEFAULT;
+            secretMenuVisible = false;
+            if (secretMenu) secretMenu.classList.remove('visible');
+            if (secretThrustMult) secretThrustMult.value = thrustMultiplier;
+            if (secretThrustMultVal) secretThrustMultVal.textContent = '×' + thrustMultiplier.toFixed(1);
+            if (secretGodMode) secretGodMode.checked = SETTINGS.GOD_MODE;
 
             if (SETTINGS.GOD_MODE) godBadge.classList.add('visible');
             else godBadge.classList.remove('visible');
@@ -1676,24 +1945,17 @@
             earth.x = star.x + Math.cos(earthAngle) * earth.orbitR;
             earth.y = star.y + Math.sin(earthAngle) * earth.orbitR;
 
-            const orbitR = SETTINGS.ROCKET_START_ORBIT_R;
-            rocket.x = earth.x + Math.cos(earthAngle) * orbitR;
-            rocket.y = earth.y + Math.sin(earthAngle) * orbitR;
-            rocket.angle = earthAngle;
-            rocket.targetAngle = earthAngle;
+            const startSurfaceRadius = earth.radius + ROCKET_WIDTH_HALF + 1;
+            const outwardX = Math.cos(earthAngle);
+            const outwardY = Math.sin(earthAngle);
+            rocket.x = earth.x + outwardX * startSurfaceRadius;
+            rocket.y = earth.y + outwardY * startSurfaceRadius;
+            rocket.angle = Math.atan2(outwardY, outwardX);
+            rocket.targetAngle = rocket.angle;
 
             const earthOrbitV = Math.sqrt(SETTINGS.G * SETTINGS.STAR_MASS / earth.orbitR);
-            const eVx = -Math.sin(earthAngle) * earthOrbitV;
-            const eVy =  Math.cos(earthAngle) * earthOrbitV;
-
-            const rocketOrbitV = Math.sqrt(
-                SETTINGS.G * earth.mass / orbitR
-            );
-            const relVx = -Math.sin(earthAngle) * rocketOrbitV;
-            const relVy =  Math.cos(earthAngle) * rocketOrbitV;
-
-            rocket.vx = eVx + relVx;
-            rocket.vy = eVy + relVy;
+            rocket.vx = -Math.sin(earthAngle) * earthOrbitV;
+            rocket.vy =  Math.cos(earthAngle) * earthOrbitV;
 
             camera = {
                 x: rocket.x, y: rocket.y,
@@ -1703,10 +1965,10 @@
 
             mouse = { x: canvas.width / 2, y: canvas.height / 2, down: false };
 
-            if (audioCtx) {
+            if (audioCtx && audioCtx.state === 'running' && !spaceSoundsInitialized) {
                 initSpaceSounds();
-                if (!spaceSoundsEnabled && spaceMasterGain) {
-                    spaceMasterGain.gain.value = 0;
+                if (spaceSoundsInitialized && !spaceSoundsEnabled && spaceMasterGain) {
+                    try { spaceMasterGain.gain.value = 0; } catch (e) {}
                 }
             }
 
@@ -1784,13 +2046,9 @@
             fuelBar.style.backgroundPosition = `${(1 - pct) * 100}% 0`;
         }
 
-        // ============================================================
-        //  Индикатор гравитации
-        // ============================================================
         function updateGravityIndicator() {
             gravityValue.textContent = gravityVector.mag.toFixed(3);
 
-            // Рисуем стрелку
             const w = gravityArrow.width;
             const h = gravityArrow.height;
             const cx = w / 2;
@@ -1799,7 +2057,6 @@
 
             gravityCtx.clearRect(0, 0, w, h);
 
-            // Фон
             gravityCtx.strokeStyle = 'rgba(140, 180, 255, 0.2)';
             gravityCtx.lineWidth = 1;
             gravityCtx.beginPath();
@@ -1807,7 +2064,6 @@
             gravityCtx.stroke();
 
             if (gravityVector.mag < 1e-6) {
-                // Нет гравитации — точка в центре
                 gravityCtx.fillStyle = 'rgba(140, 180, 255, 0.5)';
                 gravityCtx.beginPath();
                 gravityCtx.arc(cx, cy, 2, 0, Math.PI * 2);
@@ -1815,19 +2071,15 @@
                 return;
             }
 
-            // Направление (в экранных координатах y инвертирован — но для стрелки это неважно,
-            // т.к. мы рисуем на мини-канвасе в его собственных координатах)
             const dirX = gravityVector.x / gravityVector.mag;
             const dirY = gravityVector.y / gravityVector.mag;
 
-            // Длина стрелки: логарифмическая (чтобы видеть и слабую, и сильную гравитацию)
             const magNorm = Math.min(1, Math.log10(1 + gravityVector.mag) / 2);
             const len = 3 + (maxLen - 3) * magNorm;
 
             const tipX = cx + dirX * len;
             const tipY = cy + dirY * len;
 
-            // Линия стрелки
             gravityCtx.strokeStyle = '#aaddff';
             gravityCtx.lineWidth = 2;
             gravityCtx.lineCap = 'round';
@@ -1836,7 +2088,6 @@
             gravityCtx.lineTo(tipX, tipY);
             gravityCtx.stroke();
 
-            // Наконечник
             const headSize = 5;
             const angle = Math.atan2(dirY, dirX);
             gravityCtx.fillStyle = '#aaddff';
@@ -1853,16 +2104,12 @@
             gravityCtx.closePath();
             gravityCtx.fill();
 
-            // Точка в центре
             gravityCtx.fillStyle = 'rgba(255, 255, 255, 0.7)';
             gravityCtx.beginPath();
             gravityCtx.arc(cx, cy, 2, 0, Math.PI * 2);
             gravityCtx.fill();
         }
 
-        // ============================================================
-        //  Обзор
-        // ============================================================
         function setOverviewMode(on) {
             overviewMode = on;
             if (on) {
@@ -1878,9 +2125,6 @@
             updateModeIndicator();
         }
 
-        // ============================================================
-        //  Выбор центра автопилота (Ctrl+ЛКМ)
-        // ============================================================
         function pickAutopilotCenter(worldX, worldY) {
             const dsx = worldX - star.x;
             const dsy = worldY - star.y;
@@ -1899,9 +2143,6 @@
             return null;
         }
 
-        // ============================================================
-        //  Ввод
-        // ============================================================
         function updateMousePosition(e) {
             const rect = canvas.getBoundingClientRect();
             mouse.x = e.clientX - rect.left;
@@ -1923,14 +2164,12 @@
             if (gameOver || gameWin) return;
             updateMousePosition(e);
 
-            // ПКМ — режим обзора (НЕ отключает автопилот)
             if (e.button === 2) {
                 setOverviewMode(!overviewMode);
                 e.preventDefault();
                 return;
             }
 
-            // ЛКМ + Ctrl — выбор центра автопилота
             if (e.button === 0 && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
                 const world = screenToWorld(mouse.x, mouse.y);
@@ -1945,9 +2184,7 @@
                 return;
             }
 
-            // Обычная ЛКМ
             if (e.button === 0) {
-                // Если автопилот активен — отменяем (игрок берёт управление)
                 if (apState !== 'IDLE') {
                     stopAutopilot();
                 }
@@ -1973,9 +2210,6 @@
             camera.targetZoom = Math.max(SETTINGS.ZOOM_MIN, Math.min(SETTINGS.ZOOM_MAX, camera.targetZoom * factor));
         }, { passive: false });
 
-        // ============================================================
-        //  Взрыв / победа
-        // ============================================================
         function triggerExplosion(x, y) {
             if (gameOver || gameWin) return;
             gameOver = true;
@@ -2038,9 +2272,6 @@
             }
         }
 
-        // ============================================================
-        //  Физика
-        // ============================================================
         function update(dt) {
             if (gameOver || gameWin) {
                 if (explosion) {
@@ -2082,7 +2313,6 @@
                 updateCometPosition(c, gameTime);
             }
 
-            // === Гравитация ===
             let ax = 0, ay = 0;
             let dx = star.x - rocket.x, dy = star.y - rocket.y;
             let distSq = dx * dx + dy * dy;
@@ -2132,12 +2362,10 @@
             rocket.vx += ax * dt;
             rocket.vy += ay * dt;
 
-            // Сохраняем суммарный вектор гравитации для индикатора
             gravityVector.x = ax;
             gravityVector.y = ay;
             gravityVector.mag = Math.hypot(ax, ay);
 
-            // === Управление мышью (только если автопилот неактивен) ===
             if (apState === 'IDLE' && !overviewMode) {
                 let mouseWorld = screenToWorld(mouse.x, mouse.y);
                 let targetDx = mouseWorld.x - rocket.x;
@@ -2145,10 +2373,8 @@
                 let angleToMouse = Math.atan2(targetDy, targetDx);
 
                 if (controlMode === 'nozzle') {
-                    // Нос смотрит ПРОТИВОПОЛОЖНО курсору (сопло на курсор)
                     rocket.targetAngle = angleToMouse + Math.PI;
                 } else {
-                    // Нос смотрит НА курсор
                     rocket.targetAngle = angleToMouse;
                 }
 
@@ -2162,17 +2388,15 @@
                 fuel = SETTINGS.FUEL_MAX;
             }
 
-            // === Автопилот ===
             if (apState !== 'IDLE') {
                 updateAutopilot(dt);
             }
 
-            // === Тяга от мыши (только если автопилот неактивен) ===
             if (apState === 'IDLE') {
                 const wantThrust = !overviewMode && mouse.down && fuel > 0;
                 if (wantThrust) {
-                    rocket.vx += Math.cos(rocket.angle) * SETTINGS.THRUST * dt;
-                    rocket.vy += Math.sin(rocket.angle) * SETTINGS.THRUST * dt;
+                    rocket.vx += Math.cos(rocket.angle) * SETTINGS.THRUST * thrustMultiplier * dt;
+                    rocket.vy += Math.sin(rocket.angle) * SETTINGS.THRUST * thrustMultiplier * dt;
                     fuel = Math.max(0, fuel - SETTINGS.FUEL_BURN_PER_SEC * dt);
                     if (!rocket.thrusting) { rocket.thrusting = true; startThrustSound(); }
                 } else {
@@ -2190,7 +2414,9 @@
 
             const earthDist = Math.hypot(rocket.x - earth.x, rocket.y - earth.y);
             const returnRadius = earth.radius * SETTINGS.RETURN_RADIUS_FACTOR;
-            if (earthDist < returnRadius) {
+            if (earthDist >= returnRadius) {
+                earthReturnArmed = true;
+            } else if (earthReturnArmed) {
                 triggerWin();
                 return;
             }
@@ -2296,6 +2522,20 @@
             let dist = Math.sqrt(dx * dx + dy * dy);
             const minDist = body.radius + ROCKET_WIDTH_HALF;
             if (dist < minDist && dist > 0.001) {
+                if (body === earth) {
+                    let overlap = minDist - dist;
+                    let nx = dx / dist;
+                    let ny = dy / dist;
+                    rocket.x += nx * overlap;
+                    rocket.y += ny * overlap;
+                    let dot = rocket.vx * nx + rocket.vy * ny;
+                    if (dot < 0) {
+                        rocket.vx -= dot * nx;
+                        rocket.vy -= dot * ny;
+                    }
+                    return false;
+                }
+
                 if (SETTINGS.GOD_MODE) {
                     let overlap = minDist - dist;
                     let nx = dx / dist;
@@ -2315,9 +2555,6 @@
             return false;
         }
 
-        // ============================================================
-        //  Отрисовка
-        // ============================================================
         function drawStars() {
             if (camera.zoom < SETTINGS.STAR_ZOOM_MIN) return;
 
@@ -3146,9 +3383,6 @@
             return `rgb(${clamp(r * factor)}, ${clamp(g * factor)}, ${clamp(b * factor)})`;
         }
 
-        // ============================================================
-        //  Цикл
-        // ============================================================
         function animate(now) {
             const dt = Math.min((now - lastTime) / 1000, 0.05);
             lastTime = now;
@@ -3157,9 +3391,6 @@
             animationFrameId = requestAnimationFrame(animate);
         }
 
-        // ============================================================
-        //  ГАЛЕРЕЯ СНИМКОВ
-        // ============================================================
         let galleryVisible = false;
         let galleryZoom = 1.0;
         let galleryOffsetX = 0;
@@ -3762,15 +3993,6 @@
         initGame();
         lastTime = performance.now();
         animationFrameId = requestAnimationFrame(animate);
-
-        window.addEventListener('mousedown', () => {
-            if (audioCtx && spaceSoundNodes.length === 0) {
-                initSpaceSounds();
-                if (!spaceSoundsEnabled && spaceMasterGain) {
-                    spaceMasterGain.gain.value = 0;
-                }
-            }
-        }, { once: true });
 
         window.addEventListener('beforeunload', () => {
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
