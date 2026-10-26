@@ -59,6 +59,7 @@
         #hud .value { color: #fff; font-weight: bold; }
         #hud .cometRow .value { color: #88ddff; }
         #hud .asteroidRow .value { color: #ffbb88; }
+        #hud .autopilotRow .value { color: #88ff88; }
         #godBadge {
             display: none;
             margin-top: 8px;
@@ -87,10 +88,38 @@
             transition: width 0.1s, background-position 0.3s;
             border-radius: 5px;
         }
-        #modeIndicator {
+
+        /* Переключатель режима управления — в правом нижнем углу */
+        #controlModeBtn {
             position: absolute;
             bottom: 20px;
             right: 20px;
+            padding: 8px 16px;
+            background: rgba(60, 90, 180, 0.6);
+            color: white;
+            border: 1px solid rgba(120, 180, 255, 0.5);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: inherit;
+            text-align: center;
+            transition: background 0.15s;
+            z-index: 10;
+            backdrop-filter: blur(5px);
+        }
+        #controlModeBtn:hover { background: rgba(80, 120, 220, 0.8); }
+        #controlModeBtn.nose-mode {
+            background: rgba(180, 120, 60, 0.6);
+            border-color: rgba(255, 200, 120, 0.6);
+        }
+        #controlModeBtn.nose-mode:hover { background: rgba(220, 150, 80, 0.8); }
+
+        /* Индикатор режима (обзор / автопилот) — по центру снизу */
+        #modeIndicator {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             color: white;
             background: rgba(0, 0, 0, 0.6);
             padding: 8px 16px;
@@ -100,24 +129,18 @@
             backdrop-filter: blur(5px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             pointer-events: none;
+            display: none;
         }
+        #modeIndicator.visible { display: block; }
         #modeIndicator.overview {
             background: rgba(200, 100, 0, 0.7);
             border-color: rgba(255, 200, 100, 0.5);
         }
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            color: #ccc;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            pointer-events: none;
-            z-index: 10;
-            backdrop-filter: blur(3px);
+        #modeIndicator.autopilot {
+            background: rgba(40, 160, 60, 0.7);
+            border-color: rgba(120, 255, 140, 0.6);
         }
+       
         #topButtons {
             position: absolute;
             bottom: 60px;
@@ -147,6 +170,35 @@
         #topButtons button.paused {
             background: rgba(220, 180, 40, 0.6);
             border-color: rgba(255, 220, 80, 0.7);
+        }
+
+        /* Индикатор гравитации — левый нижний угол */
+        #gravityIndicator {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.65);
+            padding: 8px 14px;
+            border-radius: 8px;
+            z-index: 10;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(160, 200, 255, 0.3);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: none;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        #gravityIndicator canvas {
+            display: block;
+        }
+        #gravityValue {
+            color: #aaddff;
+            font-weight: bold;
+            font-family: monospace;
+            min-width: 70px;
         }
 
         #endScreen {
@@ -262,9 +314,10 @@
         <p>Миссия завершается, когда зонд приближается к Земле.</p>
         <p style="color:#88ddff">Кометы — бонусные цели. Их 4.</p>
         <p style="color:#ffbb88">Астероиды — бонусные цели. Их 6.</p>
-        <p>Курсор — направление сопла · ЛКМ — двигатель</p>
+        <p>Курсор — направление (зависит от режима) · ЛКМ — двигатель</p>
         <p>Колесо — масштаб · ПКМ — режим обзора</p>
-        <p style="color:#ffcc44">Следите за топливом!</p>
+        <p style="color:#88ff88">Ctrl+ЛКМ по Солнцу или планете — автопилот вокруг неё</p>
+        <p style="color:#ffcc44">G — переключить режим «нос/сопло»</p>
     </div>
 
     <div id="hud">
@@ -274,16 +327,25 @@
         <div class="row"><span class="label">Время</span><span class="value" id="hudTime">0 дней</span></div>
         <div class="row"><span class="label">Топливо</span><span class="value" id="hudFuel">100%</span></div>
         <div class="fuelBarWrap"><div class="fuelBar" id="fuelBar" style="width:100%"></div></div>
+        <div class="row autopilotRow" id="autopilotRow" style="display:none"><span class="label">Автопилот</span><span class="value" id="hudAutopilot">—</span></div>
         <div id="godBadge">⚡ РЕЖИМ БОГА</div>
     </div>
 
-    <div id="controls">Гравитация: F = G·M·m / r²</div>
-    <div id="modeIndicator">Режим: управление</div>
+    <div id="modeIndicator"></div>
+
+    <div id="gravityIndicator">
+        <span>Гравитация:</span>
+        <span id="gravityValue">0.000</span>
+        <canvas id="gravityArrow" width="40" height="40"></canvas>
+    </div>
 
     <div id="topButtons">
         <button id="pauseBtn" title="Пауза (P)">⏸ Пауза</button>
         <button id="spaceSoundsBtn" class="active" title="Звуки космоса">🔊 Звуки космоса</button>
     </div>
+
+    <!-- Переключатель режима управления в правом нижнем углу -->
+    <button id="controlModeBtn">Режим: сопло</button>
 
     <div id="endScreen">
         <h1 id="endTitle"></h1>
@@ -365,7 +427,6 @@
             STAR_PER_CELL_THROTTLED: 1,
             STAR_CELL_SIZE: 1000,
 
-            // === Параметры наложения текста на снимки в галерее ===
             GALLERY_TEXT_DISTORTION_PLANET: 50,
             GALLERY_TEXT_DISTORTION_COMET: 38,
             GALLERY_TEXT_DISTORTION_ASTEROID: 33,
@@ -373,6 +434,17 @@
             GALLERY_TEXT_WARP: 5,
             GALLERY_TEXT_OPACITY: 53,
             GALLERY_TEXT_SIZE: 75,
+
+            AUTOPILOT_TIMEOUT: 0.4,
+            AUTOPILOT_THRUST_TIME: 0.14,
+            AUTOPILOT_V_RAD_MIN: 0.1,
+            AUTOPILOT_DELTA_R_STATIC: 30,
+            AUTOPILOT_ANGLE_TOL: 0.26,
+            AUTOPILOT_ROTATION_SMOOTH: 0.15,
+            AUTOPILOT_PICK_RADIUS_FACTOR: 3,
+
+            // Режим управления по умолчанию: 'nozzle' (сопло) или 'nose' (нос)
+            CONTROL_MODE_DEFAULT: 'nozzle'
         };
         // ============================================================
 
@@ -475,7 +547,6 @@
 			'Волк', 'Ворон', 'Сокол', 'Орёл', 'Лебедь', 'Голубь', 'Змей',
 			'Конь', 'Тур', 'Зубр', 'Олень', 'Лось', 'Рысь', 'Соболь',
 			'Луна', 'Месяц', 'Ночь', 'Полночь', 'Рассвет', 'Закат', 'Полдень',
-			// === Ведическое / индийское ===
 			'Дхарма', 'Карма', 'Сансара', 'Мокша', 'Майя', 'Атман', 'Брахман',
 			'Брахма', 'Вишну', 'Шива', 'Кришна', 'Рама', 'Ганеша', 'Хануман',
 			'Шакти', 'Шиваи', 'Кали', 'Дурга', 'Лакшми', 'Сарасвати', 'Парвати',
@@ -501,7 +572,6 @@
 			'Дивали', 'Холи', 'Наваратри', 'Махашиваратри', 'Кумбха', 'Пуджа',
 			'Прасад', 'Бхога', 'Найведья', 'Арати', 'Дхуп', 'Дипа', 'Джйоти',
 			'Шанти', 'Ахимса', 'Сатья', 'Дхана', 'Дхарма', 'Кшама', 'Дайя',
-			 // === Прилагательные (ведические / эзотерические) ===
 			'Вечная', 'Бескрайняя', 'Небесная', 'Звёздная', 'Лунная', 'Солнечная',
 			'Огненная', 'Водная', 'Земная', 'Воздушная', 'Эфирная', 'Тонкая',
 			'Плотная', 'Скрытая', 'Явная', 'Незримая', 'Зримая', 'Внутренняя',
@@ -523,8 +593,6 @@
 			'Явленная', 'Скрываемая', 'Открытая', 'Закрытая', 'Запечатанная',
 			'Раскрытая', 'Проявленная', 'Непроявленная', 'Грядущая', 'Ушедшая',
 			'Настоящая', 'Будущая', 'Прошлая', 'Вневеременная', 'Внепространственная',
-
-			// === Глаголы (ведические / эзотерические) ===
 			'Пробудись', 'Вспомни', 'Узнай', 'Пойми', 'Услышь', 'Увидь',
 			'Почувствуй', 'Прими', 'Отдай', 'Отпусти', 'Верни', 'Найди',
 			'Потеряй', 'Сбереги', 'Сохрани', 'Защити', 'Спаси', 'Исцели',
@@ -545,8 +613,6 @@
 			'Бодрствуй', 'Спи', 'Пробудись', 'Усни', 'Очнись', 'Забудься',
 			'Летай', 'Плыви', 'Скользи', 'Мчись', 'Стремись', 'Достигни',
 			'Жди', 'Встречай', 'Провожай', 'Обними', 'Отпусти', 'Держи',
-
-			// === Уфология ===
 			'Контактор', 'Контакт', 'Контактакт', 'Похищение', 'Абдукция',
 			'Абдуктор', 'Пришелец', 'Пришельцы', 'Чужой', 'Чужие', 'Инопланетянин',
 			'Инопланетный', 'НЛО', 'УФО', 'Тарелка', 'Летающая', 'Диск',
@@ -575,8 +641,6 @@
 			'Помехи', 'Шум', 'Код', 'Шифр', 'Дешифровка', 'Расшифровка',
 			'Послание', 'Послания', 'Сообщение', 'Сообщения', 'Приветствие',
 			'Предупреждение', 'Угроза', 'Обещание', 'Пророчество', 'Предсказание',
-
-			// === Нью-эйдж ===
 			'Вознесение', 'Вознесённый', 'Вознесённые', 'Учитель', 'Учителя',
 			'Мастер', 'Мастера', 'Владыка', 'Владыки', 'Иерархия', 'Белое',
 			'Братство', 'Братство', 'Света', 'Свет', 'Любовь', 'Любовь',
@@ -645,6 +709,21 @@
         let spaceSoundsEnabled = true;
         let spaceSoundNodes = [];
 
+        // Автопилот
+        let apState = 'IDLE';
+        let apCenter = null;
+        let apStaticRadius = 0;
+        let apDirection = null;
+        let apBurnRemaining = 0;
+        let apCooldownRemaining = 0;
+        let apLastStatus = '—';
+
+        // Режим управления: 'nozzle' (по умолчанию) или 'nose'
+        let controlMode = SETTINGS.CONTROL_MODE_DEFAULT;
+
+        // Суммарная гравитация в текущей точке (для индикатора)
+        let gravityVector = { x: 0, y: 0, mag: 0 };
+
         const modeIndicator = document.getElementById('modeIndicator');
         const endScreen = document.getElementById('endScreen');
         const endTitle = document.getElementById('endTitle');
@@ -655,14 +734,64 @@
         const hudAsteroids = document.getElementById('hudAsteroids');
         const hudTime = document.getElementById('hudTime');
         const hudFuel = document.getElementById('hudFuel');
+        const hudAutopilot = document.getElementById('hudAutopilot');
+        const autopilotRow = document.getElementById('autopilotRow');
         const fuelBar = document.getElementById('fuelBar');
         const godBadge = document.getElementById('godBadge');
         const pauseBtn = document.getElementById('pauseBtn');
         const spaceSoundsBtn = document.getElementById('spaceSoundsBtn');
         const showPhotosBtn = document.getElementById('showPhotosBtn');
+        const controlModeBtn = document.getElementById('controlModeBtn');
+        const gravityValue = document.getElementById('gravityValue');
+        const gravityArrow = document.getElementById('gravityArrow');
+        const gravityCtx = gravityArrow.getContext('2d');
 
         let lastTime = performance.now();
         let animationFrameId;
+
+        // ============================================================
+        //  Переключение режима управления
+        // ============================================================
+        function setControlMode(mode) {
+            controlMode = mode;
+            if (mode === 'nose') {
+                controlModeBtn.textContent = 'Режим: нос';
+                controlModeBtn.classList.add('nose-mode');
+            } else {
+                controlModeBtn.textContent = 'Режим: сопло';
+                controlModeBtn.classList.remove('nose-mode');
+            }
+            updateModeIndicator();
+        }
+
+        function toggleControlMode() {
+            setControlMode(controlMode === 'nose' ? 'nozzle' : 'nose');
+        }
+
+        controlModeBtn.addEventListener('click', toggleControlMode);
+
+        // ============================================================
+        //  Индикатор режима (обзор / автопилот)
+        // ============================================================
+        function updateModeIndicator() {
+            if (overviewMode) {
+                if (apState !== 'IDLE' && apCenter) {
+                    const name = apCenter.type === 'star' ? 'Солнце' : apCenter.body.name;
+                    modeIndicator.textContent = `Режим: обзор · автопилот вокруг: ${name}`;
+                } else {
+                    modeIndicator.textContent = 'Режим: обзор карты (ПКМ — выйти)';
+                }
+                modeIndicator.classList.add('visible', 'overview');
+                modeIndicator.classList.remove('autopilot');
+            } else if (apState !== 'IDLE' && apCenter) {
+                const name = apCenter.type === 'star' ? 'Солнце' : apCenter.body.name;
+                modeIndicator.textContent = `Автопилот вокруг: ${name} (ЛКМ — выйти)`;
+                modeIndicator.classList.add('visible', 'autopilot');
+                modeIndicator.classList.remove('overview');
+            } else {
+                modeIndicator.classList.remove('visible', 'overview', 'autopilot');
+            }
+        }
 
         // ============================================================
         //  АУДИО
@@ -879,7 +1008,6 @@
             spaceSoundNodes = [];
         }
 
-        // Отключение звуков космоса (плавно уводим мастер-гейн в 0)
         function fadeOutSpaceSounds() {
             if (spaceMasterGain && audioCtx) {
                 try {
@@ -888,7 +1016,6 @@
             }
         }
 
-        // Восстановление звуков космоса (если пользователь их не отключал)
         function fadeInSpaceSounds() {
             if (spaceMasterGain && audioCtx && spaceSoundsEnabled) {
                 try {
@@ -1077,7 +1204,6 @@
             if (on) {
                 spaceSoundsBtn.textContent = '🔊 Звуки космоса';
                 spaceSoundsBtn.classList.add('active');
-                // Если игра завершена — не включаем звуки
                 if (spaceMasterGain && !gameOver && !gameWin) {
                     spaceMasterGain.gain.setTargetAtTime(1, audioCtx.currentTime, 0.1);
                 }
@@ -1094,16 +1220,229 @@
             if (e.key === 'p' || e.key === 'P' || e.key === 'з' || e.key === 'З') {
                 setPause(!gamePaused);
             }
+            if (e.key === 'g' || e.key === 'G' || e.key === 'п' || e.key === 'П') {
+                toggleControlMode();
+            }
             if (e.key === 'Escape') {
                 if (galleryVisible) closeGallery();
             }
         });
 
         // ============================================================
+        //  АВТОПИЛОТ
+        // ============================================================
+
+        function normalizeAngle(a) {
+            while (a > Math.PI) a -= 2 * Math.PI;
+            while (a < -Math.PI) a += 2 * Math.PI;
+            return a;
+        }
+
+        function apRotateTo(targetAngle) {
+            const diff = normalizeAngle(targetAngle - rocket.angle);
+            rocket.angle += diff * SETTINGS.AUTOPILOT_ROTATION_SMOOTH;
+            return Math.abs(diff);
+        }
+
+        function startAutopilotAround(center) {
+            if (!rocket || !center) return;
+            apCenter = center;
+
+            const rx = rocket.x - center.body.x;
+            const ry = rocket.y - center.body.y;
+            const rDist = Math.hypot(rx, ry);
+            if (rDist < 1) return;
+
+            apStaticRadius = rDist;
+
+            const rHatX = rx / rDist;
+            const rHatY = ry / rDist;
+            const vCirc = Math.sqrt(SETTINGS.G * center.body.mass / rDist);
+
+            const ccwX = -rHatY * vCirc;
+            const ccwY =  rHatX * vCirc;
+            const cwX  =  rHatY * vCirc;
+            const cwY  = -rHatX * vCirc;
+
+            const vr = rocket.vx * rHatX + rocket.vy * rHatY;
+            const vtx = rocket.vx - vr * rHatX;
+            const vty = rocket.vy - vr * rHatY;
+
+            const dotCcw = vtx * ccwX + vty * ccwY;
+            const dotCw  = vtx * cwX  + vty * cwY;
+
+            apDirection = (dotCcw >= dotCw) ? 'ccw' : 'cw';
+            apState = 'BURN';
+            apBurnRemaining = SETTINGS.AUTOPILOT_THRUST_TIME;
+            apLastStatus = 'Выход на орбиту';
+            apCooldownRemaining = 0;
+
+            autopilotRow.style.display = 'flex';
+            hudAutopilot.textContent = apLastStatus;
+            updateModeIndicator();
+        }
+
+        function stopAutopilot() {
+            apState = 'IDLE';
+            apCenter = null;
+            apStaticRadius = 0;
+            apDirection = null;
+            apBurnRemaining = 0;
+            apCooldownRemaining = 0;
+            apLastStatus = '—';
+            autopilotRow.style.display = 'none';
+            hudAutopilot.textContent = '—';
+            if (rocket) rocket.thrusting = false;
+            updateModeIndicator();
+        }
+
+        function updateAutopilot(dt) {
+            if (apState === 'IDLE' || !apCenter) return;
+
+            if (fuel <= 0) {
+                apLastStatus = 'Топливо кончилось';
+                hudAutopilot.textContent = apLastStatus;
+                stopAutopilot();
+                return;
+            }
+
+            if (gamePaused) return;
+
+            if (apState === 'COOLDOWN') {
+                rocket.thrusting = false;
+                if (thrustOsc) stopThrustSound();
+                apCooldownRemaining -= dt;
+                if (apCooldownRemaining <= 0) {
+                    apState = 'BURN';
+                    apBurnRemaining = SETTINGS.AUTOPILOT_THRUST_TIME;
+                }
+                return;
+            }
+
+            apBurnRemaining -= dt;
+
+            const cx = apCenter.body.x;
+            const cy = apCenter.body.y;
+            const rx = rocket.x - cx;
+            const ry = rocket.y - cy;
+            const rCurr = Math.hypot(rx, ry);
+            if (rCurr < 1) { stopAutopilot(); return; }
+
+            const rHatX = rx / rCurr;
+            const rHatY = ry / rCurr;
+
+            const vRad = rocket.vx * rHatX + rocket.vy * rHatY;
+            const vtxNow = rocket.vx - vRad * rHatX;
+            const vtyNow = rocket.vy - vRad * rHatY;
+            const vCurr = Math.hypot(vtxNow, vtyNow);
+
+            let tHatX, tHatY;
+            if (vCurr > 1e-6) {
+                tHatX = vtxNow / vCurr;
+                tHatY = vtyNow / vCurr;
+            } else {
+                if (apDirection === 'ccw') {
+                    tHatX = -rHatY;
+                    tHatY =  rHatX;
+                } else {
+                    tHatX =  rHatY;
+                    tHatY = -rHatX;
+                }
+            }
+
+            const vOptim = Math.sqrt(SETTINGS.G * apCenter.body.mass / apStaticRadius);
+
+            const dv   = SETTINGS.AUTOPILOT_DELTA_V;
+            const dr   = SETTINGS.AUTOPILOT_DELTA_R_STATIC;
+            const vMin = SETTINGS.AUTOPILOT_V_RAD_MIN;
+
+            let x = 0;
+            let y = 0;
+
+            if (vCurr > vOptim + dv)       x = +1;
+            else if (vCurr < vOptim - dv)  x = -1;
+
+            if (rCurr > apStaticRadius + dr)      y = +1;
+            if (rCurr < apStaticRadius - dr)      y = -1;
+            if (vRad > vMin)                      y = +1;
+            if (vRad < -vMin)                     y = -1;
+
+            let thrustDirX = 0;
+            let thrustDirY = 0;
+            let doThrust = false;
+
+            if (x === +1) { thrustDirX -= tHatX; thrustDirY -= tHatY; doThrust = true; }
+            else if (x === -1) { thrustDirX += tHatX; thrustDirY += tHatY; doThrust = true; }
+
+            if (y === +1) {
+                thrustDirX += -rHatX - tHatX;
+                thrustDirY += -rHatY - tHatY;
+                doThrust = true;
+            } else if (y === -1) {
+                thrustDirX += rHatX + tHatX;
+                thrustDirY += rHatY + tHatY;
+                doThrust = true;
+            }
+
+            if (doThrust) {
+                const parts = [];
+                if (x === +1) parts.push('торможение');
+                else if (x === -1) parts.push('ускорение');
+                if (y === +1) parts.push('вперёд-вверх');
+                else if (y === -1) parts.push('назад-вниз');
+                apLastStatus = parts.join(' + ');
+            } else {
+                apLastStatus = 'Орбита стабилизирована';
+            }
+
+            if (!doThrust) {
+                if (rocket.thrusting) { rocket.thrusting = false; stopThrustSound(); }
+                hudAutopilot.textContent = apLastStatus;
+                apBurnRemaining = 0;
+                return;
+            }
+
+            const thrustLen = Math.hypot(thrustDirX, thrustDirY);
+            if (thrustLen < 1e-6) {
+                if (rocket.thrusting) { rocket.thrusting = false; stopThrustSound(); }
+                hudAutopilot.textContent = apLastStatus;
+                apBurnRemaining = 0;
+                return;
+            }
+            thrustDirX /= thrustLen;
+            thrustDirY /= thrustLen;
+
+            const targetAngle = Math.atan2(thrustDirY, thrustDirX);
+            const angleDiff = apRotateTo(targetAngle);
+            const angleOk = angleDiff < SETTINGS.AUTOPILOT_ANGLE_TOL;
+
+            if (angleOk) {
+                rocket.vx += Math.cos(rocket.angle) * SETTINGS.THRUST * dt;
+                rocket.vy += Math.sin(rocket.angle) * SETTINGS.THRUST * dt;
+                fuel = Math.max(0, fuel - SETTINGS.FUEL_BURN_PER_SEC * dt);
+                if (!rocket.thrusting) { rocket.thrusting = true; startThrustSound(); }
+                hudAutopilot.textContent = apLastStatus;
+            } else {
+                if (rocket.thrusting) { rocket.thrusting = false; stopThrustSound(); }
+                apLastStatus = 'Поворот к цели';
+                hudAutopilot.textContent = apLastStatus;
+            }
+
+            if (apBurnRemaining <= 0) {
+                apState = 'COOLDOWN';
+                apCooldownRemaining = Math.max(0.05,
+                    SETTINGS.AUTOPILOT_TIMEOUT - SETTINGS.AUTOPILOT_THRUST_TIME);
+                if (rocket.thrusting) { rocket.thrusting = false; stopThrustSound(); }
+            }
+        }
+
+        // ============================================================
         //  Инициализация
         // ============================================================
         function initGame() {
             if (spaceSoundNodes.length > 0) stopAllSpaceSounds();
+
+            stopAutopilot();
 
             gameOver = false;
             gameWin = false;
@@ -1121,7 +1460,6 @@
             showPhotosBtn.classList.remove('visible');
             closeGallery();
 
-            // Восстанавливаем звуки космоса при рестарте
             fadeInSpaceSounds();
 
             pauseBtn.textContent = '⏸ Пауза';
@@ -1129,6 +1467,9 @@
 
             if (rocket && rocket.thrusting) stopThrustSound();
             setOverviewMode(false);
+
+            // Восстанавливаем режим управления
+            setControlMode(SETTINGS.CONTROL_MODE_DEFAULT);
 
             if (SETTINGS.GOD_MODE) godBadge.classList.add('visible');
             else godBadge.classList.remove('visible');
@@ -1439,22 +1780,118 @@
         }
 
         // ============================================================
+        //  Индикатор гравитации
+        // ============================================================
+        function updateGravityIndicator() {
+            gravityValue.textContent = gravityVector.mag.toFixed(3);
+
+            // Рисуем стрелку
+            const w = gravityArrow.width;
+            const h = gravityArrow.height;
+            const cx = w / 2;
+            const cy = h / 2;
+            const maxLen = Math.min(w, h) / 2 - 4;
+
+            gravityCtx.clearRect(0, 0, w, h);
+
+            // Фон
+            gravityCtx.strokeStyle = 'rgba(140, 180, 255, 0.2)';
+            gravityCtx.lineWidth = 1;
+            gravityCtx.beginPath();
+            gravityCtx.arc(cx, cy, maxLen, 0, Math.PI * 2);
+            gravityCtx.stroke();
+
+            if (gravityVector.mag < 1e-6) {
+                // Нет гравитации — точка в центре
+                gravityCtx.fillStyle = 'rgba(140, 180, 255, 0.5)';
+                gravityCtx.beginPath();
+                gravityCtx.arc(cx, cy, 2, 0, Math.PI * 2);
+                gravityCtx.fill();
+                return;
+            }
+
+            // Направление (в экранных координатах y инвертирован — но для стрелки это неважно,
+            // т.к. мы рисуем на мини-канвасе в его собственных координатах)
+            const dirX = gravityVector.x / gravityVector.mag;
+            const dirY = gravityVector.y / gravityVector.mag;
+
+            // Длина стрелки: логарифмическая (чтобы видеть и слабую, и сильную гравитацию)
+            const magNorm = Math.min(1, Math.log10(1 + gravityVector.mag) / 2);
+            const len = 3 + (maxLen - 3) * magNorm;
+
+            const tipX = cx + dirX * len;
+            const tipY = cy + dirY * len;
+
+            // Линия стрелки
+            gravityCtx.strokeStyle = '#aaddff';
+            gravityCtx.lineWidth = 2;
+            gravityCtx.lineCap = 'round';
+            gravityCtx.beginPath();
+            gravityCtx.moveTo(cx, cy);
+            gravityCtx.lineTo(tipX, tipY);
+            gravityCtx.stroke();
+
+            // Наконечник
+            const headSize = 5;
+            const angle = Math.atan2(dirY, dirX);
+            gravityCtx.fillStyle = '#aaddff';
+            gravityCtx.beginPath();
+            gravityCtx.moveTo(tipX, tipY);
+            gravityCtx.lineTo(
+                tipX - Math.cos(angle - 0.5) * headSize,
+                tipY - Math.sin(angle - 0.5) * headSize
+            );
+            gravityCtx.lineTo(
+                tipX - Math.cos(angle + 0.5) * headSize,
+                tipY - Math.sin(angle + 0.5) * headSize
+            );
+            gravityCtx.closePath();
+            gravityCtx.fill();
+
+            // Точка в центре
+            gravityCtx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            gravityCtx.beginPath();
+            gravityCtx.arc(cx, cy, 2, 0, Math.PI * 2);
+            gravityCtx.fill();
+        }
+
+        // ============================================================
         //  Обзор
         // ============================================================
         function setOverviewMode(on) {
             overviewMode = on;
             if (on) {
-                if (rocket && rocket.thrusting) { rocket.thrusting = false; stopThrustSound(); }
-                if (mouse) mouse.down = false;
+				if (apState === 'IDLE') {
+					if (rocket && rocket.thrusting) { rocket.thrusting = false; stopThrustSound(); }
+					if (mouse) mouse.down = false;
+				}
                 dragStart = null;
                 canvas.classList.add('overview');
-                modeIndicator.textContent = 'Режим: обзор карты (ПКМ — выйти)';
-                modeIndicator.classList.add('overview');
             } else {
                 canvas.classList.remove('overview');
-                modeIndicator.textContent = 'Режим: управление';
-                modeIndicator.classList.remove('overview');
             }
+            updateModeIndicator();
+        }
+
+        // ============================================================
+        //  Выбор центра автопилота (Ctrl+ЛКМ)
+        // ============================================================
+        function pickAutopilotCenter(worldX, worldY) {
+            const dsx = worldX - star.x;
+            const dsy = worldY - star.y;
+            const ds = Math.hypot(dsx, dsy);
+            if (ds < star.radius * SETTINGS.AUTOPILOT_PICK_RADIUS_FACTOR) {
+                return { type: 'star', body: star };
+            }
+            for (let p of planets) {
+                const dx = worldX - p.x;
+                const dy = worldY - p.y;
+                const d = Math.hypot(dx, dy);
+                if (d < p.radius * SETTINGS.AUTOPILOT_PICK_RADIUS_FACTOR) {
+                    return { type: 'planet', body: p };
+                }
+            }
+            return null;
         }
 
         // ============================================================
@@ -1480,12 +1917,35 @@
         canvas.addEventListener('mousedown', (e) => {
             if (gameOver || gameWin) return;
             updateMousePosition(e);
+
+            // ПКМ — режим обзора (НЕ отключает автопилот)
             if (e.button === 2) {
                 setOverviewMode(!overviewMode);
                 e.preventDefault();
                 return;
             }
+
+            // ЛКМ + Ctrl — выбор центра автопилота
+            if (e.button === 0 && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                const world = screenToWorld(mouse.x, mouse.y);
+                const picked = pickAutopilotCenter(world.x, world.y);
+                if (picked) {
+                    if (apState !== 'IDLE' && apCenter && apCenter.body === picked.body) {
+                        stopAutopilot();
+                    } else {
+                        startAutopilotAround(picked);
+                    }
+                }
+                return;
+            }
+
+            // Обычная ЛКМ
             if (e.button === 0) {
+                // Если автопилот активен — отменяем (игрок берёт управление)
+                if (apState !== 'IDLE') {
+                    stopAutopilot();
+                }
                 mouse.down = true;
                 if (overviewMode) {
                     dragStart = { mouseX: mouse.x, mouseY: mouse.y, camX: camera.x, camY: camera.y };
@@ -1514,8 +1974,8 @@
         function triggerExplosion(x, y) {
             if (gameOver || gameWin) return;
             gameOver = true;
+            stopAutopilot();
             if (rocket.thrusting) { rocket.thrusting = false; stopThrustSound(); }
-            // Отключаем звуки космоса при завершении миссии
             fadeOutSpaceSounds();
             playExplosionSound();
 
@@ -1545,8 +2005,8 @@
         function triggerWin() {
             if (gameOver || gameWin) return;
             gameWin = true;
+            stopAutopilot();
             if (rocket.thrusting) { rocket.thrusting = false; stopThrustSound(); }
-            // Отключаем звуки космоса при завершении миссии
             fadeOutSpaceSounds();
             playWinSound();
 
@@ -1617,6 +2077,7 @@
                 updateCometPosition(c, gameTime);
             }
 
+            // === Гравитация ===
             let ax = 0, ay = 0;
             let dx = star.x - rocket.x, dy = star.y - rocket.y;
             let distSq = dx * dx + dy * dy;
@@ -1666,11 +2127,26 @@
             rocket.vx += ax * dt;
             rocket.vy += ay * dt;
 
-            if (!overviewMode) {
+            // Сохраняем суммарный вектор гравитации для индикатора
+            gravityVector.x = ax;
+            gravityVector.y = ay;
+            gravityVector.mag = Math.hypot(ax, ay);
+
+            // === Управление мышью (только если автопилот неактивен) ===
+            if (apState === 'IDLE' && !overviewMode) {
                 let mouseWorld = screenToWorld(mouse.x, mouse.y);
                 let targetDx = mouseWorld.x - rocket.x;
                 let targetDy = mouseWorld.y - rocket.y;
-                rocket.targetAngle = Math.atan2(targetDy, targetDx) + Math.PI;
+                let angleToMouse = Math.atan2(targetDy, targetDx);
+
+                if (controlMode === 'nozzle') {
+                    // Нос смотрит ПРОТИВОПОЛОЖНО курсору (сопло на курсор)
+                    rocket.targetAngle = angleToMouse + Math.PI;
+                } else {
+                    // Нос смотрит НА курсор
+                    rocket.targetAngle = angleToMouse;
+                }
+
                 let angleDiff = rocket.targetAngle - rocket.angle;
                 while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
                 while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
@@ -1681,16 +2157,26 @@
                 fuel = SETTINGS.FUEL_MAX;
             }
 
-            const wantThrust = !overviewMode && mouse.down && fuel > 0;
-            if (wantThrust) {
-                rocket.vx += Math.cos(rocket.angle) * SETTINGS.THRUST * dt;
-                rocket.vy += Math.sin(rocket.angle) * SETTINGS.THRUST * dt;
-                fuel = Math.max(0, fuel - SETTINGS.FUEL_BURN_PER_SEC * dt);
-                if (!rocket.thrusting) { rocket.thrusting = true; startThrustSound(); }
-            } else {
-                if (rocket.thrusting) { rocket.thrusting = false; stopThrustSound(); }
+            // === Автопилот ===
+            if (apState !== 'IDLE') {
+                updateAutopilot(dt);
             }
+
+            // === Тяга от мыши (только если автопилот неактивен) ===
+            if (apState === 'IDLE') {
+                const wantThrust = !overviewMode && mouse.down && fuel > 0;
+                if (wantThrust) {
+                    rocket.vx += Math.cos(rocket.angle) * SETTINGS.THRUST * dt;
+                    rocket.vy += Math.sin(rocket.angle) * SETTINGS.THRUST * dt;
+                    fuel = Math.max(0, fuel - SETTINGS.FUEL_BURN_PER_SEC * dt);
+                    if (!rocket.thrusting) { rocket.thrusting = true; startThrustSound(); }
+                } else {
+                    if (rocket.thrusting) { rocket.thrusting = false; stopThrustSound(); }
+                }
+            }
+
             updateHUD();
+            updateGravityIndicator();
 
             rocket.x += rocket.vx * dt;
             rocket.y += rocket.vy * dt;
@@ -2497,6 +2983,30 @@
                 ctx.stroke();
             }
 
+            if (apState !== 'IDLE' && apCenter) {
+                const rsp = worldToScreen(rocket.x, rocket.y);
+                const csp = worldToScreen(apCenter.body.x, apCenter.body.y);
+
+                ctx.save();
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = 'rgba(140, 255, 140, 0.5)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(rsp.x, rsp.y);
+                ctx.lineTo(csp.x, csp.y);
+                ctx.stroke();
+                ctx.restore();
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(csp.x, csp.y, (apCenter.body.radius || 20) * camera.zoom + 6, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(140, 255, 140, 0.6)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([3, 3]);
+                ctx.stroke();
+                ctx.restore();
+            }
+
             if (!gameOver) {
                 const rsp = worldToScreen(rocket.x, rocket.y);
                 const scale = camera.zoom;
@@ -2941,11 +3451,6 @@
             galleryCtx.restore();
         }
 
-        // ============================================================
-        //  НАЛОЖЕНИЕ ТЕКСТА НА СНИМОК В ГАЛЕРЕЕ
-        //  Статичное: без «дыхания». Искажение, размытие, warp
-        //  и прозрачность — строго из параметров.
-        // ============================================================
         function applyTextToObject(obj, cx, cy, R, words, distortionAmount, blurAmount, warpAmount, alpha, scale) {
             if (!words || words.length === 0) return;
 
@@ -2982,7 +3487,6 @@
                 octx.fillText(words[1], size / 2, blockTop + lineHeight * 1.5);
             }
 
-            // Статичная трансформация (без «дыхания»)
             const scaleX = 1 + distNorm * 0.2;
             const scaleY = 1 - distNorm * 0.12;
             const rot = distNorm * 0.12;
@@ -2998,7 +3502,6 @@
             tctx.drawImage(off, -size / 2, -size / 2);
             tctx.restore();
 
-            // Размытие — независимое, из настроек
             let result = transformed;
             if (blurAmount > 0.1) {
                 const blurred = document.createElement('canvas');
@@ -3010,7 +3513,6 @@
                 result = blurred;
             }
 
-            // Волновое искажение — независимое, из настроек
             if (warpAmount > 0.1) {
                 const warped = document.createElement('canvas');
                 warped.width = size;
@@ -3037,9 +3539,7 @@
                     }
                     wctx.putImageData(imgData, 0, 0);
                     result = warped;
-                } catch (e) {
-                    // Пропускаем warp
-                }
+                } catch (e) {}
             }
 
             galleryCtx.save();
@@ -3153,7 +3653,6 @@
                     drawAsteroidInCircle(objCX, objCY, R, item.data);
                 }
 
-                // === Наложение текста ===
                 let distortion;
                 if (item.kind === 'planet') {
                     distortion = SETTINGS.GALLERY_TEXT_DISTORTION_PLANET;
