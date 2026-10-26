@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Тест звуков космоса</title>
+<title>Тест звуков космоса (v2 — с компрессором и нормировкой)</title>
 <style>
     body {
         margin: 0;
@@ -28,7 +28,7 @@
     p.hint {
         font-size: 13px;
         color: #888;
-        max-width: 520px;
+        max-width: 560px;
         text-align: center;
         line-height: 1.5;
         margin: 0;
@@ -40,7 +40,7 @@
         border: 1px solid rgba(120,160,255,0.3);
         border-radius: 8px;
         padding: 10px 16px;
-        min-width: 340px;
+        min-width: 380px;
         text-align: left;
         line-height: 1.6;
         white-space: pre-wrap;
@@ -80,9 +80,9 @@
         font-family: monospace;
         font-size: 12px;
         color: #aaa;
-        max-width: 640px;
+        max-width: 680px;
         width: 100%;
-        max-height: 160px;
+        max-height: 180px;
         overflow-y: auto;
         background: rgba(0,0,0,0.4);
         border: 1px solid rgba(120,160,255,0.2);
@@ -94,6 +94,7 @@
     #log .err { color: #f66; }
     #log .ok { color: #6f6; }
     #log .info { color: #8cf; }
+    #log .warn { color: #fc4; }
     #volumeRow {
         display: flex;
         align-items: center;
@@ -105,15 +106,49 @@
         width: 180px;
         accent-color: #4a9eff;
     }
+    #meterWrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: monospace;
+        font-size: 12px;
+        color: #aaa;
+    }
+    #meter {
+        width: 220px;
+        height: 14px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(120,160,255,0.3);
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+    }
+    #meterFill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #4aff4a, #ffaa00, #ff4444);
+        transition: width 0.05s linear;
+    }
+    #meterRedline {
+        position: absolute;
+        top: 0; bottom: 0;
+        left: 90%;
+        width: 1px;
+        background: rgba(255, 80, 80, 0.7);
+    }
+    #meterVal {
+        min-width: 70px;
+        color: #8cf;
+    }
 </style>
 </head>
 <body>
 
-<h1>🔊 Тест звуков космоса</h1>
+<h1>🔊 Тест звуков космоса (v2)</h1>
 <p class="hint">
-    Нажми любую кнопку ниже — это и есть «пользовательский жест», после которого браузер разрешает звук.
-    Смотри в блок статуса и лог: если <span style="color:#6f6">AudioContext: running</span> и звук слышен — архитектура рабочая.
-    Если <span style="color:#f66">suspended</span> или в логе ошибка — пришли этот лог, будем разбираться.
+    Схема: каждый звук → panner → per-object gain → master gain (0.6) → <b>компрессор-лимитер</b> → выход.
+    Плюс нормировка суммы громкостей активных звуков и уменьшенная амплитуда шума.
+    Индикатор уровня показывает, насколько близко к клиппингу; красная черта — порог −6 dBFS.
 </p>
 
 <div id="status">Инициализация ещё не начиналась.</div>
@@ -128,9 +163,18 @@
 </div>
 
 <div id="volumeRow">
-    <span>Громкость:</span>
-    <input type="range" id="volume" min="0" max="100" value="65">
-    <span id="volumeVal">65%</span>
+    <span>Общая громкость:</span>
+    <input type="range" id="volume" min="0" max="100" value="60">
+    <span id="volumeVal">60%</span>
+</div>
+
+<div id="meterWrap">
+    <span>Уровень:</span>
+    <div id="meter">
+        <div id="meterFill"></div>
+        <div id="meterRedline"></div>
+    </div>
+    <span id="meterVal">—</span>
 </div>
 
 <div id="log"></div>
@@ -140,18 +184,23 @@
 //  ГЛОБАЛЬНОЕ СОСТОЯНИЕ
 // ============================================================
 let audioCtx = null;
-let spaceMasterGain = null;
+let spaceMasterGain = null;   // gain до компрессора (общая громкость)
+let compressor = null;        // лимитер
+let analyser = null;          // для индикатора уровня
+let meterData = null;         // Uint8Array для analyser
 
-// Флаг: звуки космоса инициализированы (узлы созданы и запущены)
 let spaceSoundsInitialized = false;
-// Флаг: идёт попытка инициализации (чтобы не запускать параллельно)
 let spaceSoundsInitializing = false;
+let spaceSoundNodes = [];     // { oscs, master, panner, type, name?, id?, targetVol }
 
-// Массив активных узлов: { oscs: [], master: GainNode, panner: StereoPannerNode|null, type }
-let spaceSoundNodes = [];
+// Громкость (0..1) — множитель общей громкости
+let masterVolume = 0.6;
 
-// Громкость (0..1)
-let masterVolume = 0.65;
+// Ограничение числа одновременных звуков
+const MAX_SIMULTANEOUS = 3;
+
+// Потолок суммарной громкости активных звуков (для нормировки)
+const MAX_TOTAL_VOLUME = 1.0;
 
 // ============================================================
 //  ЛОГ И СТАТУС
@@ -186,15 +235,17 @@ function refreshStatus() {
         `baseLatency: ${baseLatency}\n` +
         `Звуков создано: ${nodesCount}\n` +
         `Инициализировано: <span class="${spaceSoundsInitialized ? 'ok' : 'warn'}">${spaceSoundsInitialized}</span>\n` +
-        `Громкость: ${Math.round(masterVolume * 100)}%`
+        `Общая громкость: ${Math.round(masterVolume * 100)}%\n` +
+        `Лимитер (компрессор): <span class="${compressor ? 'ok' : 'warn'}">${compressor ? 'активен' : 'нет'}</span>`
     );
 }
 
 refreshStatus();
 
 // ============================================================
-//  ИНИЦИАЛИЗАЦИЯ AUDIO CONTEXT
-//  Ключевое: создаём контекст и дожидаемся resume() ДО создания узлов.
+//  ИНИЦИАЛИЗАЦИЯ AUDIO CONTEXT + ЦЕПОЧКА ОБРАБОТКИ
+//  [звуки] → spaceMasterGain → compressor → analyser → destination
+//  (analyser пропускает звук насквозь, но меряет уровень)
 // ============================================================
 function createAudioContextIfNeeded() {
     if (audioCtx) return true;
@@ -205,10 +256,38 @@ function createAudioContextIfNeeded() {
             return false;
         }
         audioCtx = new Ctx();
+
+        // 1) Общая громкость (до компрессора) — с запасом
         spaceMasterGain = audioCtx.createGain();
         spaceMasterGain.gain.value = masterVolume;
-        spaceMasterGain.connect(audioCtx.destination);
+
+        // 2) Компрессор-лимитер
+        compressor = audioCtx.createDynamicsCompressor();
+        compressor.threshold.value = -12;   // дБ
+        compressor.knee.value = 6;
+        compressor.ratio.value = 12;        // сильная компрессия выше порога
+        compressor.attack.value = 0.003;    // 3 мс — быстро ловит пики
+        compressor.release.value = 0.25;    // 250 мс
+        // Совместимость со старыми движками (некоторые не знают setTargetAtTime на этих параметрах)
+        try { compressor.threshold.setValueAtTime(-12, audioCtx.currentTime); } catch (e) {}
+        try { compressor.knee.setValueAtTime(6, audioCtx.currentTime); } catch (e) {}
+        try { compressor.ratio.setValueAtTime(12, audioCtx.currentTime); } catch (e) {}
+        try { compressor.attack.setValueAtTime(0.003, audioCtx.currentTime); } catch (e) {}
+        try { compressor.release.setValueAtTime(0.25, audioCtx.currentTime); } catch (e) {}
+
+        // 3) Анализатор для индикатора уровня (пропускает звук насквозь)
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 1024;
+        analyser.smoothingTimeConstant = 0.3;
+        meterData = new Uint8Array(analyser.fftSize);
+
+        // Цепочка
+        spaceMasterGain.connect(compressor);
+        compressor.connect(analyser);
+        analyser.connect(audioCtx.destination);
+
         log(`AudioContext создан. state = ${audioCtx.state}`, 'info');
+        log('Цепочка: [звуки] → master(0.6) → compressor → analyser → destination', 'info');
         refreshStatus();
         return true;
     } catch (e) {
@@ -217,7 +296,6 @@ function createAudioContextIfNeeded() {
     }
 }
 
-// Асинхронно разблокируем контекст. Возвращает Promise<boolean> — удалось ли перейти в running.
 async function resumeAudioContext() {
     if (!audioCtx) return false;
     if (audioCtx.state === 'running') return true;
@@ -235,21 +313,25 @@ async function resumeAudioContext() {
 }
 
 // ============================================================
-//  СОЗДАНИЕ ЗВУКОВ (аналог createSpaceSoundForObject из игры)
-//  ВАЖНО: вызывается только после того, как audioCtx.state === 'running'.
+//  ШУМОВОЙ БУФЕР
+//  Амплитуда 0.5 (вместо 1.0) — снижает пики при суммировании.
 // ============================================================
 function makeNoiseBuffer(duration) {
     const bufferSize = Math.floor(audioCtx.sampleRate * duration);
     const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
-        data[i] = Math.random() * 2 - 1;
+        data[i] = (Math.random() * 2 - 1) * 0.5;
     }
     return buffer;
 }
 
-function createStarSound() {
-    const oscs = [];
+// ============================================================
+//  СОЗДАНИЕ ЗВУКОВ
+//  Все пер-объектные gain'ы стартуют с 0, громкость выставляется позже
+//  через setNodeVolume / updateSpaceSounds (с нормировкой).
+// ============================================================
+function createBaseNode(type) {
     const master = audioCtx.createGain();
     master.gain.value = 0;
     let panner = null;
@@ -260,6 +342,12 @@ function createStarSound() {
     } else {
         master.connect(spaceMasterGain);
     }
+    return { master, panner, type, oscs: [], targetVol: 0 };
+}
+
+function createStarSound() {
+    const node = createBaseNode('star');
+    const { master, oscs } = node;
 
     const sub = audioCtx.createOscillator();
     sub.type = 'sine';
@@ -286,21 +374,13 @@ function createStarSound() {
     shimmer.start();
     oscs.push(shimmer, shLfo);
 
-    return { oscs, master, panner, type: 'star' };
+    return node;
 }
 
 function createPlanetSound(name) {
-    const oscs = [];
-    const master = audioCtx.createGain();
-    master.gain.value = 0;
-    let panner = null;
-    if (audioCtx.createStereoPanner) {
-        panner = audioCtx.createStereoPanner();
-        panner.pan.value = 0;
-        master.connect(panner).connect(spaceMasterGain);
-    } else {
-        master.connect(spaceMasterGain);
-    }
+    const node = createBaseNode('planet');
+    node.name = name;
+    const { master, oscs } = node;
 
     const baseFreqs = {
         'Меркурий': 110, 'Венера': 165, 'Земля': 220,
@@ -329,7 +409,7 @@ function createPlanetSound(name) {
                              name === 'Венера' ? 600 : 400;
         nf.Q.value = 2;
         const ng = audioCtx.createGain();
-        ng.gain.value = 0.06;
+        ng.gain.value = 0.04;  // было 0.06 — уменьшили
         n.connect(nf).connect(ng).connect(master);
         n.start();
         oscs.push(n);
@@ -367,21 +447,12 @@ function createPlanetSound(name) {
         oscs.push(storm);
     }
 
-    return { oscs, master, panner, type: 'planet', name };
+    return node;
 }
 
 function createCometSound() {
-    const oscs = [];
-    const master = audioCtx.createGain();
-    master.gain.value = 0;
-    let panner = null;
-    if (audioCtx.createStereoPanner) {
-        panner = audioCtx.createStereoPanner();
-        panner.pan.value = 0;
-        master.connect(panner).connect(spaceMasterGain);
-    } else {
-        master.connect(spaceMasterGain);
-    }
+    const node = createBaseNode('comet');
+    const { master, oscs } = node;
 
     const whistle = audioCtx.createOscillator();
     whistle.type = 'sine';
@@ -400,26 +471,18 @@ function createCometSound() {
     nf.frequency.value = 1500;
     nf.Q.value = 3;
     const ng = audioCtx.createGain();
-    ng.gain.value = 0.05;
+    ng.gain.value = 0.04;  // было 0.05 — уменьшили
     noise.connect(nf).connect(ng).connect(master);
     noise.start();
     oscs.push(noise);
 
-    return { oscs, master, panner, type: 'comet' };
+    return node;
 }
 
 function createAsteroidSound(id) {
-    const oscs = [];
-    const master = audioCtx.createGain();
-    master.gain.value = 0;
-    let panner = null;
-    if (audioCtx.createStereoPanner) {
-        panner = audioCtx.createStereoPanner();
-        panner.pan.value = 0;
-        master.connect(panner).connect(spaceMasterGain);
-    } else {
-        master.connect(spaceMasterGain);
-    }
+    const node = createBaseNode('asteroid');
+    node.id = id;
+    const { master, oscs } = node;
 
     const o = audioCtx.createOscillator();
     o.type = 'triangle';
@@ -438,56 +501,36 @@ function createAsteroidSound(id) {
     nf.frequency.value = 600;
     nf.Q.value = 2;
     const ng = audioCtx.createGain();
-    ng.gain.value = 0.05;
+    ng.gain.value = 0.04;  // было 0.05 — уменьшили
     noise.connect(nf).connect(ng).connect(master);
     noise.start();
     oscs.push(noise);
 
-    return { oscs, master, panner, type: 'asteroid', id };
+    return node;
 }
 
 // ============================================================
-//  ИНИЦИАЛИЗАЦИЯ ЗВУКОВ КОСМОСА
-//  Вызывается ТОЛЬКО когда audioCtx.state === 'running'.
-//  С флагом, try/catch и повторными попытками.
+//  ИНИЦИАЛИЗАЦИЯ ЗВУКОВ
 // ============================================================
 function initSpaceSounds() {
     if (!audioCtx || audioCtx.state !== 'running') {
         log('initSpaceSounds: пропуск — audioCtx не running', 'warn');
         return false;
     }
-    if (spaceSoundsInitialized) {
-        log('initSpaceSounds: уже инициализировано', 'info');
-        return true;
-    }
-    if (spaceSoundsInitializing) {
-        log('initSpaceSounds: инициализация уже идёт', 'info');
-        return false;
-    }
+    if (spaceSoundsInitialized) return true;
+    if (spaceSoundsInitializing) return false;
 
     spaceSoundsInitializing = true;
     log('Создаю звуковые узлы...', 'info');
 
     try {
         spaceSoundNodes = [];
-
-        spaceSoundNodes.push(createStarSound());
-        log('  ✓ звезда', 'ok');
-
-        spaceSoundNodes.push(createPlanetSound('Земля'));
-        log('  ✓ планета Земля', 'ok');
-
-        spaceSoundNodes.push(createPlanetSound('Юпитер'));
-        log('  ✓ планета Юпитер', 'ok');
-
-        spaceSoundNodes.push(createPlanetSound('Сатурн'));
-        log('  ✓ планета Сатурн', 'ok');
-
-        spaceSoundNodes.push(createCometSound());
-        log('  ✓ комета', 'ok');
-
-        spaceSoundNodes.push(createAsteroidSound(0));
-        log('  ✓ астероид', 'ok');
+        spaceSoundNodes.push(createStarSound());       log('  ✓ звезда', 'ok');
+        spaceSoundNodes.push(createPlanetSound('Земля'));   log('  ✓ Земля', 'ok');
+        spaceSoundNodes.push(createPlanetSound('Юпитер'));  log('  ✓ Юпитер', 'ok');
+        spaceSoundNodes.push(createPlanetSound('Сатурн'));  log('  ✓ Сатурн', 'ok');
+        spaceSoundNodes.push(createCometSound());      log('  ✓ комета', 'ok');
+        spaceSoundNodes.push(createAsteroidSound(0));  log('  ✓ астероид', 'ok');
 
         spaceSoundsInitialized = true;
         log(`Всего звуков создано: ${spaceSoundNodes.length}`, 'ok');
@@ -505,69 +548,151 @@ function initSpaceSounds() {
 
 // ============================================================
 //  УПРАВЛЕНИЕ ГРОМКОСТЬЮ
+//  setNodeVolume — плавно выставляет пер-объектный gain.
 // ============================================================
-function setNodeVolume(node, vol) {
-    if (!node.master) return;
+function setNodeVolume(node, vol, timeConst = 0.1) {
+    if (!node.master || !audioCtx) return;
     try {
-        node.master.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.1);
+        node.master.gain.setTargetAtTime(Math.max(0, Math.min(1, vol)), audioCtx.currentTime, timeConst);
     } catch (e) {}
 }
 
 // ============================================================
+//  НОРМИРОВКА СУММЫ
+//  Принимает массив желаемых громкостей и возвращает масштабированные
+//  так, чтобы их сумма не превышала MAX_TOTAL_VOLUME.
+// ============================================================
+function normalizeVolumes(vols) {
+    let total = 0;
+    for (const v of vols) total += v;
+    if (total <= MAX_TOTAL_VOLUME) return vols.slice();
+    const k = MAX_TOTAL_VOLUME / total;
+    return vols.map(v => v * k);
+}
+
+// ============================================================
+//  ПРИМЕНИТЬ НАБОР ЗВУКОВ
+//  desiredVols — массив {node, vol} в порядке spaceSoundNodes.
+//  Учитывает MAX_SIMULTANEOUS (берёт самые громкие), затем нормирует сумму.
+// ============================================================
+function applyVolumes(desiredVols) {
+    if (!audioCtx) return;
+
+    // 1) Ограничение числа одновременных звуков: оставляем MAX_SIMULTANEOUS самых громких
+    //    (остальным ставим 0)
+    const indexed = desiredVols.map((d, i) => ({ i, node: d.node, vol: d.vol }))
+                                .filter(d => d.vol > 0.001)
+                                .sort((a, b) => b.vol - a.vol);
+    const keep = new Set(indexed.slice(0, MAX_SIMULTANEOUS).map(d => d.i));
+
+    const vols = desiredVols.map((d, i) => keep.has(i) ? d.vol : 0);
+
+    // 2) Нормировка суммы
+    const normalized = normalizeVolumes(vols);
+
+    // 3) Применяем
+    for (let i = 0; i < spaceSoundNodes.length; i++) {
+        const node = spaceSoundNodes[i];
+        const v = normalized[i] || 0;
+        node.targetVol = v;
+        setNodeVolume(node, v);
+    }
+}
+
+// ============================================================
+//  ИНДИКАТОР УРОВНЯ (пик по времени)
+// ============================================================
+const meterFill = document.getElementById('meterFill');
+const meterVal = document.getElementById('meterVal');
+
+function updateMeter() {
+    if (!analyser || !meterData) return;
+
+    analyser.getByteTimeDomainData(meterData);
+
+    // Пиковое отклонение от 128 (центр)
+    let peak = 0;
+    for (let i = 0; i < meterData.length; i++) {
+        const v = Math.abs(meterData[i] - 128) / 128;
+        if (v > peak) peak = v;
+    }
+
+    // В dBFS (0 dBFS = 1.0; −6 dBFS ≈ 0.5)
+    const dbfs = peak > 0 ? 20 * Math.log10(peak) : -Infinity;
+    // Шкала: от −40 dBFS до 0 dBFS → 0..100%
+    const pct = Math.max(0, Math.min(100, ((dbfs + 40) / 40) * 100));
+
+    meterFill.style.width = pct + '%';
+    meterVal.textContent = peak > 0.0001
+        ? `${dbfs.toFixed(1)} dBFS`
+        : '— dBFS';
+
+    // Красная подсветка, если пик выше −6 dBFS
+    if (dbfs > -6) {
+        meterFill.style.background = 'linear-gradient(90deg, #ff8800, #ff4444)';
+    } else {
+        meterFill.style.background = 'linear-gradient(90deg, #4aff4a, #ffaa00, #ff4444)';
+    }
+}
+
+// Анимация индикатора
+function meterLoop() {
+    updateMeter();
+    requestAnimationFrame(meterLoop);
+}
+meterLoop();
+
+// ============================================================
 //  КНОПКИ
 // ============================================================
-const btnAll = document.getElementById('btnAll');
-const btnStar = document.getElementById('btnStar');
-const btnPlanet = document.getElementById('btnPlanet');
-const btnComet = document.getElementById('btnComet');
-const btnAsteroid = document.getElementById('btnAsteroid');
-const btnStop = document.getElementById('btnStop');
-
-// Обработчик кнопки «Включить все звуки» — это и есть пользовательский жест
-btnAll.addEventListener('click', async () => {
-    log('=== Нажата кнопка «Включить все звуки» ===', 'info');
-    if (!createAudioContextIfNeeded()) return;
+async function ensureAudioReady() {
+    if (!createAudioContextIfNeeded()) return false;
     const ok = await resumeAudioContext();
     if (!ok) {
-        log('Не удалось перевести AudioContext в running. Попробуй ещё раз (браузер иногда требует повторного жеста).', 'err');
-        return;
+        log('Не удалось перевести AudioContext в running. Попробуй кликнуть ещё раз.', 'err');
+        return false;
     }
     initSpaceSounds();
+    return spaceSoundsInitialized;
+}
 
-    // Включаем все звуки на полную
-    for (const n of spaceSoundNodes) {
-        setNodeVolume(n, masterVolume);
-    }
-    log('Все звуки включены', 'ok');
+// Включить все звуки (каждый на target 1.0, потом нормировка + лимит одновременных)
+document.getElementById('btnAll').addEventListener('click', async () => {
+    log('=== Включить все звуки ===', 'info');
+    if (!await ensureAudioReady()) return;
+
+    const desired = spaceSoundNodes.map(n => ({ node: n, vol: 1.0 }));
+    applyVolumes(desired);
+    log('Все звуки включены (с нормировкой и лимитом одновременных)', 'ok');
 });
 
-btnStop.addEventListener('click', () => {
-    log('=== Стоп ===', 'info');
-    for (const n of spaceSoundNodes) {
-        setNodeVolume(n, 0);
-    }
-    log('Все звуки выключены (узлы остались, но gain=0)', 'info');
-});
-
-// Кнопки отдельных звуков — включают только свой тип
+// Соло по типу
 async function soloType(type) {
-    if (!createAudioContextIfNeeded()) return;
-    const ok = await resumeAudioContext();
-    if (!ok) return;
-    initSpaceSounds();
+    log(`=== Соло: ${type} ===`, 'info');
+    if (!await ensureAudioReady()) return;
 
-    for (const n of spaceSoundNodes) {
-        setNodeVolume(n, n.type === type ? masterVolume : 0);
-    }
+    const desired = spaceSoundNodes.map(n => ({
+        node: n,
+        vol: n.type === type ? 1.0 : 0
+    }));
+    applyVolumes(desired);
     log(`Включён только тип: ${type}`, 'ok');
 }
 
-btnStar.addEventListener('click', () => soloType('star'));
-btnPlanet.addEventListener('click', () => soloType('planet'));
-btnComet.addEventListener('click', () => soloType('comet'));
-btnAsteroid.addEventListener('click', () => soloType('asteroid'));
+document.getElementById('btnStar').addEventListener('click', () => soloType('star'));
+document.getElementById('btnPlanet').addEventListener('click', () => soloType('planet'));
+document.getElementById('btnComet').addEventListener('click', () => soloType('comet'));
+document.getElementById('btnAsteroid').addEventListener('click', () => soloType('asteroid'));
 
-// Громкость
+// Стоп
+document.getElementById('btnStop').addEventListener('click', () => {
+    log('=== Стоп ===', 'info');
+    const desired = spaceSoundNodes.map(n => ({ node: n, vol: 0 }));
+    applyVolumes(desired);
+    log('Все звуки выключены', 'info');
+});
+
+// Громкость (множитель общей громкости до компрессора)
 const volumeInput = document.getElementById('volume');
 const volumeVal = document.getElementById('volumeVal');
 volumeInput.addEventListener('input', () => {
@@ -578,28 +703,18 @@ volumeInput.addEventListener('input', () => {
             spaceMasterGain.gain.setTargetAtTime(masterVolume, audioCtx.currentTime, 0.05);
         } catch (e) {}
     }
-    // Применяем к активным узлам пропорционально
-    for (const n of spaceSoundNodes) {
-        // Не трогаем выключенные (gain==0), чтобы кнопки solo работали
-        const cur = n.master.gain.value;
-        if (cur > 0.001) setNodeVolume(n, masterVolume);
-    }
     refreshStatus();
 });
 
 // ============================================================
-//  ДИАГНОСТИКА: слушаем разные типы жестов
+//  ДИАГНОСТИКА ЖЕСТОВ
 // ============================================================
-function onFirstGesture(ev) {
-    log(`Жест: ${ev.type}`, 'info');
-}
 ['mousedown', 'pointerdown', 'touchstart', 'keydown', 'click'].forEach(t => {
-    window.addEventListener(t, onFirstGesture, { once: true });
+    window.addEventListener(t, (ev) => {
+        log(`Жест: ${ev.type}`, 'info');
+    }, { once: true });
 });
 
-// ============================================================
-//  СТАРТ
-// ============================================================
 log('Программа загружена. Жду первого жеста (клик по кнопке).', 'info');
 refreshStatus();
 </script>
