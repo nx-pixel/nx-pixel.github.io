@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тест звуков космоса</title>
+<style>
+    body {
+        margin: 0;
+        background: #050510;
+        color: #ddd;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        gap: 18px;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+    h1 {
+        font-size: 20px;
+        color: #fff;
+        margin: 0 0 6px;
+        text-align: center;
+    }
+    p.hint {
+        font-size: 13px;
+        color: #888;
+        max-width: 520px;
+        text-align: center;
+        line-height: 1.5;
+        margin: 0;
+    }
+    #status {
+        font-family: monospace;
+        font-size: 13px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(120,160,255,0.3);
+        border-radius: 8px;
+        padding: 10px 16px;
+        min-width: 340px;
+        text-align: left;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+    #status .ok { color: #6f6; }
+    #status .bad { color: #f66; }
+    #status .warn { color: #fc4; }
+    .btns {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    button {
+        padding: 12px 22px;
+        font-size: 15px;
+        font-family: inherit;
+        color: #fff;
+        background: rgba(60, 90, 180, 0.6);
+        border: 1px solid rgba(120, 180, 255, 0.5);
+        border-radius: 9px;
+        cursor: pointer;
+        transition: background 0.15s, transform 0.1s;
+    }
+    button:hover { background: rgba(80, 120, 220, 0.85); }
+    button:active { transform: scale(0.97); }
+    button.active {
+        background: rgba(80, 200, 100, 0.65);
+        border-color: rgba(120, 255, 140, 0.7);
+    }
+    button.danger {
+        background: rgba(180, 60, 60, 0.6);
+        border-color: rgba(255, 120, 120, 0.6);
+    }
+    button.danger:hover { background: rgba(220, 80, 80, 0.85); }
+    #log {
+        font-family: monospace;
+        font-size: 12px;
+        color: #aaa;
+        max-width: 640px;
+        width: 100%;
+        max-height: 160px;
+        overflow-y: auto;
+        background: rgba(0,0,0,0.4);
+        border: 1px solid rgba(120,160,255,0.2);
+        border-radius: 8px;
+        padding: 10px 14px;
+        white-space: pre-wrap;
+        line-height: 1.5;
+    }
+    #log .err { color: #f66; }
+    #log .ok { color: #6f6; }
+    #log .info { color: #8cf; }
+    #volumeRow {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 14px;
+        color: #bbb;
+    }
+    #volumeRow input[type="range"] {
+        width: 180px;
+        accent-color: #4a9eff;
+    }
+</style>
+</head>
+<body>
+
+<h1>🔊 Тест звуков космоса</h1>
+<p class="hint">
+    Нажми любую кнопку ниже — это и есть «пользовательский жест», после которого браузер разрешает звук.
+    Смотри в блок статуса и лог: если <span style="color:#6f6">AudioContext: running</span> и звук слышен — архитектура рабочая.
+    Если <span style="color:#f66">suspended</span> или в логе ошибка — пришли этот лог, будем разбираться.
+</p>
+
+<div id="status">Инициализация ещё не начиналась.</div>
+
+<div class="btns">
+    <button id="btnAll">▶ Включить все звуки</button>
+    <button id="btnStar">☀ Звезда</button>
+    <button id="btnPlanet">🪐 Планета</button>
+    <button id="btnComet">☄ Комета</button>
+    <button id="btnAsteroid">🪨 Астероид</button>
+    <button id="btnStop" class="danger">⏹ Стоп</button>
+</div>
+
+<div id="volumeRow">
+    <span>Громкость:</span>
+    <input type="range" id="volume" min="0" max="100" value="65">
+    <span id="volumeVal">65%</span>
+</div>
+
+<div id="log"></div>
+
+<script>
+// ============================================================
+//  ГЛОБАЛЬНОЕ СОСТОЯНИЕ
+// ============================================================
+let audioCtx = null;
+let spaceMasterGain = null;
+
+// Флаг: звуки космоса инициализированы (узлы созданы и запущены)
+let spaceSoundsInitialized = false;
+// Флаг: идёт попытка инициализации (чтобы не запускать параллельно)
+let spaceSoundsInitializing = false;
+
+// Массив активных узлов: { oscs: [], master: GainNode, panner: StereoPannerNode|null, type }
+let spaceSoundNodes = [];
+
+// Громкость (0..1)
+let masterVolume = 0.65;
+
+// ============================================================
+//  ЛОГ И СТАТУС
+// ============================================================
+const logEl = document.getElementById('log');
+const statusEl = document.getElementById('status');
+
+function log(msg, cls = '') {
+    const line = document.createElement('div');
+    if (cls) line.className = cls;
+    line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setStatus(html) {
+    statusEl.innerHTML = html;
+}
+
+function refreshStatus() {
+    const ctxState = audioCtx ? audioCtx.state : '—';
+    const ctxColor = ctxState === 'running' ? 'ok' : (ctxState === 'suspended' ? 'warn' : 'bad');
+    const sampleRate = audioCtx ? audioCtx.sampleRate : '—';
+    const baseLatency = (audioCtx && audioCtx.baseLatency !== undefined)
+        ? (audioCtx.baseLatency * 1000).toFixed(1) + ' мс'
+        : '—';
+    const nodesCount = spaceSoundNodes.length;
+
+    setStatus(
+        `AudioContext: <span class="${ctxColor}">${ctxState}</span>\n` +
+        `sampleRate: ${sampleRate} Hz\n` +
+        `baseLatency: ${baseLatency}\n` +
+        `Звуков создано: ${nodesCount}\n` +
+        `Инициализировано: <span class="${spaceSoundsInitialized ? 'ok' : 'warn'}">${spaceSoundsInitialized}</span>\n` +
+        `Громкость: ${Math.round(masterVolume * 100)}%`
+    );
+}
+
+refreshStatus();
+
+// ============================================================
+//  ИНИЦИАЛИЗАЦИЯ AUDIO CONTEXT
+//  Ключевое: создаём контекст и дожидаемся resume() ДО создания узлов.
+// ============================================================
+function createAudioContextIfNeeded() {
+    if (audioCtx) return true;
+    try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) {
+            log('Web Audio API не поддерживается в этом браузере', 'err');
+            return false;
+        }
+        audioCtx = new Ctx();
+        spaceMasterGain = audioCtx.createGain();
+        spaceMasterGain.gain.value = masterVolume;
+        spaceMasterGain.connect(audioCtx.destination);
+        log(`AudioContext создан. state = ${audioCtx.state}`, 'info');
+        refreshStatus();
+        return true;
+    } catch (e) {
+        log('Ошибка создания AudioContext: ' + e.message, 'err');
+        return false;
+    }
+}
+
+// Асинхронно разблокируем контекст. Возвращает Promise<boolean> — удалось ли перейти в running.
+async function resumeAudioContext() {
+    if (!audioCtx) return false;
+    if (audioCtx.state === 'running') return true;
+    try {
+        log('Вызываю audioCtx.resume()...', 'info');
+        await audioCtx.resume();
+        log(`После resume(): state = ${audioCtx.state}`, audioCtx.state === 'running' ? 'ok' : 'warn');
+        refreshStatus();
+        return audioCtx.state === 'running';
+    } catch (e) {
+        log('Ошибка resume(): ' + e.message, 'err');
+        refreshStatus();
+        return false;
+    }
+}
+
+// ============================================================
+//  СОЗДАНИЕ ЗВУКОВ (аналог createSpaceSoundForObject из игры)
+//  ВАЖНО: вызывается только после того, как audioCtx.state === 'running'.
+// ============================================================
+function makeNoiseBuffer(duration) {
+    const bufferSize = Math.floor(audioCtx.sampleRate * duration);
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+    }
+    return buffer;
+}
+
+function createStarSound() {
+    const oscs = [];
+    const master = audioCtx.createGain();
+    master.gain.value = 0;
+    let panner = null;
+    if (audioCtx.createStereoPanner) {
+        panner = audioCtx.createStereoPanner();
+        panner.pan.value = 0;
+        master.connect(panner).connect(spaceMasterGain);
+    } else {
+        master.connect(spaceMasterGain);
+    }
+
+    const sub = audioCtx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.value = 55;
+    const subGain = audioCtx.createGain();
+    subGain.gain.value = 0.4;
+    sub.connect(subGain).connect(master);
+    sub.start();
+    oscs.push(sub);
+
+    const shimmer = audioCtx.createOscillator();
+    shimmer.type = 'sine';
+    shimmer.frequency.value = 440;
+    const shGain = audioCtx.createGain();
+    shGain.gain.value = 0.03;
+    const shLfo = audioCtx.createOscillator();
+    shLfo.type = 'sine';
+    shLfo.frequency.value = 0.7;
+    const shLfoGain = audioCtx.createGain();
+    shLfoGain.gain.value = 0.025;
+    shLfo.connect(shLfoGain).connect(shGain.gain);
+    shLfo.start();
+    shimmer.connect(shGain).connect(master);
+    shimmer.start();
+    oscs.push(shimmer, shLfo);
+
+    return { oscs, master, panner, type: 'star' };
+}
+
+function createPlanetSound(name) {
+    const oscs = [];
+    const master = audioCtx.createGain();
+    master.gain.value = 0;
+    let panner = null;
+    if (audioCtx.createStereoPanner) {
+        panner = audioCtx.createStereoPanner();
+        panner.pan.value = 0;
+        master.connect(panner).connect(spaceMasterGain);
+    } else {
+        master.connect(spaceMasterGain);
+    }
+
+    const baseFreqs = {
+        'Меркурий': 110, 'Венера': 165, 'Земля': 220,
+        'Марс': 98, 'Юпитер': 55, 'Сатурн': 65,
+        'Уран': 120, 'Нептун': 70, 'Плутон': 660,
+    };
+    const baseFreq = baseFreqs[name] || 100;
+
+    const o = audioCtx.createOscillator();
+    o.type = name === 'Меркурий' ? 'triangle' : 'sine';
+    o.frequency.value = baseFreq;
+    const og = audioCtx.createGain();
+    og.gain.value = 0.35;
+    o.connect(og).connect(master);
+    o.start();
+    oscs.push(o);
+
+    if (name === 'Земля' || name === 'Венера' || name === 'Марс' || name === 'Нептун') {
+        const n = audioCtx.createBufferSource();
+        n.buffer = makeNoiseBuffer(4);
+        n.loop = true;
+        const nf = audioCtx.createBiquadFilter();
+        nf.type = 'bandpass';
+        nf.frequency.value = name === 'Земля' ? 2000 :
+                             name === 'Марс' ? 800 :
+                             name === 'Венера' ? 600 : 400;
+        nf.Q.value = 2;
+        const ng = audioCtx.createGain();
+        ng.gain.value = 0.06;
+        n.connect(nf).connect(ng).connect(master);
+        n.start();
+        oscs.push(n);
+    }
+
+    if (name === 'Сатурн') {
+        const bell = audioCtx.createOscillator();
+        bell.type = 'sine';
+        bell.frequency.value = 1200;
+        const bg = audioCtx.createGain();
+        bg.gain.value = 0.04;
+        const blfo = audioCtx.createOscillator();
+        blfo.type = 'sine';
+        blfo.frequency.value = 0.5;
+        const blg = audioCtx.createGain();
+        blg.gain.value = 0.03;
+        blfo.connect(blg).connect(bg.gain);
+        blfo.start();
+        bell.connect(bg).connect(master);
+        bell.start();
+        oscs.push(bell, blfo);
+    }
+
+    if (name === 'Юпитер') {
+        const storm = audioCtx.createOscillator();
+        storm.type = 'sawtooth';
+        storm.frequency.value = 40;
+        const stGain = audioCtx.createGain();
+        stGain.gain.value = 0.08;
+        const stFilter = audioCtx.createBiquadFilter();
+        stFilter.type = 'lowpass';
+        stFilter.frequency.value = 200;
+        storm.connect(stFilter).connect(stGain).connect(master);
+        storm.start();
+        oscs.push(storm);
+    }
+
+    return { oscs, master, panner, type: 'planet', name };
+}
+
+function createCometSound() {
+    const oscs = [];
+    const master = audioCtx.createGain();
+    master.gain.value = 0;
+    let panner = null;
+    if (audioCtx.createStereoPanner) {
+        panner = audioCtx.createStereoPanner();
+        panner.pan.value = 0;
+        master.connect(panner).connect(spaceMasterGain);
+    } else {
+        master.connect(spaceMasterGain);
+    }
+
+    const whistle = audioCtx.createOscillator();
+    whistle.type = 'sine';
+    whistle.frequency.value = 1800;
+    const wg = audioCtx.createGain();
+    wg.gain.value = 0.15;
+    whistle.connect(wg).connect(master);
+    whistle.start();
+    oscs.push(whistle);
+
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = makeNoiseBuffer(4);
+    noise.loop = true;
+    const nf = audioCtx.createBiquadFilter();
+    nf.type = 'bandpass';
+    nf.frequency.value = 1500;
+    nf.Q.value = 3;
+    const ng = audioCtx.createGain();
+    ng.gain.value = 0.05;
+    noise.connect(nf).connect(ng).connect(master);
+    noise.start();
+    oscs.push(noise);
+
+    return { oscs, master, panner, type: 'comet' };
+}
+
+function createAsteroidSound(id) {
+    const oscs = [];
+    const master = audioCtx.createGain();
+    master.gain.value = 0;
+    let panner = null;
+    if (audioCtx.createStereoPanner) {
+        panner = audioCtx.createStereoPanner();
+        panner.pan.value = 0;
+        master.connect(panner).connect(spaceMasterGain);
+    } else {
+        master.connect(spaceMasterGain);
+    }
+
+    const o = audioCtx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = 140 + (id || 0) * 30;
+    const og = audioCtx.createGain();
+    og.gain.value = 0.25;
+    o.connect(og).connect(master);
+    o.start();
+    oscs.push(o);
+
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = makeNoiseBuffer(3);
+    noise.loop = true;
+    const nf = audioCtx.createBiquadFilter();
+    nf.type = 'bandpass';
+    nf.frequency.value = 600;
+    nf.Q.value = 2;
+    const ng = audioCtx.createGain();
+    ng.gain.value = 0.05;
+    noise.connect(nf).connect(ng).connect(master);
+    noise.start();
+    oscs.push(noise);
+
+    return { oscs, master, panner, type: 'asteroid', id };
+}
+
+// ============================================================
+//  ИНИЦИАЛИЗАЦИЯ ЗВУКОВ КОСМОСА
+//  Вызывается ТОЛЬКО когда audioCtx.state === 'running'.
+//  С флагом, try/catch и повторными попытками.
+// ============================================================
+function initSpaceSounds() {
+    if (!audioCtx || audioCtx.state !== 'running') {
+        log('initSpaceSounds: пропуск — audioCtx не running', 'warn');
+        return false;
+    }
+    if (spaceSoundsInitialized) {
+        log('initSpaceSounds: уже инициализировано', 'info');
+        return true;
+    }
+    if (spaceSoundsInitializing) {
+        log('initSpaceSounds: инициализация уже идёт', 'info');
+        return false;
+    }
+
+    spaceSoundsInitializing = true;
+    log('Создаю звуковые узлы...', 'info');
+
+    try {
+        spaceSoundNodes = [];
+
+        spaceSoundNodes.push(createStarSound());
+        log('  ✓ звезда', 'ok');
+
+        spaceSoundNodes.push(createPlanetSound('Земля'));
+        log('  ✓ планета Земля', 'ok');
+
+        spaceSoundNodes.push(createPlanetSound('Юпитер'));
+        log('  ✓ планета Юпитер', 'ok');
+
+        spaceSoundNodes.push(createPlanetSound('Сатурн'));
+        log('  ✓ планета Сатурн', 'ok');
+
+        spaceSoundNodes.push(createCometSound());
+        log('  ✓ комета', 'ok');
+
+        spaceSoundNodes.push(createAsteroidSound(0));
+        log('  ✓ астероид', 'ok');
+
+        spaceSoundsInitialized = true;
+        log(`Всего звуков создано: ${spaceSoundNodes.length}`, 'ok');
+        refreshStatus();
+        return true;
+    } catch (e) {
+        log('Ошибка при создании звуков: ' + e.message, 'err');
+        log(e.stack || '', 'err');
+        spaceSoundsInitialized = false;
+        return false;
+    } finally {
+        spaceSoundsInitializing = false;
+    }
+}
+
+// ============================================================
+//  УПРАВЛЕНИЕ ГРОМКОСТЬЮ
+// ============================================================
+function setNodeVolume(node, vol) {
+    if (!node.master) return;
+    try {
+        node.master.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.1);
+    } catch (e) {}
+}
+
+// ============================================================
+//  КНОПКИ
+// ============================================================
+const btnAll = document.getElementById('btnAll');
+const btnStar = document.getElementById('btnStar');
+const btnPlanet = document.getElementById('btnPlanet');
+const btnComet = document.getElementById('btnComet');
+const btnAsteroid = document.getElementById('btnAsteroid');
+const btnStop = document.getElementById('btnStop');
+
+// Обработчик кнопки «Включить все звуки» — это и есть пользовательский жест
+btnAll.addEventListener('click', async () => {
+    log('=== Нажата кнопка «Включить все звуки» ===', 'info');
+    if (!createAudioContextIfNeeded()) return;
+    const ok = await resumeAudioContext();
+    if (!ok) {
+        log('Не удалось перевести AudioContext в running. Попробуй ещё раз (браузер иногда требует повторного жеста).', 'err');
+        return;
+    }
+    initSpaceSounds();
+
+    // Включаем все звуки на полную
+    for (const n of spaceSoundNodes) {
+        setNodeVolume(n, masterVolume);
+    }
+    log('Все звуки включены', 'ok');
+});
+
+btnStop.addEventListener('click', () => {
+    log('=== Стоп ===', 'info');
+    for (const n of spaceSoundNodes) {
+        setNodeVolume(n, 0);
+    }
+    log('Все звуки выключены (узлы остались, но gain=0)', 'info');
+});
+
+// Кнопки отдельных звуков — включают только свой тип
+async function soloType(type) {
+    if (!createAudioContextIfNeeded()) return;
+    const ok = await resumeAudioContext();
+    if (!ok) return;
+    initSpaceSounds();
+
+    for (const n of spaceSoundNodes) {
+        setNodeVolume(n, n.type === type ? masterVolume : 0);
+    }
+    log(`Включён только тип: ${type}`, 'ok');
+}
+
+btnStar.addEventListener('click', () => soloType('star'));
+btnPlanet.addEventListener('click', () => soloType('planet'));
+btnComet.addEventListener('click', () => soloType('comet'));
+btnAsteroid.addEventListener('click', () => soloType('asteroid'));
+
+// Громкость
+const volumeInput = document.getElementById('volume');
+const volumeVal = document.getElementById('volumeVal');
+volumeInput.addEventListener('input', () => {
+    masterVolume = parseFloat(volumeInput.value) / 100;
+    volumeVal.textContent = volumeInput.value + '%';
+    if (spaceMasterGain && audioCtx) {
+        try {
+            spaceMasterGain.gain.setTargetAtTime(masterVolume, audioCtx.currentTime, 0.05);
+        } catch (e) {}
+    }
+    // Применяем к активным узлам пропорционально
+    for (const n of spaceSoundNodes) {
+        // Не трогаем выключенные (gain==0), чтобы кнопки solo работали
+        const cur = n.master.gain.value;
+        if (cur > 0.001) setNodeVolume(n, masterVolume);
+    }
+    refreshStatus();
+});
+
+// ============================================================
+//  ДИАГНОСТИКА: слушаем разные типы жестов
+// ============================================================
+function onFirstGesture(ev) {
+    log(`Жест: ${ev.type}`, 'info');
+}
+['mousedown', 'pointerdown', 'touchstart', 'keydown', 'click'].forEach(t => {
+    window.addEventListener(t, onFirstGesture, { once: true });
+});
+
+// ============================================================
+//  СТАРТ
+// ============================================================
+log('Программа загружена. Жду первого жеста (клик по кнопке).', 'info');
+refreshStatus();
+</script>
+</body>
+</html>
