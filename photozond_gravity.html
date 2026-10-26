@@ -427,13 +427,18 @@
             STAR_PER_CELL_THROTTLED: 1,
             STAR_CELL_SIZE: 1000,
 
-            GALLERY_TEXT_DISTORTION_PLANET: 50,
-            GALLERY_TEXT_DISTORTION_COMET: 38,
-            GALLERY_TEXT_DISTORTION_ASTEROID: 33,
-            GALLERY_TEXT_BLUR: 3,
-            GALLERY_TEXT_WARP: 5,
-            GALLERY_TEXT_OPACITY: 53,
-            GALLERY_TEXT_SIZE: 75,
+            // Вставь эти строки в блок SETTINGS в игре:
+			GALLERY_TEXT_DISTORTION_PLANET: 36,
+			GALLERY_TEXT_DISTORTION_COMET: 25,
+			GALLERY_TEXT_DISTORTION_ASTEROID: 20,
+			GALLERY_TEXT_BLUR: 1,
+			GALLERY_TEXT_WARP: 3,
+			GALLERY_TEXT_OPACITY: 53,
+			GALLERY_TEXT_SIZE: 75,
+
+			// Если для комет/астероидов нужны свои blur/warp/opacity/size,
+			// их сейчас в игре общие. Измени значения выше — они применятся ко всем.
+			// distortion же задаётся отдельно для каждого типа.
 
             AUTOPILOT_TIMEOUT: 0.4,
             AUTOPILOT_THRUST_TIME: 0.14,
