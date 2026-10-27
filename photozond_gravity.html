@@ -297,7 +297,6 @@
             z-index: 2;
         }
 
-        /* Секретное меню (Ctrl+\) */
         #secretMenu {
             position: absolute;
             top: 50%;
@@ -346,6 +345,145 @@
             text-align: center;
             border-top: 1px solid rgba(255,255,255,0.1);
             padding-top: 10px;
+        }
+
+        /* Экран вступления (комикс) */
+        #introScreen {
+            position: fixed;
+            inset: 0;
+            z-index: 500;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 50% 40%, #0a1530 0%, #05060d 70%, #000 100%);
+            color: #e8eefc;
+            padding: 16px;
+            gap: 12px;
+            box-sizing: border-box;
+        }
+        #introScreen.visible { display: flex; }
+
+        #introTitle {
+            width: min(100%, 1024px);
+            text-align: center;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #a8c4ff;
+            text-shadow: 0 0 20px rgba(120, 160, 255, 0.4);
+            margin-bottom: 2px;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+        }
+
+        #introStage {
+            position: relative;
+            width: min(100%, 1024px);
+            aspect-ratio: 4 / 3;
+            background: transparent;
+            border: 2px solid rgba(120, 160, 255, 0.35);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 60px rgba(80, 140, 255, 0.25);
+        }
+
+        #introImage {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            background: transparent;
+            transition: opacity 0.22s ease;
+            opacity: 1;
+        }
+        #introImage.fading { opacity: 0; }
+
+        #introLoading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #88a;
+            font-size: 14px;
+            letter-spacing: 1px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        #introLoading.visible { opacity: 1; }
+
+        #introCaption {
+            width: min(100%, 1024px);
+            padding: 14px 20px 18px 20px;
+            background: rgba(20, 28, 50, 0.85);
+            border: 1px solid rgba(120, 160, 255, 0.35);
+            border-radius: 10px;
+            font-size: 15px;
+            line-height: 1.6;
+            color: #dbe6ff;
+            backdrop-filter: blur(4px);
+            transition: opacity 0.22s ease;
+            box-sizing: border-box;
+        }
+        #introCaption.fading { opacity: 0; }
+
+        #introControls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #introControls button {
+            padding: 9px 18px;
+            font-size: 14px;
+            font-family: inherit;
+            color: #fff;
+            background: rgba(60, 90, 180, 0.6);
+            border: 1px solid rgba(120, 180, 255, 0.5);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+        }
+        #introControls button:hover { background: rgba(80, 120, 220, 0.85); }
+        #introControls button:active { transform: scale(0.97); }
+        #introControls button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+        #introControls button.primary {
+            background: rgba(60, 160, 90, 0.6);
+            border-color: rgba(120, 255, 140, 0.7);
+        }
+        #introControls button.primary:hover { background: rgba(80, 200, 110, 0.85); }
+        #introControls button.skip {
+            background: rgba(120, 120, 120, 0.35);
+            border-color: rgba(200, 200, 200, 0.35);
+        }
+        #introControls button.skip:hover { background: rgba(150, 150, 150, 0.55); }
+
+        #introCounter {
+            font-family: monospace;
+            font-size: 13px;
+            color: #8aa;
+            min-width: 54px;
+            text-align: center;
+        }
+
+        #introHint {
+            font-size: 12px;
+            color: #556;
+            margin-top: 2px;
+        }
+
+        @media (max-width: 700px) {
+            #introTitle { font-size: 14px; letter-spacing: 1px; }
+            #introCaption { font-size: 13.5px; padding: 10px 14px 14px 14px; }
+            #introControls button { padding: 8px 14px; font-size: 13px; }
         }
 
         canvas { display: block; cursor: crosshair; }
@@ -424,6 +562,27 @@
             <span class="secret-val" id="secretThrustMultVal">×1.0</span>
         </label>
         <div class="secret-hint">Ctrl+Shift+G — закрыть</div>
+    </div>
+
+    <div id="introScreen">
+        <div id="introTitle">История учёного, создавшего фотозонд</div>
+
+        <div id="introStage">
+            <img id="introImage" src="" alt="">
+            <div id="introLoading">Загрузка…</div>
+        </div>
+
+        <div id="introCaption"></div>
+
+        <div id="introControls">
+            <button id="introPrev">← Назад</button>
+            <span id="introCounter">1 / 6</span>
+            <button id="introNext">Далее →</button>
+            <button id="introSkip" class="skip">Пропустить</button>
+            <button id="introStart" class="primary" style="display:none;">Начать игру</button>
+        </div>
+
+        <div id="introHint">← / → — листать · Esc — пропустить историю</div>
     </div>
 
     <canvas id="canvas"></canvas>
@@ -511,7 +670,7 @@
 
             CONTROL_MODE_DEFAULT: 'nozzle',
 
-            // Секретное меню (Ctrl+\): множитель тяги зонда
+            // Секретное меню: множитель тяги зонда
             THRUST_MULTIPLIER_DEFAULT: 1.0,
             THRUST_MULTIPLIER_MAX: 50.0
         };
@@ -796,6 +955,11 @@
         let secretMenuVisible = false;
         let thrustMultiplier = SETTINGS.THRUST_MULTIPLIER_DEFAULT;
 
+        // Вступление
+        let introActive = false;
+        let introIndex = 0;
+        let introTransitionToken = 0;
+
         const modeIndicator = document.getElementById('modeIndicator');
         const endScreen = document.getElementById('endScreen');
         const endTitle = document.getElementById('endTitle');
@@ -824,8 +988,131 @@
         const secretThrustMult = document.getElementById('secretThrustMult');
         const secretThrustMultVal = document.getElementById('secretThrustMultVal');
 
+        // Вступление
+        const introScreen = document.getElementById('introScreen');
+        const introImage = document.getElementById('introImage');
+        const introLoading = document.getElementById('introLoading');
+        const introCaption = document.getElementById('introCaption');
+        const introPrev = document.getElementById('introPrev');
+        const introNext = document.getElementById('introNext');
+        const introSkip = document.getElementById('introSkip');
+        const introStart = document.getElementById('introStart');
+        const introCounter = document.getElementById('introCounter');
+
         let lastTime = performance.now();
         let animationFrameId;
+
+        // ============================================================
+        //  ВСТУПЛЕНИЕ (КОМИКС)
+        // ============================================================
+        const INTRO_BASE = 'https://nx-pixel.github.io/img/photozond_gravity/output_with_bubbles/';
+
+        const INTRO_SLIDES = [
+            {
+                img: INTRO_BASE + '1.png',
+                caption: 'Он вырос с книгой по астрономии в руках. Пока другие считали звёзды просто точками, он искал в них закономерности — и находил. Сначала это было любопытство. Потом — одержимость.'
+            },
+            {
+                img: INTRO_BASE + '2.png',
+                caption: 'Однажды ночью он навёл телескоп на Меркурий — и увидел на диске планеты то, что не могло быть случайным. Узоры складывались в слова. На планетах были надписи. Он был уверен в этом так, как можно быть уверенным только в самом простом и очевидном.'
+            },
+            {
+                img: INTRO_BASE + '3.png',
+                caption: 'Он вышел на трибуну и предложил снарядить экспедицию. Зал ответил смехом. «Апофения», — сказали ему. «Мозг ищет узоры там, где их нет». Он назвал их подонками и лжецами. Его больше не приглашали.'
+            },
+            {
+                img: INTRO_BASE + '4.png',
+                caption: 'Он не стал ждать. Если никто не верит — он сделает всё сам. Ионный двигатель он собрал в одиночку, по собственным чертежам. Настолько мощный, что зонд выйдет в космос без ракеты-носителя.'
+            },
+            {
+                img: INTRO_BASE + '5.png',
+                caption: 'Зонд стоял в ангаре — огромный, собранный из того, что было под рукой, и всё же готовый. Он смотрел на него и понимал: это не просто машина. Это доказательство.'
+            },
+            {
+                img: INTRO_BASE + '6.png',
+                caption: 'Оставалось установить аппаратуру — и в путь. Он уже знал, что не вернётся на Землю в одиночку: если он не вернётся, слова вернутся за него. — Пора начинать.'
+            }
+        ];
+
+        function preloadIntroImages() {
+            for (const s of INTRO_SLIDES) {
+                const img = new Image();
+                img.src = s.img;
+            }
+        }
+
+        function showIntroSlide(i, animate = true) {
+            introIndex = Math.max(0, Math.min(INTRO_SLIDES.length - 1, i));
+            const slide = INTRO_SLIDES[introIndex];
+
+            const token = ++introTransitionToken;
+
+            introCounter.textContent = `${introIndex + 1} / ${INTRO_SLIDES.length}`;
+            introPrev.disabled = (introIndex === 0);
+
+            const isLast = (introIndex === INTRO_SLIDES.length - 1);
+            introNext.style.display = isLast ? 'none' : '';
+            introSkip.style.display = isLast ? 'none' : '';
+            introStart.style.display = isLast ? '' : 'none';
+
+            introLoading.textContent = 'Загрузка…';
+            introLoading.classList.add('visible');
+
+            const newImg = new Image();
+            newImg.onload = () => {
+                if (token !== introTransitionToken) return;
+
+                const apply = () => {
+                    if (token !== introTransitionToken) return;
+                    introImage.src = newImg.src;
+                    introCaption.textContent = slide.caption;
+                    introLoading.classList.remove('visible');
+                    introImage.classList.remove('fading');
+                    introCaption.classList.remove('fading');
+                };
+
+                if (animate) {
+                    introImage.classList.add('fading');
+                    introCaption.classList.add('fading');
+                    setTimeout(apply, 220);
+                } else {
+                    apply();
+                }
+            };
+            newImg.onerror = () => {
+                if (token !== introTransitionToken) return;
+                introLoading.textContent = 'Не удалось загрузить слайд';
+                introImage.classList.remove('fading');
+                introCaption.classList.remove('fading');
+            };
+
+            newImg.src = slide.img;
+        }
+
+        function openIntro() {
+            introActive = true;
+            introScreen.classList.add('visible');
+            gamePaused = true;
+            showIntroSlide(0, false);
+        }
+
+        function closeIntro() {
+            introActive = false;
+            introScreen.classList.remove('visible');
+            gamePaused = false;
+        }
+
+        introPrev.addEventListener('click', () => showIntroSlide(introIndex - 1));
+        introNext.addEventListener('click', () => showIntroSlide(introIndex + 1));
+        introSkip.addEventListener('click', closeIntro);
+        introStart.addEventListener('click', closeIntro);
+
+        window.addEventListener('keydown', (e) => {
+            if (!introActive) return;
+            if (e.key === 'ArrowLeft')  { e.preventDefault(); showIntroSlide(introIndex - 1); }
+            if (e.key === 'ArrowRight') { e.preventDefault(); showIntroSlide(introIndex + 1); }
+            if (e.key === 'Escape')     { e.preventDefault(); closeIntro(); }
+        });
 
         // ============================================================
         //  Переключение режима управления
@@ -849,7 +1136,7 @@
         controlModeBtn.addEventListener('click', toggleControlMode);
 
         // ============================================================
-        //  Секретное меню (Ctrl+\)
+        //  Секретное меню (Ctrl+Shift+G)
         // ============================================================
         function toggleSecretMenu() {
             secretMenuVisible = !secretMenuVisible;
@@ -903,8 +1190,6 @@
         const AMBIENT_URL = 'https://nx-pixel.github.io/sound/deep_space_60s.wav';
 
         let audioCtx = null;
-        let thrustOsc = null;
-        let thrustGain = null;
         let spaceMasterGain = null;
         let spaceCompressor = null;
 
@@ -916,6 +1201,10 @@
         let ambientGainNode = null;
         let ambientInitialized = false;
         let ambientEnabled = true;
+
+        // Звук двигателя — «Ионный поток»
+        let thrustNodes = null;
+        let thrustGain = null;
 
         function initAudio() {
             if (audioCtx) return;
@@ -1016,6 +1305,89 @@
                 data[i] = (Math.random() * 2 - 1) * 0.5;
             }
             return buffer;
+        }
+
+        function makePinkNoiseBuffer(duration) {
+            const bufferSize = Math.floor(audioCtx.sampleRate * duration);
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+            for (let i = 0; i < bufferSize; i++) {
+                const white = Math.random() * 2 - 1;
+                b0 = 0.99886*b0 + white*0.0555179;
+                b1 = 0.99332*b1 + white*0.0750759;
+                b2 = 0.96900*b2 + white*0.1538520;
+                b3 = 0.86650*b3 + white*0.3104856;
+                b4 = 0.55000*b4 + white*0.5329522;
+                b5 = -0.7616*b5 - white*0.0168980;
+                data[i] = (b0+b1+b2+b3+b4+b5+b6+white*0.5362)*0.11;
+                b6 = white*0.115926;
+            }
+            return buffer;
+        }
+
+        // ============================================================
+        //  ЗВУК ДВИГАТЕЛЯ — «ИОННЫЙ ПОТОК»
+        //  Розовый шум через low-pass 4 кГц с медленной модуляцией среза
+        //  + очень тихий низкий гул 45 Гц. Без setInterval, без клиппинга.
+        // ============================================================
+        function startThrustSound() {
+            if (!audioCtx || thrustNodes) return;
+
+            const now = audioCtx.currentTime;
+
+            const gain = audioCtx.createGain();
+            gain.gain.value = 0.15;
+            gain.connect(audioCtx.destination);
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = makePinkNoiseBuffer(4);
+            noise.loop = true;
+
+            const lp = audioCtx.createBiquadFilter();
+            lp.type = 'lowpass';
+            lp.frequency.value = 4000;
+            lp.Q.value = 0.7;
+
+            noise.connect(lp).connect(gain);
+
+            const lfo = audioCtx.createOscillator();
+            lfo.type = 'sine';
+            lfo.frequency.value = 0.2;
+            const lfoGain = audioCtx.createGain();
+            lfoGain.gain.value = 800;
+            lfo.connect(lfoGain).connect(lp.frequency);
+            lfo.start(now);
+
+            const sub = audioCtx.createOscillator();
+            sub.type = 'sine';
+            sub.frequency.value = 45;
+            const subGain = audioCtx.createGain();
+            subGain.gain.value = 0.03;
+            sub.connect(subGain).connect(gain);
+            sub.start(now);
+
+            noise.start(now);
+
+            thrustNodes = { noise, lp, lfo, sub, gain };
+            thrustGain = gain;
+        }
+
+        function stopThrustSound() {
+            if (!thrustNodes) return;
+            const n = thrustNodes;
+            thrustNodes = null;
+            thrustGain = null;
+
+            try {
+                n.gain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+                setTimeout(() => {
+                    try { n.noise.stop(); } catch(e) {}
+                    try { n.lfo.stop(); } catch(e) {}
+                    try { n.sub.stop(); } catch(e) {}
+                    try { n.gain.disconnect(); } catch(e) {}
+                }, 120);
+            } catch(e) {}
         }
 
         function createSpaceSoundForObject(obj, type) {
@@ -1305,33 +1677,6 @@
             }
         }
 
-        function startThrustSound() {
-            if (!audioCtx || thrustOsc) return;
-            thrustOsc = audioCtx.createOscillator();
-            thrustOsc.type = 'sawtooth';
-            thrustOsc.frequency.value = 60;
-            thrustGain = audioCtx.createGain();
-            thrustGain.gain.value = 0.08;
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.value = 400;
-            thrustOsc.connect(filter);
-            filter.connect(thrustGain);
-            thrustGain.connect(audioCtx.destination);
-            thrustOsc.start();
-        }
-
-        function stopThrustSound() {
-            if (!thrustOsc) return;
-            try {
-                thrustGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
-                const osc = thrustOsc;
-                thrustOsc = null;
-                thrustGain = null;
-                setTimeout(() => { try { osc.stop(); } catch(e) {} }, 100);
-            } catch(e) {}
-        }
-
         function playTone(freq, duration, type = 'sine', volume = 0.08) {
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
@@ -1437,6 +1782,7 @@
         //  Кнопки
         // ============================================================
         function setPause(on) {
+            if (introActive) return;
             gamePaused = on;
             if (on) {
                 pauseBtn.textContent = '▶ Продолжить';
@@ -1448,7 +1794,7 @@
                 pauseBtn.textContent = '⏸ Пауза';
                 pauseBtn.classList.remove('paused');
                 if (rocket && rocket.thrusting && thrustGain) {
-                    thrustGain.gain.setTargetAtTime(0.08, audioCtx.currentTime, 0.05);
+                    thrustGain.gain.setTargetAtTime(0.15, audioCtx.currentTime, 0.05);
                 }
             }
         }
@@ -1477,6 +1823,7 @@
         spaceSoundsBtn.addEventListener('click', () => setSpaceSounds(!spaceSoundsEnabled));
 
         window.addEventListener('keydown', (e) => {
+            if (introActive) return;
             if (e.key === 'p' || e.key === 'P' || e.key === 'з' || e.key === 'З') {
                 setPause(!gamePaused);
             }
@@ -1487,11 +1834,10 @@
                 if (galleryVisible) closeGallery();
                 if (secretMenuVisible) toggleSecretMenu();
             }
-            // Ctrl+Shift+G — секретное меню
-			if (e.ctrlKey && e.shiftKey && (e.key === 'G' || e.key === 'g' || e.code === 'KeyG')) {
-				e.preventDefault();
-				toggleSecretMenu();
-			}
+            if (e.ctrlKey && e.shiftKey && (e.key === 'G' || e.key === 'g' || e.code === 'KeyG')) {
+                e.preventDefault();
+                toggleSecretMenu();
+            }
         });
 
         // ============================================================
@@ -1575,7 +1921,7 @@
 
             if (apState === 'COOLDOWN') {
                 rocket.thrusting = false;
-                if (thrustOsc) stopThrustSound();
+                if (thrustNodes) stopThrustSound();
                 apCooldownRemaining -= dt;
                 if (apCooldownRemaining <= 0) {
                     apState = 'BURN';
@@ -1737,7 +2083,6 @@
 
             setControlMode(SETTINGS.CONTROL_MODE_DEFAULT);
 
-            // Сброс секретного меню
             thrustMultiplier = SETTINGS.THRUST_MULTIPLIER_DEFAULT;
             secretMenuVisible = false;
             if (secretMenu) secretMenu.classList.remove('visible');
@@ -2150,7 +2495,7 @@
         }
 
         canvas.addEventListener('mousemove', (e) => {
-            if (gameOver || gameWin) return;
+            if (gameOver || gameWin || introActive) return;
             updateMousePosition(e);
             if (overviewMode && dragStart && mouse.down) {
                 const dx = mouse.x - dragStart.mouseX;
@@ -2161,7 +2506,7 @@
         });
 
         canvas.addEventListener('mousedown', (e) => {
-            if (gameOver || gameWin) return;
+            if (gameOver || gameWin || introActive) return;
             updateMousePosition(e);
 
             if (e.button === 2) {
@@ -2205,6 +2550,7 @@
         canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
         canvas.addEventListener('wheel', (e) => {
+            if (introActive) return;
             e.preventDefault();
             const factor = e.deltaY < 0 ? SETTINGS.ZOOM_STEP : 1 / SETTINGS.ZOOM_STEP;
             camera.targetZoom = Math.max(SETTINGS.ZOOM_MIN, Math.min(SETTINGS.ZOOM_MAX, camera.targetZoom * factor));
@@ -2289,7 +2635,7 @@
                 return;
             }
 
-            if (gamePaused) return;
+            if (gamePaused || introActive) return;
 
             gameTime += dt;
             if (photoCooldown > 0) photoCooldown -= dt;
@@ -3357,7 +3703,7 @@
             ctx.font = '12px monospace';
             ctx.fillText(`Zoom: ${camera.zoom.toFixed(3)}x`, 20, canvas.height - 20);
 
-            if (gamePaused && !gameOver && !gameWin) {
+            if (gamePaused && !gameOver && !gameWin && !introActive) {
                 ctx.save();
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -3988,9 +4334,12 @@
         document.getElementById('restartBtn').addEventListener('click', () => {
             closeGallery();
             initGame();
+            openIntro();
         });
 
         initGame();
+        preloadIntroImages();
+        openIntro();
         lastTime = performance.now();
         animationFrameId = requestAnimationFrame(animate);
 
