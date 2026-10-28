@@ -504,6 +504,7 @@
         <p>Колесо — масштаб · ПКМ — режим обзора</p>
         <p style="color:#88ff88">Ctrl+ЛКМ по Солнцу или планете — автопилот вокруг неё</p>
         <p style="color:#ffcc44">G — переключить режим «нос/сопло»</p>
+        <p style="color:#a8c4ff">Геймпад: левый стик — поворот, RT/LT/A — тяга, Start — пауза</p>
     </div>
 
     <div id="hud">
@@ -514,6 +515,7 @@
         <div class="row"><span class="label">Топливо</span><span class="value" id="hudFuel">100%</span></div>
         <div class="fuelBarWrap"><div class="fuelBar" id="fuelBar" style="width:100%"></div></div>
         <div class="row autopilotRow" id="autopilotRow" style="display:none"><span class="label">Автопилот</span><span class="value" id="hudAutopilot">—</span></div>
+        <div class="row"><span class="label">Геймпад</span><span class="value" id="hudGamepad">—</span></div>
         <div id="godBadge">⚡ РЕЖИМ БОГА</div>
     </div>
 
@@ -565,7 +567,7 @@
     </div>
 
     <div id="introScreen">
-        <div id="introTitle">История безумного учёного, создавшего фотозонд</div>
+        <div id="introTitle">История учёного, создавшего фотозонд</div>
 
         <div id="introStage">
             <img id="introImage" src="" alt="">
@@ -636,7 +638,6 @@
             SPACE_SOUND_MAX_TOTAL_VOLUME: 1.0,
             SPACE_SOUND_MASTER_GAIN: 0.6,
 
-            // Фоновый трек — WAV-файл
             AMBIENT_GAIN: 0.07,
 
             ZOOM_MIN: 0.02,
@@ -670,9 +671,14 @@
 
             CONTROL_MODE_DEFAULT: 'nozzle',
 
-            // Секретное меню: множитель тяги зонда
             THRUST_MULTIPLIER_DEFAULT: 1.0,
-            THRUST_MULTIPLIER_MAX: 50.0
+            THRUST_MULTIPLIER_MAX: 50.0,
+
+            // Геймпад
+            GAMEPAD_DEADZONE: 0.15,
+            GAMEPAD_TURN_SMOOTH: 0.15,
+            GAMEPAD_THRUST_THRESHOLD: 0.3,
+            GAMEPAD_ACTIVITY_TIMEOUT: 300   // мс — сколько держим «активность» геймпада
         };
         // ============================================================
 
@@ -723,7 +729,10 @@
         // ============================================================
         //  СЛОВАРЬ ДЛЯ ТЕКСТА НА СНИМКАХ
         // ============================================================
-        const GALLERY_WORDS = [
+        
+		
+		
+		const GALLERY_WORDS = [
             'Космос', 'Звезда', 'Планета', 'Орбита', 'Галактика', 'Туманность',
             'Квазар', 'Пульсар', 'Астероид', 'Комета', 'Метеор', 'Спутник',
             'Солнце', 'Луна', 'Марс', 'Юпитер', 'Сатурн', 'Венера', 'Меркурий',
@@ -907,6 +916,8 @@
 			'Портал', 'Порталы', 'Врата', 'Врата', 'Дверь', 'Двери',
 			'Ключ', 'Ключи', 'Код', 'Коды', 'Шифр', 'Шифры'
         ];
+		
+		
 
         function generateOneWord() {
             return GALLERY_WORDS[Math.floor(Math.random() * GALLERY_WORDS.length)];
@@ -959,6 +970,14 @@
         let introIndex = 0;
         let introTransitionToken = 0;
 
+        // Геймпад
+        let gamepad = null;
+        let gamepadIndex = null;
+        let gamepadActive = false;
+        let gamepadLastInputTime = 0;
+        let gamepadStartPressed = false;
+        let gamepadBackPressed = false;
+
         const modeIndicator = document.getElementById('modeIndicator');
         const endScreen = document.getElementById('endScreen');
         const endTitle = document.getElementById('endTitle');
@@ -970,6 +989,7 @@
         const hudTime = document.getElementById('hudTime');
         const hudFuel = document.getElementById('hudFuel');
         const hudAutopilot = document.getElementById('hudAutopilot');
+        const hudGamepad = document.getElementById('hudGamepad');
         const autopilotRow = document.getElementById('autopilotRow');
         const fuelBar = document.getElementById('fuelBar');
         const godBadge = document.getElementById('godBadge');
@@ -1000,6 +1020,44 @@
 
         let lastTime = performance.now();
         let animationFrameId;
+
+        // ============================================================
+        //  ГЕЙМПАД
+        // ============================================================
+        window.addEventListener('gamepadconnected', (e) => {
+            gamepad = e.gamepad;
+            gamepadIndex = e.gamepad.index;
+            console.log('Геймпад подключён:', gamepad.id);
+            updateGamepadHUD();
+        });
+
+        window.addEventListener('gamepaddisconnected', () => {
+            gamepad = null;
+            gamepadIndex = null;
+            gamepadActive = false;
+            console.log('Геймпад отключён');
+            updateGamepadHUD();
+        });
+
+        function getGamepadState() {
+            if (!gamepad || gamepadIndex === null) return null;
+            const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+            for (const p of pads) {
+                if (p && p.connected && p.index === gamepadIndex) return p;
+            }
+            return null;
+        }
+
+        function updateGamepadHUD() {
+            if (!hudGamepad) return;
+            if (gamepad) {
+                hudGamepad.textContent = 'подключён';
+                hudGamepad.style.color = '#4aff4a';
+            } else {
+                hudGamepad.textContent = 'нет';
+                hudGamepad.style.color = '#aaa';
+            }
+        }
 
         // ============================================================
         //  ВСТУПЛЕНИЕ (КОМИКС)
@@ -1201,7 +1259,6 @@
         let ambientInitialized = false;
         let ambientEnabled = true;
 
-        // Звук двигателя — «Ионный поток»
         let thrustNodes = null;
         let thrustGain = null;
 
@@ -1327,8 +1384,6 @@
 
         // ============================================================
         //  ЗВУК ДВИГАТЕЛЯ — «ИОННЫЙ ПОТОК»
-        //  Розовый шум через low-pass 4 кГц с медленной модуляцией среза
-        //  + очень тихий низкий гул 45 Гц. Без setInterval, без клиппинга.
         // ============================================================
         function startThrustSound() {
             if (!audioCtx || thrustNodes) return;
@@ -2092,6 +2147,11 @@
             if (SETTINGS.GOD_MODE) godBadge.classList.add('visible');
             else godBadge.classList.remove('visible');
 
+            // Сброс геймпад-флагов
+            gamepadActive = false;
+            gamepadStartPressed = false;
+            gamepadBackPressed = false;
+
             rocket = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, targetAngle: 0, thrusting: false };
 
             star = { x: 0, y: 0, mass: SETTINGS.STAR_MASS, radius: SETTINGS.STAR_RADIUS };
@@ -2307,7 +2367,7 @@
                 targetZoom: SETTINGS.ZOOM_DEFAULT
             };
 
-            mouse = { x: canvas.width / 2, y: canvas.height / 2, down: false };
+            mouse = { x: canvas.width / 2, y: canvas.height / 2, down: false, lastMoved: 0 };
 
             if (audioCtx && audioCtx.state === 'running' && !spaceSoundsInitialized) {
                 initSpaceSounds();
@@ -2316,6 +2376,7 @@
                 }
             }
 
+            updateGamepadHUD();
             updateHUD();
         }
 
@@ -2496,6 +2557,7 @@
         canvas.addEventListener('mousemove', (e) => {
             if (gameOver || gameWin || introActive) return;
             updateMousePosition(e);
+            mouse.lastMoved = performance.now();
             if (overviewMode && dragStart && mouse.down) {
                 const dx = mouse.x - dragStart.mouseX;
                 const dy = mouse.y - dragStart.mouseY;
@@ -2533,6 +2595,7 @@
                     stopAutopilot();
                 }
                 mouse.down = true;
+                mouse.lastMoved = performance.now();
                 if (overviewMode) {
                     dragStart = { mouseX: mouse.x, mouseY: mouse.y, camX: camera.x, camY: camera.y };
                 }
@@ -2711,7 +2774,115 @@
             gravityVector.y = ay;
             gravityVector.mag = Math.hypot(ax, ay);
 
-            if (apState === 'IDLE' && !overviewMode) {
+            // ============================================================
+            //  УПРАВЛЕНИЕ
+            // ============================================================
+            
+			
+			
+			const pad = getGamepadState();
+			let padTurnInput = false;
+			let padThrust = false;
+
+			if (pad) {
+				const deadzone = SETTINGS.GAMEPAD_DEADZONE;
+
+				// ---- Левый стик: только поворот ----
+				const lx = pad.axes[0] || 0;
+				const ly = pad.axes[1] || 0;
+				const lmag = Math.hypot(lx, ly);
+
+				if (apState === 'IDLE' && !overviewMode && lmag > deadzone) {
+					padTurnInput = true;
+					const targetAngle = Math.atan2(ly, lx);
+					rocket.targetAngle = (controlMode === 'nozzle') ? targetAngle + Math.PI : targetAngle;
+
+					let angleDiff = rocket.targetAngle - rocket.angle;
+					while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+					while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+					rocket.angle += angleDiff * SETTINGS.GAMEPAD_TURN_SMOOTH;
+
+					gamepadLastInputTime = performance.now();
+					gamepadActive = true;
+				}
+
+				// ---- Правый стик: поворот + тяга ----
+				const rx = pad.axes[2] || 0;
+				const ry = pad.axes[3] || 0;
+				const rmag = Math.hypot(rx, ry);
+
+				if (apState === 'IDLE' && !overviewMode && rmag > deadzone) {
+					padTurnInput = true;
+					padThrust = true;   // правый стик включает тягу
+
+					const targetAngle = Math.atan2(ry, rx);
+					rocket.targetAngle = (controlMode === 'nozzle') ? targetAngle + Math.PI : targetAngle;
+
+					let angleDiff = rocket.targetAngle - rocket.angle;
+					while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+					while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+					rocket.angle += angleDiff * SETTINGS.GAMEPAD_TURN_SMOOTH;
+
+					gamepadLastInputTime = performance.now();
+					gamepadActive = true;
+				}
+
+				// ---- Кнопки тяги: RT / LT / A ----
+				const rt = pad.buttons[7] ? pad.buttons[7].value : 0;
+				const lt = pad.buttons[6] ? pad.buttons[6].value : 0;
+				const aBtn = pad.buttons[0] ? pad.buttons[0].pressed : false;
+				if (rt > SETTINGS.GAMEPAD_THRUST_THRESHOLD ||
+					lt > SETTINGS.GAMEPAD_THRUST_THRESHOLD ||
+					aBtn) {
+					padThrust = true;
+					gamepadLastInputTime = performance.now();
+					gamepadActive = true;
+				}
+
+				// ---- D-pad вверх (12): приближение ----
+				if (pad.buttons[12] && pad.buttons[12].pressed) {
+					camera.targetZoom = Math.min(SETTINGS.ZOOM_MAX, camera.targetZoom * 1.05);
+					gamepadLastInputTime = performance.now();
+					gamepadActive = true;
+				}
+
+				// ---- D-pad вниз (13): отдаление ----
+				if (pad.buttons[13] && pad.buttons[13].pressed) {
+					camera.targetZoom = Math.max(SETTINGS.ZOOM_MIN, camera.targetZoom / 1.05);
+					gamepadLastInputTime = performance.now();
+					gamepadActive = true;
+				}
+
+				// ---- Start (9): пауза ----
+				if (pad.buttons[9] && pad.buttons[9].pressed) {
+					if (!gamepadStartPressed) {
+						gamepadStartPressed = true;
+						setPause(!gamePaused);
+					}
+				} else {
+					gamepadStartPressed = false;
+				}
+
+				// ---- Back (8): галерея снимков ----
+				if (pad.buttons[8] && pad.buttons[8].pressed) {
+					if (!gamepadBackPressed) {
+						gamepadBackPressed = true;
+						if (gameWin && photoLog.length > 0 && !galleryVisible) openGallery();
+					}
+				} else {
+					gamepadBackPressed = false;
+				}
+			}
+			
+			
+
+            // Если игрок недавно использовал мышь — отключаем «активность» геймпада
+            if (mouse.lastMoved && performance.now() - mouse.lastMoved < SETTINGS.GAMEPAD_ACTIVITY_TIMEOUT) {
+                gamepadActive = false;
+            }
+
+            // --- Мышь (только если геймпад не активен) ---
+            if (apState === 'IDLE' && !overviewMode && !gamepadActive) {
                 let mouseWorld = screenToWorld(mouse.x, mouse.y);
                 let targetDx = mouseWorld.x - rocket.x;
                 let targetDy = mouseWorld.y - rocket.y;
@@ -2738,7 +2909,7 @@
             }
 
             if (apState === 'IDLE') {
-                const wantThrust = !overviewMode && mouse.down && fuel > 0;
+                const wantThrust = !overviewMode && (mouse.down || padThrust) && fuel > 0;
                 if (wantThrust) {
                     rocket.vx += Math.cos(rocket.angle) * SETTINGS.THRUST * thrustMultiplier * dt;
                     rocket.vy += Math.sin(rocket.angle) * SETTINGS.THRUST * thrustMultiplier * dt;
